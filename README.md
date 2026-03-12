@@ -8,3 +8,5 @@ El fin en mente del presente repositorio, es poder almacenar los avances sobre e
 - A00838589 - Steffany Mishell Lara Muy
 - A01424357 - Patricio Mourra Cossio
 - A00838606 - Santiago Dueñas Sanchez
+- A00840131 - María Paula Recinos Rios
+- A01198777 - Andrés Alarcón Navarro
