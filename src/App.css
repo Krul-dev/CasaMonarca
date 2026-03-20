@@ -1,0 +1,128 @@
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background:
+    radial-gradient(circle at top, rgba(26, 79, 140, 0.18), transparent 38%),
+    linear-gradient(180deg, #f7f5ef 0%, #efe8db 100%);
+  color: #1f2933;
+}
+
+.app-card {
+  width: min(100%, 42rem);
+  padding: 3rem;
+  border: 1px solid rgba(31, 41, 51, 0.12);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 24px 80px rgba(31, 41, 51, 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.app-kicker {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1a4f8c;
+}
+
+.app-title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.95;
+}
+
+.app-copy {
+  margin: 1.25rem 0 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #52606d;
+}
+
+.app-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.75rem 0 0;
+}
+
+.app-meta div {
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: rgba(18, 53, 93, 0.06);
+}
+
+.app-meta dt {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #52606d;
+}
+
+.app-meta dd {
+  margin: 0.45rem 0 0;
+  font-weight: 600;
+  color: #12355d;
+  word-break: break-word;
+}
+
+.app-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.75rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(26, 79, 140, 0.1);
+  color: #12355d;
+  font-weight: 600;
+}
+
+.app-status::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: #1a4f8c;
+}
+
+.app-status--online {
+  background: rgba(29, 122, 66, 0.12);
+  color: #15562e;
+}
+
+.app-status--online::before {
+  background: #1d7a42;
+}
+
+.app-status--offline {
+  background: rgba(166, 44, 44, 0.12);
+  color: #7d2020;
+}
+
+.app-status--offline::before {
+  background: #a62c2c;
+}
+
+.app-status--checking {
+  background: rgba(196, 138, 58, 0.16);
+  color: #8a5c1d;
+}
+
+.app-status--checking::before {
+  background: #c48a3a;
+}
+
+@media (max-width: 640px) {
+  .app-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .app-meta {
+    grid-template-columns: 1fr;
+  }
+}
