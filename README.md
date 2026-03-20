@@ -63,38 +63,3 @@ VITE_API_BASE_URL=/api
 API_PROXY_TARGET=http://127.0.0.1:8000
 ```
 
-How this works:
-
-- `VITE_API_BASE_URL` is the URL used by the browser app
-- `API_PROXY_TARGET` is used only by the Vite dev server
-- during local development, browser requests go to `/api/...`
-- Vite forwards those requests to the Laravel API on port `8000`
-
-This avoids local CORS issues while keeping production flexible.
-
-## Production Build
-
-Create the static build:
-
-```bash
-npm run build
-```
-
-Preview the build locally:
-
-```bash
-npm run preview
-```
-
-Run the TypeScript checks:
-
-```bash
-npm run typecheck
-```
-
-The generated output will be written to:
-
-```text
-dist/
-```
-
