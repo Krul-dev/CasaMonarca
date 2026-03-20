@@ -55,10 +55,6 @@ function App() {
             <dt>Frontend</dt>
             <dd>http://localhost:5173</dd>
           </div>
-          <div>
-            <dt>API base</dt>
-            <dd>{apiBaseUrl}</dd>
-          </div>
         </dl>
         <div className={`app-status app-status--${healthState.status}`}>
           {healthState.message}
