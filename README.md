@@ -2,11 +2,11 @@
 
 Frontend repository for the CasaMonarca access control system.
 
-This project uses `React + Vite` for development and will be deployed as a static frontend. Production must not depend on a Node.js runtime on HostGator shared hosting.
+This project uses `React + Vite + TypeScript` and is deployed as a static frontend.
 
 ## Scope
 
-- frontend stack: `React`
+- frontend stack: `React + TypeScript`
 - build tool: `Vite`
 - output: static files
 - production target: HostGator shared hosting
@@ -26,6 +26,7 @@ Install dependencies:
 
 ```bash
 npm install
+cp .env.example .env
 ```
 
 Start the development server:
@@ -39,6 +40,37 @@ Default local URL:
 ```text
 http://localhost:5173
 ```
+
+## Local API Wiring
+
+Recommended local setup:
+
+1. Run the Laravel API on `http://127.0.0.1:8000`
+2. Run the React frontend on `http://localhost:5173`
+3. Let Vite proxy `/api/*` requests to the Laravel server
+
+Example API start command in the API repository:
+
+```bash
+php artisan serve --host=127.0.0.1 --port=8000
+```
+
+Default frontend env file:
+
+```env
+VITE_APP_NAME="CasaMonarca Web"
+VITE_API_BASE_URL=/api
+API_PROXY_TARGET=http://127.0.0.1:8000
+```
+
+How this works:
+
+- `VITE_API_BASE_URL` is the URL used by the browser app
+- `API_PROXY_TARGET` is used only by the Vite dev server
+- during local development, browser requests go to `/api/...`
+- Vite forwards those requests to the Laravel API on port `8000`
+
+This avoids local CORS issues while keeping production flexible.
 
 ## Production Build
 
@@ -54,23 +86,15 @@ Preview the build locally:
 npm run preview
 ```
 
+Run the TypeScript checks:
+
+```bash
+npm run typecheck
+```
+
 The generated output will be written to:
 
 ```text
 dist/
 ```
 
-## Deployment Direction
-
-This repository should be deployed as prebuilt static assets.
-
-- build locally, in CI, or on the VPS
-- upload the contents of `dist/` to the shared hosting web root
-- do not rely on a Node.js runtime in production
-
-## Immediate Next Steps
-
-1. Define the frontend app structure and routing.
-2. Configure the API base URL strategy for local, staging, and production.
-3. Build the first login screen.
-4. Connect the frontend to the Laravel API health endpoint.
