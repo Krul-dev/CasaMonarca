@@ -1,0 +1,68 @@
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background:
+    radial-gradient(circle at top, rgba(26, 79, 140, 0.18), transparent 38%),
+    linear-gradient(180deg, #f7f5ef 0%, #efe8db 100%);
+  color: #1f2933;
+}
+
+.app-card {
+  width: min(100%, 42rem);
+  padding: 3rem;
+  border: 1px solid rgba(31, 41, 51, 0.12);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 24px 80px rgba(31, 41, 51, 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.app-kicker {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1a4f8c;
+}
+
+.app-title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.95;
+}
+
+.app-copy {
+  margin: 1.25rem 0 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #52606d;
+}
+
+.app-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.75rem;
+  padding: 0.65rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(26, 79, 140, 0.1);
+  color: #12355d;
+  font-weight: 600;
+}
+
+.app-status::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: #1a4f8c;
+}
+
+@media (max-width: 640px) {
+  .app-card {
+    padding: 2rem 1.5rem;
+  }
+}
