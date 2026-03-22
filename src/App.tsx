@@ -10,6 +10,8 @@ type HealthState = {
 }
 
 function App() {
+  const frontendOrigin = window.location.origin
+
   const [healthState, setHealthState] = useState<HealthState>({
     status: 'checking',
     message: 'Checking Laravel API connectivity...',
@@ -53,7 +55,11 @@ function App() {
         <dl className="app-meta">
           <div>
             <dt>Frontend</dt>
-            <dd>http://localhost:5173</dd>
+            <dd>{frontendOrigin}</dd>
+          </div>
+          <div>
+            <dt>API Base</dt>
+            <dd>{apiBaseUrl}</dd>
           </div>
         </dl>
         <div className={`app-status app-status--${healthState.status}`}>
