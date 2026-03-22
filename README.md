@@ -164,3 +164,18 @@ This script only performs the remote `git fetch` / `git pull`. The Laravel-speci
 - `composer install --no-dev --optimize-autoloader`
 - `php artisan optimize:clear`
 - `php artisan migrate --force`
+
+By default it also normalizes file modes after the pull:
+
+- directories: `755`
+- files: `644`
+- `artisan` and `scripts/*.sh`: executable
+- `.env`: `600`
+
+Disable that only if you explicitly need to:
+
+```bash
+RESET_PERMISSIONS=0 ./scripts/deploy-staging.sh
+```
+
+The script does not manage ownership or SELinux labels.
