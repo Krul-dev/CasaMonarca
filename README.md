@@ -159,6 +159,18 @@ SSH_KEY=~/.ssh/casamonarca_vps \
 ./scripts/deploy-staging.sh
 ```
 
+If the VPS repository remote uses HTTPS instead of SSH, you can also provide GitHub credentials this way:
+
+```bash
+GITHUB_USERNAME=your-github-user \
+GITHUB_TOKEN_FILE=/home/casamonarca/.config/casamonarca/github_token \
+SSH_KEY=~/.ssh/casamonarca_vps \
+REMOTE_BRANCH=main \
+./scripts/deploy-staging.sh
+```
+
+`GITHUB_TOKEN_FILE` is a path on the VPS, not on your local machine.
+
 This script only performs the remote `git fetch` / `git pull`. The Laravel-specific steps remain manual for now:
 
 - `composer install --no-dev --optimize-autoloader`

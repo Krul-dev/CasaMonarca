@@ -16,6 +16,8 @@ Optional environment variables:
   REMOTE_APP_DIR   API repository path on the VPS
   REMOTE_BRANCH    Branch to pull on the VPS
   RESET_PERMISSIONS When set to 1, normalize remote file modes after pull
+  GITHUB_USERNAME  GitHub username used for HTTPS remotes on the VPS
+  GITHUB_TOKEN_FILE Path to a GitHub token file on the VPS
   SSH_KEY          Optional SSH private key path
 
 Defaults:
@@ -28,7 +30,8 @@ Defaults:
 
 Notes:
   - The remote repository itself must already be cloned on the VPS.
-  - The remote `origin` should already be configured for SSH if you want SSH-based pulls there.
+  - If `origin` uses SSH on the VPS, leave `GITHUB_USERNAME` and `GITHUB_TOKEN_FILE` unset.
+  - If `origin` uses HTTPS on the VPS, point `GITHUB_TOKEN_FILE` to a token file on the VPS.
   - This script only updates the Git working tree. Composer, migrations, and cache clears stay manual for now.
   - Ownership and SELinux labels are not changed by this script.
 EOF
@@ -45,6 +48,8 @@ REMOTE_PORT="${REMOTE_PORT:-22}"
 REMOTE_APP_DIR="${REMOTE_APP_DIR:-/home/casamonarca/apps/api/current}"
 REMOTE_BRANCH="${REMOTE_BRANCH:-main}"
 RESET_PERMISSIONS="${RESET_PERMISSIONS:-1}"
+GITHUB_USERNAME="${GITHUB_USERNAME:-}"
+GITHUB_TOKEN_FILE="${GITHUB_TOKEN_FILE:-}"
 SSH_KEY="${SSH_KEY:-}"
 
 SSH_OPTS=(-p "${REMOTE_PORT}")
@@ -64,26 +69,71 @@ require_command ssh
 
 echo "Pulling ${REMOTE_BRANCH} on ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_APP_DIR} ..."
 
-ssh -tt "${SSH_OPTS[@]}" "${REMOTE_USER}@${REMOTE_HOST}" "\
-RESET_PERMISSIONS='${RESET_PERMISSIONS}'; \
-cd '${REMOTE_APP_DIR}' && \
-git fetch origin '${REMOTE_BRANCH}' && \
-git checkout '${REMOTE_BRANCH}' && \
-git pull --ff-only origin '${REMOTE_BRANCH}' && \
-if [ \"\$RESET_PERMISSIONS\" = '1' ]; then \
-  find '${REMOTE_APP_DIR}' -type d -exec chmod 755 {} + && \
-  find '${REMOTE_APP_DIR}' -type f -exec chmod 644 {} + && \
-  if [ -f '${REMOTE_APP_DIR}/artisan' ]; then chmod 755 '${REMOTE_APP_DIR}/artisan'; fi && \
-  if [ -d '${REMOTE_APP_DIR}/scripts' ]; then find '${REMOTE_APP_DIR}/scripts' -type f -name '*.sh' -exec chmod 755 {} +; fi && \
-  if [ -d '${REMOTE_APP_DIR}/storage' ]; then \
-    find '${REMOTE_APP_DIR}/storage' -type d -exec chmod 755 {} + && \
-    find '${REMOTE_APP_DIR}/storage' -type f -exec chmod 644 {} +; \
-  fi && \
-  if [ -d '${REMOTE_APP_DIR}/bootstrap/cache' ]; then \
-    find '${REMOTE_APP_DIR}/bootstrap/cache' -type d -exec chmod 755 {} + && \
-    find '${REMOTE_APP_DIR}/bootstrap/cache' -type f -exec chmod 644 {} +; \
-  fi && \
-  if [ -f '${REMOTE_APP_DIR}/.env' ]; then chmod 600 '${REMOTE_APP_DIR}/.env'; fi; \
-fi"
+ssh -T "${SSH_OPTS[@]}" "${REMOTE_USER}@${REMOTE_HOST}" bash -s -- \
+  "${REMOTE_APP_DIR}" \
+  "${REMOTE_BRANCH}" \
+  "${RESET_PERMISSIONS}" \
+  "${GITHUB_USERNAME}" \
+  "${GITHUB_TOKEN_FILE}" <<'EOF'
+set -euo pipefail
+
+REMOTE_APP_DIR="$1"
+REMOTE_BRANCH="$2"
+RESET_PERMISSIONS="$3"
+GITHUB_USERNAME="$4"
+GITHUB_TOKEN_FILE="$5"
+
+run_git() {
+  if [[ -n "${GITHUB_USERNAME}" && -n "${GITHUB_TOKEN_FILE}" ]]; then
+    if [[ ! -r "${GITHUB_TOKEN_FILE}" ]]; then
+      echo "Token file not readable: ${GITHUB_TOKEN_FILE}" >&2
+      exit 1
+    fi
+
+    local auth_b64
+    auth_b64="$(printf '%s' "${GITHUB_USERNAME}:$(<"${GITHUB_TOKEN_FILE}")" | base64 | tr -d '\n')"
+    git -c "http.extraheader=AUTHORIZATION: Basic ${auth_b64}" "$@"
+  else
+    git "$@"
+  fi
+}
+
+cd "${REMOTE_APP_DIR}"
+run_git fetch origin "${REMOTE_BRANCH}"
+
+if git show-ref --verify --quiet "refs/heads/${REMOTE_BRANCH}"; then
+  git checkout "${REMOTE_BRANCH}"
+  run_git pull --ff-only origin "${REMOTE_BRANCH}"
+else
+  git checkout -b "${REMOTE_BRANCH}" FETCH_HEAD
+fi
+
+if [[ "${RESET_PERMISSIONS}" == "1" ]]; then
+  find "${REMOTE_APP_DIR}" -type d -exec chmod 755 {} +
+  find "${REMOTE_APP_DIR}" -type f -exec chmod 644 {} +
+
+  if [[ -f "${REMOTE_APP_DIR}/artisan" ]]; then
+    chmod 755 "${REMOTE_APP_DIR}/artisan"
+  fi
+
+  if [[ -d "${REMOTE_APP_DIR}/scripts" ]]; then
+    find "${REMOTE_APP_DIR}/scripts" -type f -name '*.sh' -exec chmod 755 {} +
+  fi
+
+  if [[ -d "${REMOTE_APP_DIR}/storage" ]]; then
+    find "${REMOTE_APP_DIR}/storage" -type d -exec chmod 755 {} +
+    find "${REMOTE_APP_DIR}/storage" -type f -exec chmod 644 {} +
+  fi
+
+  if [[ -d "${REMOTE_APP_DIR}/bootstrap/cache" ]]; then
+    find "${REMOTE_APP_DIR}/bootstrap/cache" -type d -exec chmod 755 {} +
+    find "${REMOTE_APP_DIR}/bootstrap/cache" -type f -exec chmod 644 {} +
+  fi
+
+  if [[ -f "${REMOTE_APP_DIR}/.env" ]]; then
+    chmod 600 "${REMOTE_APP_DIR}/.env"
+  fi
+fi
+EOF
 
 echo "Remote Git pull complete."
