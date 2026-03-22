@@ -15,6 +15,7 @@ Optional environment variables:
   REMOTE_PORT        SSH port
   REMOTE_TARGET_DIR  Final static site directory on the VPS
   REMOTE_STAGE_DIR   Temporary upload directory on the VPS
+  RESET_PERMISSIONS  When set to 1, normalize remote file modes after deploy
   SSH_KEY            Optional SSH private key path
 
 Defaults:
@@ -23,11 +24,14 @@ Defaults:
   REMOTE_PORT=22
   REMOTE_TARGET_DIR=/home/casamonarca/public_html
   REMOTE_STAGE_DIR=/home/casamonarca/deployments/casamonarca-web
+  RESET_PERMISSIONS=1
 
 Notes:
   - The script preserves `.htaccess` and `.well-known` inside the target directory.
   - The script uploads a tarball with `scp` and promotes it on the VPS as the app user.
   - If `node_modules/` is missing, the script runs `npm ci` before building.
+  - The script reuses one SSH connection so your key passphrase is requested once per run.
+  - Ownership and SELinux labels are not changed by this script.
 EOF
 }
 
@@ -44,12 +48,15 @@ REMOTE_USER="${REMOTE_USER:-casamonarca}"
 REMOTE_PORT="${REMOTE_PORT:-22}"
 REMOTE_TARGET_DIR="${REMOTE_TARGET_DIR:-/home/casamonarca/public_html}"
 REMOTE_STAGE_DIR="${REMOTE_STAGE_DIR:-/home/casamonarca/deployments/casamonarca-web}"
+RESET_PERMISSIONS="${RESET_PERMISSIONS:-1}"
 SSH_KEY="${SSH_KEY:-}"
 
 SSH_OPTS=(-p "${REMOTE_PORT}")
+SCP_OPTS=(-P "${REMOTE_PORT}")
 
 if [[ -n "${SSH_KEY}" ]]; then
   SSH_OPTS+=(-i "${SSH_KEY}")
+  SCP_OPTS+=(-i "${SSH_KEY}")
 fi
 
 require_command() {
@@ -78,8 +85,13 @@ npm run build
 TMP_DIR="$(mktemp -d)"
 ARCHIVE_PATH="${TMP_DIR}/casamonarca-web-dist.tgz"
 REMOTE_ARCHIVE_PATH="${REMOTE_STAGE_DIR}/casamonarca-web-dist.tgz"
+CONTROL_PATH="${TMP_DIR}/cm-web-%C"
+
+SSH_OPTS+=(-o ControlMaster=auto -o ControlPersist=60 "-o" "ControlPath=${CONTROL_PATH}")
+SCP_OPTS+=(-o ControlMaster=auto -o ControlPersist=60 "-o" "ControlPath=${CONTROL_PATH}")
 
 cleanup() {
+  ssh "${SSH_OPTS[@]}" -O exit "${REMOTE_USER}@${REMOTE_HOST}" >/dev/null 2>&1 || true
   rm -rf "${TMP_DIR}"
 }
 
@@ -92,16 +104,21 @@ echo "Creating remote staging directory..."
 ssh "${SSH_OPTS[@]}" "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p '${REMOTE_STAGE_DIR}'"
 
 echo "Uploading build archive with scp..."
-scp "${SSH_OPTS[@]}" "${ARCHIVE_PATH}" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_ARCHIVE_PATH}"
+scp "${SCP_OPTS[@]}" "${ARCHIVE_PATH}" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_ARCHIVE_PATH}"
 
 echo "Promoting build on the VPS..."
 ssh -tt "${SSH_OPTS[@]}" "${REMOTE_USER}@${REMOTE_HOST}" "\
+RESET_PERMISSIONS='${RESET_PERMISSIONS}'; \
 mkdir -p '${REMOTE_TARGET_DIR}' && \
 find '${REMOTE_TARGET_DIR}' -mindepth 1 -maxdepth 1 \
   ! -name '.htaccess' \
   ! -name '.well-known' \
   -exec rm -rf {} + && \
 tar -xzf '${REMOTE_ARCHIVE_PATH}' -C '${REMOTE_TARGET_DIR}' && \
+if [ \"\$RESET_PERMISSIONS\" = '1' ]; then \
+  find '${REMOTE_TARGET_DIR}' -type d -exec chmod 755 {} + && \
+  find '${REMOTE_TARGET_DIR}' -type f -exec chmod 644 {} +; \
+fi && \
 rm -f '${REMOTE_ARCHIVE_PATH}'"
 
 echo "Deployment complete."

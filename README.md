@@ -96,4 +96,13 @@ The script:
 - builds `dist/` locally
 - uploads a tarball with `scp`
 - promotes the build on the VPS as `casamonarca`
+- normalizes remote static file modes by default
 - preserves `.htaccess` and `.well-known` in the target directory
+
+Disable permission normalization only if you explicitly need to:
+
+```bash
+RESET_PERMISSIONS=0 ./scripts/deploy-staging.sh
+```
+
+The script does not manage ownership or SELinux labels.
