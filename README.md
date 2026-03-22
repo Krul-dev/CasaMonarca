@@ -135,3 +135,32 @@ If caches need to be cleared during development:
 ```bash
 php artisan optimize:clear
 ```
+
+## Staging Pull
+
+Use the deployment helper from the repo root to update the API code on the staging VPS:
+
+```bash
+./scripts/deploy-staging.sh
+```
+
+Default target values:
+
+- host: `204.168.173.236`
+- ssh user: `casamonarca`
+- remote repo path: `/home/casamonarca/apps/api/current`
+- branch: `main`
+
+Override them with environment variables when needed:
+
+```bash
+REMOTE_BRANCH=dev \
+SSH_KEY=~/.ssh/casamonarca_vps \
+./scripts/deploy-staging.sh
+```
+
+This script only performs the remote `git fetch` / `git pull`. The Laravel-specific steps remain manual for now:
+
+- `composer install --no-dev --optimize-autoloader`
+- `php artisan optimize:clear`
+- `php artisan migrate --force`
