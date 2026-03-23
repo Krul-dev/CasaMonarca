@@ -1,73 +1,42 @@
-import { useEffect, useState } from 'react'
-
 import './App.css'
-import { apiBaseUrl } from './config/env'
-import { getApiHealth } from './lib/api'
+import { LoginPage } from './pages/LoginPage'
 
-type HealthState = {
-  status: 'checking' | 'online' | 'offline'
-  message: string
+const normalizePathname = (pathname: string) => {
+  if (pathname === '/') {
+    return '/login'
+  }
+
+  return pathname.endsWith('/') && pathname !== '/'
+    ? pathname.slice(0, -1)
+    : pathname
 }
 
-function App() {
-  const frontendOrigin = window.location.origin
-
-  const [healthState, setHealthState] = useState<HealthState>({
-    status: 'checking',
-    message: 'Checking Laravel API connectivity...',
-  })
-
-  useEffect(() => {
-    let isMounted = true
-
-    getApiHealth()
-      .then((payload) => {
-        if (!isMounted) {
-          return
-        }
-
-        setHealthState({
-          status: 'online',
-          message: `API online: ${payload.service}`,
-        })
-      })
-      .catch((error: Error) => {
-        if (!isMounted) {
-          return
-        }
-
-        setHealthState({
-          status: 'offline',
-          message: error.message,
-        })
-      })
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
+function NotFoundPage() {
   return (
-    <main className="app-shell">
-      <section className="app-card">
-        <p className="app-kicker">CasaMonarca</p>
-        <h1 className="app-title">Control de Acceso</h1>
-        <dl className="app-meta">
-          <div>
-            <dt>Frontend</dt>
-            <dd>{frontendOrigin}</dd>
-          </div>
-          <div>
-            <dt>API Base</dt>
-            <dd>{apiBaseUrl}</dd>
-          </div>
-        </dl>
-        <div className={`app-status app-status--${healthState.status}`}>
-          {healthState.message}
-        </div>
+    <main className="route-shell">
+      <section className="route-card route-card--compact">
+        <p className="route-kicker">CasaMonarca</p>
+        <h1 className="route-title">Ruta pendiente</h1>
+        <p className="route-copy">
+          Esta vista todavia no existe en el cliente web. El punto de entrada
+          actual es la pantalla de acceso.
+        </p>
+        <a className="route-link" href="/login">
+          Ir a /login
+        </a>
       </section>
     </main>
   )
+}
+
+function App() {
+  const pathname = normalizePathname(window.location.pathname)
+
+  if (pathname === '/login') {
+    return <LoginPage />
+  }
+
+  return <NotFoundPage />
 }
 
 export default App
