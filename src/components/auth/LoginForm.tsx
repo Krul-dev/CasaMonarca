@@ -1,8 +1,13 @@
 import { useState } from 'react'
 
-import { login, type LoginCredentials } from '../../lib/auth'
+import { ApiRequestError } from '../../lib/api'
+import {
+  getFirstFieldError,
+  login,
+  type LoginCredentials,
+} from '../../lib/auth'
 
-type FormStatus = 'idle' | 'submitting' | 'error'
+type FormStatus = 'idle' | 'submitting'
 
 type FieldErrors = Partial<Record<keyof LoginCredentials, string>>
 
@@ -13,13 +18,13 @@ const validateCredentials = ({
   const errors: FieldErrors = {}
 
   if (!email.trim()) {
-    errors.email = 'Ingresa un correo institucional.'
+    errors.email = 'Enter your institutional email.'
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.email = 'Usa un correo con formato valido.'
+    errors.email = 'Use a valid email format.'
   }
 
   if (!password.trim()) {
-    errors.password = 'Ingresa tu contrasena.'
+    errors.password = 'Enter your password.'
   }
 
   return errors
@@ -32,9 +37,8 @@ export function LoginForm() {
   })
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [formStatus, setFormStatus] = useState<FormStatus>('idle')
-  const [feedbackMessage, setFeedbackMessage] = useState(
-    'El flujo visual ya esta listo. Solo falta conectar la autenticacion real.',
-  )
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
 
   const handleFieldChange = (
     field: keyof LoginCredentials,
@@ -50,11 +54,12 @@ export function LoginForm() {
       [field]: undefined,
     }))
 
-    if (formStatus === 'error') {
-      setFormStatus('idle')
-      setFeedbackMessage(
-        'El flujo visual ya esta listo. Solo falta conectar la autenticacion real.',
-      )
+    if (submitError) {
+      setSubmitError(null)
+    }
+
+    if (submitSuccess) {
+      setSubmitSuccess(null)
     }
   }
 
@@ -65,24 +70,38 @@ export function LoginForm() {
 
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors)
-      setFormStatus('error')
-      setFeedbackMessage('Corrige los campos marcados antes de continuar.')
+      setSubmitError(null)
+      setSubmitSuccess(null)
       return
     }
 
     setFieldErrors({})
+    setSubmitError(null)
+    setSubmitSuccess(null)
     setFormStatus('submitting')
-    setFeedbackMessage('Probando el contrato del login...')
 
     try {
-      await login(credentials)
+      const response = await login(credentials)
+      setSubmitSuccess(
+        response.user.name
+          ? `Login successful. Signed in as ${response.user.name}.`
+          : response.message,
+      )
     } catch (error) {
-      setFormStatus('error')
-      setFeedbackMessage(
+      if (error instanceof ApiRequestError) {
+        setFieldErrors((current) => ({
+          ...current,
+          email: getFirstFieldError(error.errors, 'email'),
+          password: getFirstFieldError(error.errors, 'password'),
+        }))
+      }
+
+      setSubmitError(
         error instanceof Error
           ? error.message
-          : 'No se pudo completar la autenticacion.',
+          : 'The authentication request could not be completed.',
       )
+      setFormStatus('idle')
       return
     }
 
@@ -93,12 +112,12 @@ export function LoginForm() {
     <form className="login-form" onSubmit={handleSubmit} noValidate>
       <div className="login-form__fields">
         <label className="login-field">
-          <span className="login-field__label">Correo</span>
+          <span className="login-field__label">Email</span>
           <input
             autoComplete="username"
             className="login-field__input"
             name="email"
-            placeholder="equipo@casamonarca.org.mx"
+            placeholder="team@casamonarca.org.mx"
             type="email"
             value={credentials.email}
             onChange={(event) => handleFieldChange('email', event.target.value)}
@@ -109,12 +128,12 @@ export function LoginForm() {
         </label>
 
         <label className="login-field">
-          <span className="login-field__label">Contrasena</span>
+          <span className="login-field__label">Password</span>
           <input
             autoComplete="current-password"
             className="login-field__input"
             name="password"
-            placeholder="Tu acceso institucional"
+            placeholder="Your institutional access"
             type="password"
             value={credentials.password}
             onChange={(event) =>
@@ -132,18 +151,18 @@ export function LoginForm() {
         disabled={formStatus === 'submitting'}
         type="submit"
       >
-        {formStatus === 'submitting' ? 'Probando...' : 'Ingresar'}
+        {formStatus === 'submitting' ? 'Testing...' : 'Sign in'}
       </button>
 
-      <div
-        className={`login-feedback ${
-          formStatus === 'error'
-            ? 'login-feedback--error'
-            : 'login-feedback--neutral'
-        }`}
-      >
-        {feedbackMessage}
-      </div>
+      {submitSuccess ? (
+        <div className="login-feedback login-feedback--success">
+          {submitSuccess}
+        </div>
+      ) : null}
+
+      {submitError ? (
+        <div className="login-feedback login-feedback--error">{submitError}</div>
+      ) : null}
     </form>
   )
 }

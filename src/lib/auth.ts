@@ -1,21 +1,20 @@
+import { apiFetch, type ApiFieldErrors } from './api'
+
 export type LoginCredentials = {
   email: string
   password: string
 }
 
 export type AuthenticatedUser = {
-  id: string
+  id: number
   email: string
   name: string
-  role: string
+  role?: string | null
 }
 
 export type LoginResponse = {
+  message: string
   user: AuthenticatedUser
-  session?: {
-    expiresAt: string
-  }
-  token?: string
 }
 
 export type LoginErrorResponse = {
@@ -23,24 +22,26 @@ export type LoginErrorResponse = {
   message: string
 }
 
-const delay = (ms: number) =>
-  new Promise((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
+type CsrfTokenResponse = {
+  csrfToken: string
+}
+
+export const getFirstFieldError = (
+  fieldErrors: ApiFieldErrors | undefined,
+  field: keyof LoginCredentials,
+) => fieldErrors?.[field]?.[0]
 
 export async function login(
   credentials: LoginCredentials,
 ): Promise<LoginResponse> {
-  await delay(650)
+  const { csrfToken } = await apiFetch<CsrfTokenResponse>('/csrf-token')
 
-  void credentials
-
-  // TODO: Replace this stub with a real POST /login request once the backend contract is ready.
-  // Suggested contract:
-  // - request: { email, password }
-  // - success: { user, session? , token? }
-  // - error: { message, errors? }
-  throw new Error(
-    'Login pendiente. Conecta src/lib/auth.ts al endpoint real del backend para habilitar acceso.',
-  )
+  return apiFetch<LoginResponse>('/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+    },
+    body: JSON.stringify(credentials),
+  })
 }
