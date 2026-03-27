@@ -15,3 +15,4 @@ El fin en mente del presente repositorio, es poder almacenar los avances sobre e
 
 ### 24 de Marzo de 2026
 1. Se añade un demo en streamlit de la interfaz con los distintos usuarios.
+2. Login en HTML
