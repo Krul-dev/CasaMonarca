@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titulo %}Editar Usuario — Casa Monarca{% endblock %}
+{% block contenido %}
+<div class="card">
+    <h2>Editar usuario: {{ objetivo.nombre_usuario }}</h2>
+    <form method="POST" action="{{ url_for('editar_usuario', usr_id=objetivo.nombre_usuario) }}" style="max-width:450px;">
+        <div class="form-group">
+            <label for="nombre">Nombre completo</label>
+            <input type="text" id="nombre" name="nombre" value="{{ objetivo.nombre }}" required>
+        </div>
+        <div class="form-group">
+            <label for="rol">Rol</label>
+            <select id="rol" name="rol">
+                {% for r in roles %}
+                <option value="{{ r }}" {% if r == objetivo.rol %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="activo" value="1" {% if objetivo.activo %}checked{% endif %}>
+                Cuenta activa
+            </label>
+        </div>
+        <div class="form-group">
+            <label for="contrasena">Nueva contrasena (dejar vacio = sin cambio)</label>
+            <input type="password" id="contrasena" name="contrasena">
+        </div>
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Guardar cambios</button>
+            <a href="{{ url_for('gestion_usuarios') }}" class="btn btn-warning">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

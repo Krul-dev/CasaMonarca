@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}Expedientes — Casa Monarca{% endblock %}
+{% block contenido %}
+<div class="card">
+    <h2>Expedientes</h2>
+    <p class="subtitle">Vista de prueba. Los datos reales son gestionados por los modulos de Andres y Maria Paula.</p>
+    <table>
+        <thead><tr><th>ID</th><th>Nombre</th><th>Pais</th><th>Estatus</th></tr></thead>
+        <tbody>
+        {% for e in expedientes %}
+        <tr>
+            <td>{{ e.id }}</td>
+            <td>{{ e.nombre }}</td>
+            <td>{{ e.pais }}</td>
+            <td>
+                {% if e.estatus == 'Activo' %}
+                <span class="badge badge-si">{{ e.estatus }}</span>
+                {% else %}
+                <span class="badge badge-no">{{ e.estatus }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titulo %}Aprobar Eliminaciones — Casa Monarca{% endblock %}
+{% block contenido %}
+<div class="card">
+    <h2>Aprobar eliminaciones</h2>
+    <p class="subtitle">Solo puedes aprobar solicitudes de otros usuarios, no las tuyas propias.</p>
+
+    {% if propias %}
+    <div class="flash warning">
+        Tienes {{ propias|length }} solicitud(es) propias pendientes. Otro administrador debe aprobarlas.
+    </div>
+    {% endif %}
+
+    {% if pendientes %}
+        {% for s in pendientes %}
+        <details>
+            <summary>{{ s.etiqueta }} — solicitado por {{ s.nombre_solicitante }}</summary>
+            <div class="detail-body">
+                <strong>Expediente:</strong> {{ s.etiqueta }}<br>
+                <strong>Solicitante:</strong> {{ s.nombre_solicitante }} (@{{ s.solicitado_por }})<br>
+                <strong>Motivo:</strong> {{ s.motivo }}<br>
+                <strong>Fecha:</strong> {{ s.solicitado_en[:19] | replace("T", " ") }}
+                <div class="actions">
+                    <a href="{{ url_for('aprobar', sol_id=s.id) }}" class="btn btn-success btn-sm">Aprobar</a>
+                    <a href="{{ url_for('rechazar', sol_id=s.id) }}" class="btn btn-danger btn-sm">Rechazar</a>
+                </div>
+            </div>
+        </details>
+        {% endfor %}
+    {% else %}
+    <p style="color:#95a5a6;">No hay solicitudes pendientes de otros usuarios.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Historial de solicitudes resueltas</h2>
+    {% if resueltas %}
+    <table>
+        <thead><tr><th>Expediente</th><th>Solicitado por</th><th>Estatus</th><th>Resuelto por</th><th>Fecha</th></tr></thead>
+        <tbody>
+        {% for s in resueltas %}
+        <tr>
+            <td>{{ s.etiqueta }}</td>
+            <td>{{ s.solicitado_por }}</td>
+            <td>
+                <span class="badge badge-{{ s.estatus|lower }}">{{ s.estatus }}</span>
+            </td>
+            <td>{{ s.resuelto_por or '' }}</td>
+            <td>{{ (s.resuelto_en or '')[:10] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:#95a5a6;">Sin historial aun.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block titulo %}Gestionar Usuarios — Casa Monarca{% endblock %}
+{% block contenido %}
+<div class="card">
+    <h2>Usuarios registrados</h2>
+    <table>
+        <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Activo</th><th>Creado</th><th></th></tr></thead>
+        <tbody>
+        {% for u in usuarios %}
+        <tr>
+            <td>{{ u.nombre }}</td>
+            <td>{{ u.nombre_usuario }}</td>
+            <td>{{ u.rol }}</td>
+            <td>
+                {% if u.activo %}
+                <span class="badge badge-si">Si</span>
+                {% else %}
+                <span class="badge badge-no">No</span>
+                {% endif %}
+            </td>
+            <td>{{ (u.creado_en or '')[:10] }}</td>
+            <td>
+                {% if u.nombre_usuario != session.nombre_usuario %}
+                <a href="{{ url_for('editar_usuario', usr_id=u.nombre_usuario) }}" class="btn btn-primary btn-sm">Editar</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Crear nuevo usuario</h2>
+    <form method="POST" action="{{ url_for('crear_usuario') }}" style="max-width:450px;">
+        <div class="form-group">
+            <label for="nombre">Nombre completo</label>
+            <input type="text" id="nombre" name="nombre" required>
+        </div>
+        <div class="form-group">
+            <label for="nombre_usuario">Nombre de usuario (unico)</label>
+            <input type="text" id="nombre_usuario" name="nombre_usuario" required>
+        </div>
+        <div class="form-group">
+            <label for="contrasena">Contrasena inicial</label>
+            <input type="password" id="contrasena" name="contrasena" required>
+        </div>
+        <div class="form-group">
+            <label for="rol">Rol</label>
+            <select id="rol" name="rol">
+                {% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-success">Crear usuario</button>
+    </form>
+</div>
+{% endblock %}

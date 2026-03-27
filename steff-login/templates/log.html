@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}Log de Auditoria — Casa Monarca{% endblock %}
+{% block contenido %}
+<div class="card">
+    <h2>Log de Auditoria</h2>
+    {% if registros %}
+    <table>
+        <thead><tr><th>Fecha</th><th>Actor</th><th>Accion</th><th>Detalle</th></tr></thead>
+        <tbody>
+        {% for r in registros %}
+        <tr>
+            <td>{{ r.fecha }}</td>
+            <td>{{ r.actor }}</td>
+            <td>{{ r.accion }}</td>
+            <td>{{ r.detalle }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:#95a5a6;">El log esta vacio.</p>
+    {% endif %}
+</div>
+{% endblock %}
