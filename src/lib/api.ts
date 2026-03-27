@@ -5,6 +5,20 @@ export type ApiHealthResponse = {
   status: string
 }
 
+export type ApiFieldErrors = Record<string, string[]>
+
+export class ApiRequestError extends Error {
+  readonly errors?: ApiFieldErrors
+  readonly status: number
+
+  constructor(message: string, status: number, errors?: ApiFieldErrors) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.status = status
+    this.errors = errors
+  }
+}
+
 const buildApiUrl = (path: string) => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
@@ -17,6 +31,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const response = await fetch(buildApiUrl(path), {
     ...init,
+    credentials: init.credentials ?? 'include',
     headers: {
       Accept: 'application/json',
       ...init.headers,
@@ -29,6 +44,15 @@ export async function apiFetch<T>(
     : await response.text()
 
   if (!response.ok) {
+    const errors =
+      payload &&
+      typeof payload === 'object' &&
+      'errors' in payload &&
+      payload.errors &&
+      typeof payload.errors === 'object'
+        ? (payload.errors as ApiFieldErrors)
+        : undefined
+
     const message =
       payload &&
       typeof payload === 'object' &&
@@ -37,7 +61,7 @@ export async function apiFetch<T>(
         ? payload.message
         : `Request failed with status ${response.status}`
 
-    throw new Error(message)
+    throw new ApiRequestError(message, response.status, errors)
   }
 
   return payload as T

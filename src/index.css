@@ -1,9 +1,10 @@
 :root {
-  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+  font-family: "Aptos", "Segoe UI Variable", "Segoe UI", "Helvetica Neue",
+    sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1f2933;
-  background: #f7f5ef;
+  color: #182437;
+  background: #f5efe2;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -23,6 +24,7 @@ body,
 
 body {
   min-width: 320px;
+  background: #f5efe2;
 }
 
 button,
