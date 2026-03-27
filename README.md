@@ -114,3 +114,65 @@ classDiagram
     Documento --> BaseDeDatos
     Usuario --> BaseDeDatos
 ```
+
+## Vista de Despliegue
+```mermaid
+flowchart TB
+    subgraph local["Maquinas de desarrollo"]
+        fe["Construir frontend en local"]
+        be["Desarrollar API en local"]
+        vault["Vault de Obsidian\ndiagramas y notas locales"]
+    end
+
+    subgraph github["GitHub"]
+        webrepo["Access-Control-CM-Web"]
+        apirepo["Access-Control-CM-API"]
+    end
+
+    subgraph vps["VPS de staging"]
+        public["public_html\nfrontend estatico"]
+        app["Checkout de Laravel"]
+        httpd["Apache + PHP-FPM"]
+        db[("MySQL")]
+        mirror["Espejo de staging en VPS"]
+    end
+
+    subgraph target["Modelo de hosting objetivo"]
+        hg["Restricciones de hosting compartido estilo HostGator"]
+    end
+
+    fe --> webrepo
+    be --> apirepo
+    vault --> fe
+    vault --> be
+
+    webrepo -->|despliegue de artefacto local| public
+    apirepo -->|despliegue con pull remoto| app
+
+    public --> httpd
+    app --> httpd
+    app --> db
+    mirror -.->|supuestos de runtime| hg
+```
+
+## Secuencia de Inicio de Sesion
+```mermaid
+sequenceDiagram
+    actor User as Usuario
+    participant Browser as Cliente web React
+    participant Apache as Apache / borde de mismo origen
+    participant API as API Laravel
+    participant DB as MySQL
+
+    User->>Browser: Enviar correo y contrasena
+    Browser->>Apache: GET /api/csrf-token
+    Apache->>API: Reenviar solicitud
+    API-->>Browser: Respuesta con token CSRF
+
+    Browser->>Apache: POST /api/login\ncredenciales + X-CSRF-TOKEN
+    Apache->>API: Reenviar solicitud
+    API->>DB: Verificar credenciales del usuario
+    API->>DB: Crear o actualizar sesion
+    API-->>Browser: 200 OK + payload de usuario + cookie de sesion
+    Browser-->>User: Mostrar mensaje de acceso exitoso
+```
