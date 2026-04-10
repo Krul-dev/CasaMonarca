@@ -176,3 +176,91 @@ sequenceDiagram
     API-->>Browser: 200 OK + payload de usuario + cookie de sesion
     Browser-->>User: Mostrar mensaje de acceso exitoso
 ```
+## Secuencia de Inicio de Sesion e.Firma
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Usuario
+    participant Browser as Cliente web React
+    participant Apache as Apache / borde de mismo origen
+    participant API as API Laravel
+    participant DB as MySQL
+
+    Note over User, Apache: El navegador presenta el Certificado del Cliente (mTLS)
+    
+    User->>Browser: Seleccionar Certificado e ingresar contraseña
+    Browser->>Apache: GET /api/csrf-token + Certificado Digital
+    
+    Note right of Apache: Apache valida que el certificado sea vigente y confiable
+    
+    Apache->>API: Reenviar solicitud (incluye datos del certificado)
+    API-->>Browser: Respuesta con token CSRF
+
+    Browser->>Apache: POST /api/login (Credenciales + Firma con Certificado) + X-CSRF-TOKEN
+    Apache->>API: Reenviar solicitud
+    
+    API->>API: Validar firma digital del mensaje
+    API->>DB: Verificar credenciales y vinculación de certificado
+    API->>DB: Crear o actualizar sesion
+    
+    API-->>Browser: 200 OK + payload de usuario + cookie de sesion
+    Browser-->>User: Mostrar mensaje de acceso exitoso
+```
+
+## Secuencia de Registro de Usuario
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Usuario Admin
+    participant Browser as Cliente web React
+    participant Apache as Apache / borde de mismo origen
+    participant API as API Laravel
+    participant DB as MySQL
+    participant Mail as Servidor de Correo
+
+    Note over Admin, Mail: Fase 1: Alta de Correo y Verificación
+
+    Admin->>Browser: Ingresa correo electrónico
+    Browser->>Apache: GET /api/csrf-token
+    Apache->>API: Reenviar solicitud
+    API-->>Browser: Respuesta con token CSRF
+
+    Browser->>Apache: POST /api/register-admin\n{correo} + X-CSRF-TOKEN
+    Apache->>API: Reenviar solicitud
+    API->>DB: Verificar disponibilidad y crear registro previo
+    API->>Mail: Enviar correo con enlace de verificación + token único
+    API-->>Browser: 201 Created (Instrucción de revisar correo)
+    Browser-->>Admin: Mostrar "Verifica tu bandeja de entrada"
+
+    Note over Admin, Mail: Fase 2: Configuración de Seguridad (Password y Token)
+
+    Admin->>Browser: Clic en enlace de correo (token de verificación)
+    Browser->>Apache: GET /setup-password?verify_token=...
+    Apache-->>Browser: Carga formulario de credenciales y 2FA
+    
+    Browser->>Apache: GET /api/csrf-token
+    Apache->>API: Reenviar solicitud
+    API-->>Browser: Respuesta con nuevo token CSRF
+
+    Admin->>Browser: Ingresa Password, Confirmación y Token (OTP)
+    Browser->>Apache: POST /api/complete-setup\n{pass, pass_conf, otp} + X-CSRF-TOKEN
+    Apache->>API: Reenviar solicitud
+
+    API->>API: Validar tokens, contraseñas y código OTP
+    API->>DB: Actualizar Admin (Hash de Pass, Email Verificado, 2FA Activo)
+    API->>DB: Crear sesión inicial
+    
+    API-->>Browser: 200 OK + payload de admin + cookie de sesion
+    Browser-->>Admin: Mostrar mensaje de configuración exitosa y acceso al sistema
+
+Note over Admin, API: Fase 3: Generación de Certificado Digital
+    
+    Admin->>Browser: Solicitar generación de Certificado
+    Browser->>Browser: Generar par de llaves (Pública/Privada) localmente
+    Browser->>Apache: POST /api/issue-certificate {CSR + Public Key}
+    Apache->>API: Reenviar solicitud
+    API->>API: Firmar clave con la CA (Autoridad Certificadora) interna
+    API->>DB: Almacenar certificado público vinculado al Admin
+    API-->>Browser: Enviar Certificado Firmado (.crt / .pem)
+    Browser-->>Admin: Descarga de archivo de identidad (eFirma)
+```
