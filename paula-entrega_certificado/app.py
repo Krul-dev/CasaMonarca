@@ -198,9 +198,16 @@ def nuevo_voluntario():
 def entregar_certificado(nombre):
     if g.rol != 'admin':
         abort(403)
+
+    # La contraseña sí la mostramos una sola vez
     pwd = session.pop('pwd_temporal', None)
-    p12 = session.pop('p12', None)
-    return render_template('entregar_cert.html', nombre=nombre, pwd_temporal=pwd)
+
+    # El p12 NO lo saques aquí, porque todavía no se descarga
+    return render_template(
+        'entregar_cert.html',
+        nombre=nombre,
+        pwd_temporal=pwd
+    )
 
 
 # ── DESCARGA DEL .p12 ─────────────────────────────────────────
@@ -210,11 +217,12 @@ def descargar_p12():
     if g.rol != 'admin':
         abort(403)
 
+    # Aquí sí lo sacas, para que solo se descargue una vez
     p12_bytes = session.pop('p12', None)
-    nombre    = session.pop('p12_nombre', 'certificado')
+    nombre = session.pop('p12_nombre', 'certificado')
 
     if not p12_bytes:
-        abort(404)
+        abort(404, description='No hay certificado disponible para descargar.')
 
     nombre_seguro = re.sub(r'[^a-zA-Z0-9_\-]', '_', nombre)
 
@@ -222,7 +230,7 @@ def descargar_p12():
         io.BytesIO(p12_bytes),
         mimetype='application/x-pkcs12',
         as_attachment=True,
-        download_name=f'{nombre_seguro}.p12',
+        download_name=f'{nombre_seguro}.p12'
     )
 
 
