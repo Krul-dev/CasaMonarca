@@ -8,8 +8,17 @@ import io
 import re
 import secrets
 import string
+Import base64
 from functools import wraps
 from datetime import datetime
+import base64
+from datetime import datetime, timedelta
+
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import pkcs12
 
 
 from flask import (
@@ -76,13 +85,47 @@ def sanitizar_nombre(nombre):
 def generar_serial_demo():
     return secrets.token_hex(5).upper()
 
-def generar_p12_demo(nombre, rol, password):
-    """
-    Devuelve bytes ficticios que simulan un .p12.
-    En producción aquí va la llamada real a cryptography/pkcs12.
-    """
-    contenido = f"DEMO_P12|nombre={nombre}|rol={rol}|pwd={password}|ts={datetime.utcnow().isoformat()}"
-    return contenido.encode('utf-8')
+def generar_p12_real(nombre, rol, password):
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+    )
+
+    common_name = f"{nombre} - {rol}"
+
+    subject = issuer = x509.Name([
+        x509.NameAttribute(NameOID.COUNTRY_NAME, "MX"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Casa Monarca Demo"),
+        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, rol),
+        x509.NameAttribute(NameOID.COMMON_NAME, common_name),
+    ])
+
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.utcnow() - timedelta(minutes=1))
+        .not_valid_after(datetime.utcnow() + timedelta(days=365))
+        .add_extension(
+            x509.BasicConstraints(ca=False, path_length=None),
+            critical=True
+        )
+        .sign(private_key, hashes.SHA256())
+    )
+
+    p12_bytes = pkcs12.serialize_key_and_certificates(
+        name=common_name.encode("utf-8"),
+        key=private_key,
+        cert=cert,
+        cas=None,
+        encryption_algorithm=serialization.BestAvailableEncryption(
+            password.encode("utf-8")
+        )
+    )
+
+    return p12_bytes, format(cert.serial_number, 'X').upper()
 
 
 # ── DECORADOR DE AUTENTICACIÓN ────────────────────────────────
@@ -162,67 +205,63 @@ def nuevo_voluntario():
         abort(403)
 
     nombre = sanitizar_nombre(request.form.get('nombre', ''))
-    rol    = request.form.get('rol', '')
+    rol = request.form.get('rol', '')
 
     if not nombre:
         return jsonify(error='El nombre no puede estar vacío'), 400
+
     if rol not in ('op', 'coord', 'admin'):
         return jsonify(error='Rol inválido'), 400
 
-    serial       = generar_serial_demo()
     pwd_temporal = generar_contrasena_temporal()
-    p12_bytes    = generar_p12_demo(nombre, rol, pwd_temporal)
-    fecha        = datetime.now().strftime('%Y-%m-%d')
+
+    try:
+        p12_bytes, serial = generar_p12_real(nombre, rol, pwd_temporal)
+    except Exception as e:
+        return jsonify(error=f'Error al generar el certificado .p12: {str(e)}'), 500
+
+    fecha = datetime.now().strftime('%Y-%m-%d')
 
     CERTIFICADOS.append({
-        'id':            proximo_id,
-        'serial':        serial,
-        'usuario':       nombre,
-        'rol':           rol,
+        'id': proximo_id,
+        'serial': serial,
+        'usuario': nombre,
+        'rol': rol,
         'fecha_emision': fecha,
-        'activo':        True,
+        'activo': True,
     })
     proximo_id += 1
 
-    # Guardar en sesión server-side (one-time)
+    # Guardar temporalmente el certificado en sesión
     session['pwd_temporal'] = pwd_temporal
-    session['p12']          = p12_bytes
-    session['p12_nombre']   = nombre
+    session['p12_b64'] = base64.b64encode(p12_bytes).decode('utf-8')
+    session['p12_nombre'] = nombre
 
-    return jsonify(ok=True, nombre=nombre, rol=rol)
-
-
-# ── PANTALLA DE ENTREGA ───────────────────────────────────────
-@app.route('/admin/entregar_certificado/<nombre>')
-@verificar_certificado
-def entregar_certificado(nombre):
-    if g.rol != 'admin':
-        abort(403)
-
-    # La contraseña sí la mostramos una sola vez
-    pwd = session.pop('pwd_temporal', None)
-
-    # El p12 NO lo saques aquí, porque todavía no se descarga
-    return render_template(
-        'entregar_cert.html',
+    return jsonify(
+        ok=True,
         nombre=nombre,
-        pwd_temporal=pwd
+        rol=rol,
+        serial=serial
     )
 
 
-# ── DESCARGA DEL .p12 ─────────────────────────────────────────
+# ── PANTALLA DE ENTREGA ───────────────────────────────────────
 @app.route('/admin/descargar_p12')
 @verificar_certificado
 def descargar_p12():
     if g.rol != 'admin':
         abort(403)
 
-    # Aquí sí lo sacas, para que solo se descargue una vez
-    p12_bytes = session.pop('p12', None)
-    nombre = session.pop('p12_nombre', 'certificado')
+    p12_b64 = session.get('p12_b64')
+    nombre = session.get('p12_nombre', 'certificado')
 
-    if not p12_bytes:
+    if not p12_b64:
         abort(404, description='No hay certificado disponible para descargar.')
+
+    try:
+        p12_bytes = base64.b64decode(p12_b64)
+    except Exception:
+        abort(500, description='No se pudo reconstruir el archivo .p12.')
 
     nombre_seguro = re.sub(r'[^a-zA-Z0-9_\-]', '_', nombre)
 
@@ -232,6 +271,9 @@ def descargar_p12():
         as_attachment=True,
         download_name=f'{nombre_seguro}.p12'
     )
+
+
+
 
 
 # ── REVOCAR CERTIFICADO ───────────────────────────────────────
