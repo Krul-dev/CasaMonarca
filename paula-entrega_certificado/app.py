@@ -1,17 +1,10 @@
-"""
-Correr:
-    python app.py
-Abrir en navegador:
-    http://localhost:5000
-"""
 import io
+import os
+import base64
 import re
 import secrets
 import string
-Import base64
 from functools import wraps
-from datetime import datetime
-import base64
 from datetime import datetime, timedelta
 
 from cryptography import x509
@@ -19,7 +12,6 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
-
 
 from flask import (
     Flask, render_template, request, redirect,
@@ -31,17 +23,19 @@ from flask_session import Session
 app = Flask(__name__)
 app.secret_key = 'demo-secret-key-cambiar-en-produccion'
 
-app.config['SESSION_TYPE']      = 'filesystem'
-app.config['SESSION_FILE_DIR']  = '/tmp/flask_sessions_demo'
+SESSION_DIR = os.path.join(os.getcwd(), 'flask_sessions_demo')
+os.makedirs(SESSION_DIR, exist_ok=True)
+
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = SESSION_DIR
 app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
 Session(app)
 
-# ── BASE DE DATOS EN MEMORIA (reemplaza MySQL) ─────────────────
-# Cuando tengas MySQL, elimina este bloque y conecta el pool real.
-
+# ── BASE DE DATOS EN MEMORIA (reemplaza MySQL) ────────────────
 USUARIOS_DEMO = {
-    'admin': {'nombre': 'Administrador',   'rol': 'admin', 'password': 'admin123'},
-    'coord': {'nombre': 'Coordinadora Demo','rol': 'coord', 'password': 'coord123'},
+    'admin': {'nombre': 'Administrador', 'rol': 'admin', 'password': 'admin123'},
+    'coord': {'nombre': 'Coordinadora Demo', 'rol': 'coord', 'password': 'coord123'},
 }
 
 CERTIFICADOS = [
@@ -71,8 +65,7 @@ CERTIFICADOS = [
     },
 ]
 
-proximo_id = 4   # contador para nuevos registros
-
+proximo_id = 4
 
 # ── HELPERS ───────────────────────────────────────────────────
 def generar_contrasena_temporal(longitud=12):
@@ -81,9 +74,6 @@ def generar_contrasena_temporal(longitud=12):
 
 def sanitizar_nombre(nombre):
     return re.sub(r'[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9 \-]', '', nombre).strip()
-
-def generar_serial_demo():
-    return secrets.token_hex(5).upper()
 
 def generar_p12_real(nombre, rol, password):
     private_key = rsa.generate_private_key(
@@ -127,6 +117,12 @@ def generar_p12_real(nombre, rol, password):
 
     return p12_bytes, format(cert.serial_number, 'X').upper()
 
+def badge_rol(rol):
+    if rol == 'admin':
+        return 'Administrador'
+    if rol == 'coord':
+        return 'Coordinador'
+    return 'Operador'
 
 # ── DECORADOR DE AUTENTICACIÓN ────────────────────────────────
 def verificar_certificado(f):
@@ -134,11 +130,10 @@ def verificar_certificado(f):
     def decorado(*args, **kwargs):
         if 'rol' not in session:
             return redirect(url_for('login'))
-        g.rol    = session['rol']
+        g.rol = session['rol']
         g.nombre = session.get('nombre', 'Usuario')
         return f(*args, **kwargs)
     return decorado
-
 
 # ── RUTAS DE AUTENTICACIÓN ────────────────────────────────────
 @app.route('/')
@@ -150,10 +145,10 @@ def login():
     error = None
     if request.method == 'POST':
         usuario = request.form.get('usuario', '').strip()
-        pwd     = request.form.get('password', '')
+        pwd = request.form.get('password', '')
         usuario_data = USUARIOS_DEMO.get(usuario)
         if usuario_data and usuario_data['password'] == pwd:
-            session['rol']    = usuario_data['rol']
+            session['rol'] = usuario_data['rol']
             session['nombre'] = usuario_data['nombre']
             return redirect(url_for('panel_admin'))
         error = 'Usuario o contraseña incorrectos'
@@ -164,7 +159,6 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-
 # ── PANEL PRINCIPAL ───────────────────────────────────────────
 @app.route('/admin')
 @verificar_certificado
@@ -173,18 +167,16 @@ def panel_admin():
         abort(403)
     return render_template('admin.html', nombre=g.nombre, rol=g.rol)
 
-
 # ── API: MÉTRICAS ─────────────────────────────────────────────
 @app.route('/admin/api/metricas')
 @verificar_certificado
 def api_metricas():
     if g.rol != 'admin':
         abort(403)
-    total     = len(CERTIFICADOS)
-    activos   = sum(1 for c in CERTIFICADOS if c['activo'])
+    total = len(CERTIFICADOS)
+    activos = sum(1 for c in CERTIFICADOS if c['activo'])
     revocados = total - activos
     return jsonify(total=total, activos=activos, revocados=revocados)
-
 
 # ── API: LISTA DE CERTIFICADOS ────────────────────────────────
 @app.route('/admin/api/certificados')
@@ -192,8 +184,21 @@ def api_metricas():
 def api_certificados():
     if g.rol != 'admin':
         abort(403)
-    return jsonify(list(reversed(CERTIFICADOS)))
 
+    certificados_ui = []
+    for c in reversed(CERTIFICADOS):
+        certificados_ui.append({
+            'id': c['id'],
+            'nombre': c['usuario'],
+            'usuario': c['usuario'],
+            'rol': c['rol'],
+            'serial': c['serial'],
+            'fecha': c['fecha_emision'],
+            'fecha_emision': c['fecha_emision'],
+            'activo': c['activo'],
+        })
+
+    return jsonify(certificados_ui)
 
 # ── EMITIR NUEVO CERTIFICADO ──────────────────────────────────
 @app.route('/admin/nuevo_voluntario', methods=['POST'])
@@ -232,20 +237,50 @@ def nuevo_voluntario():
     })
     proximo_id += 1
 
-    # Guardar temporalmente el certificado en sesión
     session['pwd_temporal'] = pwd_temporal
     session['p12_b64'] = base64.b64encode(p12_bytes).decode('utf-8')
     session['p12_nombre'] = nombre
+    session['p12_rol'] = rol
+    session['p12_serial'] = serial
+    session['p12_pwd_mostrada'] = False
 
     return jsonify(
         ok=True,
         nombre=nombre,
         rol=rol,
-        serial=serial
+        serial=serial,
+        redirect_url=url_for('entregar_certificado')
     )
 
-
 # ── PANTALLA DE ENTREGA ───────────────────────────────────────
+@app.route('/admin/entregar_certificado')
+@verificar_certificado
+def entregar_certificado():
+    if g.rol != 'admin':
+        abort(403)
+
+    nombre = session.get('p12_nombre')
+    rol = session.get('p12_rol')
+    serial = session.get('p12_serial')
+
+    if not nombre:
+        return redirect(url_for('panel_admin'))
+
+    pwd_temporal = None
+    if not session.get('p12_pwd_mostrada', False):
+        pwd_temporal = session.get('pwd_temporal')
+        session['p12_pwd_mostrada'] = True
+
+    return render_template(
+        'entregar_cert.html',
+        nombre=nombre,
+        rol=rol,
+        rol_legible=badge_rol(rol),
+        serial=serial,
+        pwd_temporal=pwd_temporal
+    )
+
+# ── DESCARGA REAL DEL .P12 ────────────────────────────────────
 @app.route('/admin/descargar_p12')
 @verificar_certificado
 def descargar_p12():
@@ -272,10 +307,6 @@ def descargar_p12():
         download_name=f'{nombre_seguro}.p12'
     )
 
-
-
-
-
 # ── REVOCAR CERTIFICADO ───────────────────────────────────────
 @app.route('/admin/revocar/<int:cert_id>', methods=['POST'])
 @verificar_certificado
@@ -290,11 +321,8 @@ def revocar_certificado(cert_id):
     cert['activo'] = False
     return jsonify(ok=True)
 
-
 # ── ARRANQUE ──────────────────────────────────────────────────
 if __name__ == '__main__':
-    import os
-    os.makedirs('/tmp/flask_sessions_demo', exist_ok=True)
     print('\n── Casa Monarca Demo ─────────────────────────────')
     print('   URL:      http://localhost:5000')
     print('   Usuario:  admin    Contraseña: admin123')

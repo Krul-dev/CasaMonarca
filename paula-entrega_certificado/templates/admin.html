@@ -5,50 +5,54 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Casa Monarca — Panel de Administración</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ── TOKENS ────────────────────────────────────── */
 :root {
-  --rosa:       #e62055;
+  --rosa: #e62055;
   --rosa-claro: #fce8ef;
   --rosa-borde: #f5a8c0;
-  --negro:      #0e0e0e;
+  --negro: #0e0e0e;
   --negro-soft: #1c1c1c;
-  --gris-oscuro:#3d3d3d;
+  --gris-oscuro: #3d3d3d;
   --gris-medio: #767676;
   --gris-claro: #efefef;
   --gris-linea: #e5e5e5;
-  --blanco:     #ffffff;
-  --fondo:      #f7f6f4;
+  --blanco: #ffffff;
+  --fondo: #f7f6f4;
+  --fondo-sat: #f4f2ee;
 
-  --verde-bg:   #edf7f0;
-  --verde-borde:#6dbf8a;
-  --verde-texto:#1a5c32;
+  --verde-bg: #edf7f0;
+  --verde-borde: #6dbf8a;
+  --verde-texto: #1a5c32;
 
-  --rojo-bg:    #fef0f0;
+  --rojo-bg: #fef0f0;
   --rojo-borde: #e88080;
   --rojo-texto: #7a1f1f;
 
-  --azul-bg:    #eef4fd;
+  --azul-bg: #eef4fd;
   --azul-borde: #7daee8;
   --azul-texto: #1a3e72;
 
-  --radio-sm:   5px;
-  --radio-md:   9px;
-  --radio-lg:   14px;
-  --radio-xl:   20px;
+  --amarillo-bg: #faf6ea;
+  --amarillo-borde: #d8ba64;
+  --amarillo-texto: #8a6710;
 
-  --sombra-sm:  0 1px 3px rgba(0,0,0,.08);
-  --sombra-md:  0 4px 16px rgba(0,0,0,.10);
+  --radio-sm: 5px;
+  --radio-md: 9px;
+  --radio-lg: 14px;
+  --radio-xl: 20px;
 
-  --fuente:     'DM Sans', sans-serif;
-  --mono:       'DM Mono', monospace;
+  --sombra-sm: 0 1px 3px rgba(0,0,0,.08);
+  --sombra-md: 0 4px 16px rgba(0,0,0,.10);
+
+  --fuente: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
 
   --transicion: .18s ease;
 }
 
-/* ── RESET ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
   font-family: var(--fuente);
   background: var(--fondo);
@@ -58,10 +62,10 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
+
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font-family: var(--fuente); }
 
-/* ── SIDEBAR ────────────────────────────────────── */
 .layout { display: flex; min-height: 100vh; }
 
 .sidebar {
@@ -70,7 +74,6 @@ button, input, select, textarea { font-family: var(--fuente); }
   background: var(--negro);
   display: flex;
   flex-direction: column;
-  padding: 0;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -182,11 +185,25 @@ button, input, select, textarea { font-family: var(--fuente); }
   flex-shrink: 0;
 }
 
-.sidebar-user-info { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
-.sidebar-user-info span:first-child { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sidebar-user-info span:last-child { font-size: 10px; color: rgba(255,255,255,.3); }
+.sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  min-width: 0;
+}
+.sidebar-user-info span:first-child {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-user-info span:last-child {
+  font-size: 10px;
+  color: rgba(255,255,255,.3);
+}
 
-/* ── MAIN ───────────────────────────────────────── */
 .main {
   flex: 1;
   display: flex;
@@ -223,17 +240,14 @@ button, input, select, textarea { font-family: var(--fuente); }
   border: 1px solid var(--rosa-borde);
 }
 
-/* ── CONTENIDO ──────────────────────────────────── */
 .contenido {
   padding: 32px;
   flex: 1;
 }
 
-/* ── PANTALLAS (vistas) ─────────────────────────── */
 .vista { display: none; }
 .vista.activa { display: block; }
 
-/* ── CARDS ──────────────────────────────────────── */
 .card {
   background: var(--blanco);
   border: 1px solid var(--gris-linea);
@@ -261,7 +275,6 @@ button, input, select, textarea { font-family: var(--fuente); }
   margin: 24px 0;
 }
 
-/* ── MÉTRICAS ───────────────────────────────────── */
 .metricas {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -293,12 +306,17 @@ button, input, select, textarea { font-family: var(--fuente); }
   font-weight: 500;
 }
 
-/* ── FORMULARIO ─────────────────────────────────── */
 .campo { display: flex; flex-direction: column; gap: 5px; }
-.campo label { font-size: 12px; font-weight: 600; color: var(--gris-oscuro); letter-spacing: .01em; }
+.campo label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gris-oscuro);
+  letter-spacing: .01em;
+}
 
 .campo input,
-.campo select {
+.campo select,
+.campo textarea {
   font-size: 14px;
   padding: 10px 12px;
   border: 1.5px solid var(--gris-linea);
@@ -307,24 +325,32 @@ button, input, select, textarea { font-family: var(--fuente); }
   color: var(--negro);
   outline: none;
   width: 100%;
-  transition: border-color var(--transicion), box-shadow var(--transicion);
+  transition: border-color var(--transicion), box-shadow var(--transicion), background var(--transicion);
   appearance: none;
   -webkit-appearance: none;
 }
 
+.campo textarea {
+  resize: vertical;
+  min-height: 92px;
+}
+
 .campo input:focus,
-.campo select:focus {
+.campo select:focus,
+.campo textarea:focus {
   border-color: var(--rosa);
   background: var(--blanco);
   box-shadow: 0 0 0 3px rgba(230,32,85,.12);
 }
 
-.campo .ayuda { font-size: 11px; color: var(--gris-medio); }
+.campo .ayuda {
+  font-size: 11px;
+  color: var(--gris-medio);
+}
 
 .fila-campos { display: flex; gap: 16px; }
 .fila-campos .campo { flex: 1; }
 
-/* ── BOTONES ─────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -342,7 +368,7 @@ button, input, select, textarea { font-family: var(--fuente); }
 }
 
 .btn:active { transform: scale(.98); }
-.btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+.btn:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
 
 .btn-primario { background: var(--rosa); color: var(--blanco); }
 .btn-primario:hover { background: #cf1d4d; }
@@ -357,13 +383,16 @@ button, input, select, textarea { font-family: var(--fuente); }
 }
 .btn-ghost:hover { background: var(--gris-claro); border-color: #ccc; }
 
-.btn-peligro { background: var(--rojo-bg); color: var(--rojo-texto); border: 1px solid var(--rojo-borde); }
+.btn-peligro {
+  background: var(--rojo-bg);
+  color: var(--rojo-texto);
+  border: 1px solid var(--rojo-borde);
+}
 .btn-peligro:hover { background: #fddede; }
 
 .btn-full { width: 100%; }
 .btn-sm { font-size: 12px; padding: 6px 14px; }
 
-/* ── ALERTAS ─────────────────────────────────────── */
 .alerta {
   border-radius: var(--radio-lg);
   padding: 20px 24px;
@@ -375,6 +404,16 @@ button, input, select, textarea { font-family: var(--fuente); }
 .alerta-roja  { background: var(--rojo-bg);  border-color: var(--rojo-borde);  color: var(--rojo-texto); }
 .alerta-azul  { background: var(--azul-bg);  border-color: var(--azul-borde);  color: var(--azul-texto); }
 .alerta-rosa  { background: var(--rosa-claro); border-color: var(--rosa-borde); color: var(--rosa); }
+.alerta-amarilla {
+  background: var(--amarillo-bg);
+  border: 1px solid var(--amarillo-borde);
+  color: var(--amarillo-texto);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: none;
+  margin-top: 18px;
+}
+.alerta-amarilla.visible { display: flex; gap: 10px; align-items: flex-start; }
 
 .alerta-label {
   font-size: 12px;
@@ -403,7 +442,6 @@ button, input, select, textarea { font-family: var(--fuente); }
   gap: 5px;
 }
 
-/* ── BADGES ──────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -420,7 +458,6 @@ button, input, select, textarea { font-family: var(--fuente); }
 .badge-coord { background: var(--azul-bg); color: var(--azul-texto); border-color: var(--azul-borde); }
 .badge-op    { background: var(--verde-bg); color: var(--verde-texto); border-color: var(--verde-borde); }
 
-/* ── TABLA ───────────────────────────────────────── */
 .tabla-wrap { overflow-x: auto; margin: 0 -4px; }
 
 .tabla {
@@ -462,12 +499,15 @@ button, input, select, textarea { font-family: var(--fuente); }
   margin-right: 5px;
   vertical-align: middle;
 }
-.dot-verde   { background: var(--verde-borde); }
-.dot-rojo    { background: var(--rojo-borde); }
-.dot-gris    { background: #bbb; }
+.dot-verde { background: var(--verde-borde); }
+.dot-rojo  { background: var(--rojo-borde); }
 
-/* ── LISTA PASOS ─────────────────────────────────── */
-.pasos { list-style: none; padding: 0; margin: 0; counter-reset: paso; }
+.pasos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: paso;
+}
 .pasos li {
   counter-increment: paso;
   position: relative;
@@ -496,7 +536,6 @@ button, input, select, textarea { font-family: var(--fuente); }
   border: 1px solid var(--rosa-borde);
 }
 
-/* ── CONFIRMACIÓN REVOCACIÓN ─────────────────────── */
 .modal-overlay {
   display: none;
   position: fixed;
@@ -521,7 +560,6 @@ button, input, select, textarea { font-family: var(--fuente); }
 .modal p  { font-size: 13px; color: var(--gris-oscuro); margin-bottom: 24px; line-height: 1.55; }
 .modal-acciones { display: flex; gap: 10px; justify-content: flex-end; }
 
-/* ── NOTIFICACIÓN TOAST ──────────────────────────── */
 .toast {
   position: fixed;
   bottom: 28px;
@@ -546,7 +584,6 @@ button, input, select, textarea { font-family: var(--fuente); }
 .toast-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--verde-borde); flex-shrink: 0; }
 .toast-dot.rojo { background: var(--rojo-borde); }
 
-/* ── SELECT CUSTOM FLECHA ────────────────────────── */
 .select-wrap { position: relative; }
 .select-wrap::after {
   content: '';
@@ -563,7 +600,6 @@ button, input, select, textarea { font-family: var(--fuente); }
 }
 .select-wrap select { padding-right: 32px; }
 
-/* ── EMPTY STATE ─────────────────────────────────── */
 .empty-state {
   text-align: center;
   padding: 48px 24px;
@@ -572,7 +608,6 @@ button, input, select, textarea { font-family: var(--fuente); }
 .empty-state-icono { font-size: 32px; margin-bottom: 12px; opacity: .4; }
 .empty-state p { font-size: 13px; }
 
-/* ── ACCIONES ENCABEZADO ─────────────────────────── */
 .encabezado {
   display: flex;
   align-items: flex-start;
@@ -581,243 +616,448 @@ button, input, select, textarea { font-family: var(--fuente); }
   gap: 16px;
 }
 
-.encabezado-texto h1 { font-size: 20px; font-weight: 700; color: var(--negro); margin-bottom: 2px; }
-.encabezado-texto p  { font-size: 13px; color: var(--gris-medio); }
+.encabezado-texto h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--negro);
+  margin-bottom: 2px;
+}
+.encabezado-texto p  {
+  font-size: 13px;
+  color: var(--gris-medio);
+}
 
-/* ── RESPONSIVE ──────────────────────────────────── */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 26px;
+  width: 100%;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #9b9b9b;
+  flex: 1;
+  min-width: 0;
+}
+.step:last-child { flex: 0 0 auto; }
+
+.step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid #d5d5d5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: #fff;
+  color: #8b8b8b;
+  flex-shrink: 0;
+}
+.step.activo { color: var(--negro); }
+.step.activo .step-num {
+  background: var(--negro);
+  border-color: var(--negro);
+  color: #fff;
+}
+.step-linea {
+  flex: 1;
+  height: 1px;
+  background: #d9d9d9;
+}
+
+.sat-wrap {
+  max-width: 1060px;
+}
+
+.sat-titulo {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--negro);
+  margin-bottom: 4px;
+}
+
+.sat-subtitulo {
+  font-size: 15px;
+  color: #5f6770;
+  margin-bottom: 24px;
+}
+
+.sat-card {
+  background: #fff;
+  border: 1px solid #e3e3e3;
+  border-radius: 18px;
+  padding: 28px 30px 26px;
+  margin-bottom: 22px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+
+.sat-card-header {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: #7b8794;
+  text-transform: uppercase;
+  padding-bottom: 10px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #ececec;
+}
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+
+.toggle-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.toggle-btn {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #dddddd;
+  background: #fff;
+  color: #404040;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .16s ease;
+}
+.toggle-btn.activo {
+  background: var(--negro);
+  color: #fff;
+  border-color: var(--negro);
+}
+
+.acciones-form {
+  max-width: 1060px;
+}
+
+.texto-bajo {
+  font-size: 12px;
+  color: #9a9a9a;
+  margin-top: 10px;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .grid-2, .grid-3, .toggle-group { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 720px) {
   .sidebar { width: 200px; min-width: 200px; }
   .contenido { padding: 20px; }
   .metricas { grid-template-columns: 1fr 1fr; }
   .fila-campos { flex-direction: column; }
+  .stepper { flex-direction: column; align-items: flex-start; }
+  .step-linea { display: none; }
 }
 </style>
 </head>
 <body>
 
 <div class="layout">
-
-  <!-- ── SIDEBAR ──────────────────────── -->
   <aside class="sidebar">
     <div class="sidebar-logo">
       <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Casa Monarca">
-    <div class="sidebar-logo-text">
-      <span>Casa Monarca</span>
-      <span>Sistema de certificados</span>
-    </div>
-  </div>
-
-  <nav class="sidebar-nav">
-    <span class="nav-label">Panel</span>
-    <button class="nav-item activo" onclick="irA('inicio')">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
-      Inicio
-    </button>
-
-    <span class="nav-label">Voluntarios</span>
-    <button class="nav-item" onclick="irA('nuevo')">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/><line x1="13" y1="2" x2="13" y2="6"/><line x1="11" y1="4" x2="15" y2="4"/></svg>
-      Nuevo voluntario
-    </button>
-    <button class="nav-item" onclick="irA('lista')">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h7"/><circle cx="13" cy="12" r="2.5"/></svg>
-      Certificados emitidos
-    </button>
-  </nav>
-
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="avatar">AD</div>
-      <div class="sidebar-user-info">
-        <span>Administrador</span>
-        <span>admin@casamonarca.org</span>
-      </div>
-    </div>
-  </div>
-</aside>
-
-<!-- ── MAIN ───────────────────────────── -->
-<div class="main">
-  <div class="topbar">
-    <span class="topbar-titulo" id="topbar-titulo">Inicio</span>
-    <span class="topbar-badge" id="topbar-badge">Admin</span>
-  </div>
-
-  <div class="contenido">
-
-    <!-- ── VISTA: INICIO ─────────────────── -->
-    <div class="vista activa" id="vista-inicio">
-      <div class="encabezado">
-        <div class="encabezado-texto">
-          <h1>Bienvenida al panel</h1>
-          <p>Gestión de certificados digitales para voluntarios de Casa Monarca</p>
-        </div>
-        <button class="btn btn-primario" onclick="irA('nuevo')">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
-          Nuevo voluntario
-        </button>
-      </div>
-
-      <div class="metricas">
-        <div class="metrica">
-          <div class="metrica-valor rosa" id="cnt-total">2</div>
-          <div class="metrica-label">Certificados emitidos</div>
-        </div>
-        <div class="metrica">
-          <div class="metrica-valor" id="cnt-activos">1</div>
-          <div class="metrica-label">Certificados activos</div>
-        </div>
-        <div class="metrica">
-          <div class="metrica-valor" id="cnt-revocados">1</div>
-          <div class="metrica-label">Certificados revocados</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <p class="card-titulo">Últimos movimientos</p>
-        <p class="card-subtitulo">Actividad reciente en el sistema</p>
-        <div class="tabla-wrap">
-          <table class="tabla" id="tabla-inicio">
-            <thead>
-              <tr>
-                <th>Voluntario</th>
-                <th>Rol</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-inicio"></tbody>
-          </table>
-        </div>
+      <div class="sidebar-logo-text">
+        <span>Casa Monarca</span>
+        <span>Sistema de certificados</span>
       </div>
     </div>
 
-    <!-- ── VISTA: NUEVO VOLUNTARIO ────────── -->
-    <div class="vista" id="vista-nuevo">
-      <div class="encabezado">
-        <div class="encabezado-texto">
-          <h1>Nuevo voluntario</h1>
-          <p>Genera un certificado .p12 para un nuevo voluntario</p>
+    <nav class="sidebar-nav">
+      <span class="nav-label">Panel</span>
+      <button class="nav-item activo" onclick="irA('inicio')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+        Inicio
+      </button>
+
+      <span class="nav-label">Voluntarios</span>
+      <button class="nav-item" onclick="irA('nuevo')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/><line x1="13" y1="2" x2="13" y2="6"/><line x1="11" y1="4" x2="15" y2="4"/></svg>
+        Nuevo voluntario
+      </button>
+      <button class="nav-item" onclick="irA('lista')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h7"/><circle cx="13" cy="12" r="2.5"/></svg>
+        Certificados emitidos
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="avatar">AD</div>
+        <div class="sidebar-user-info">
+          <span>Administrador</span>
+          <span>admin@casamonarca.org</span>
         </div>
       </div>
+    </div>
+  </aside>
 
-      <div class="card" style="max-width: 560px;">
-        <p class="card-titulo">Datos del voluntario</p>
-        <p class="card-subtitulo">El nombre aparecerá en el certificado digital</p>
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-titulo" id="topbar-titulo">Inicio</span>
+      <span class="topbar-badge" id="topbar-badge">Admin</span>
+    </div>
 
-        <div class="fila-campos" style="margin-bottom: 16px;">
-          <div class="campo">
-            <label for="inp-nombre">Nombre completo</label>
-            <input type="text" id="inp-nombre" placeholder="Ana García López">
-            <span class="ayuda">Tal como aparecerá en el certificado</span>
+    <div class="contenido">
+
+      <!-- ── VISTA: INICIO ─────────────────── -->
+      <div class="vista activa" id="vista-inicio">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <h1>Bienvenida al panel</h1>
+            <p>Gestión de certificados digitales para voluntarios de Casa Monarca</p>
           </div>
-          <div class="campo">
-            <label for="inp-rol">Rol en la organización</label>
-            <div class="select-wrap">
-              <select id="inp-rol">
-                <option value="">— Seleccionar rol —</option>
-                <option value="op">Operativo (op)</option>
-                <option value="coord">Coordinador (coord)</option>
-                <option value="admin">Administrador (admin)</option>
-              </select>
-            </div>
+          <button class="btn btn-primario" onclick="irA('nuevo')">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+            Nuevo voluntario
+          </button>
+        </div>
+
+        <div class="metricas">
+          <div class="metrica">
+            <div class="metrica-valor rosa" id="cnt-total">0</div>
+            <div class="metrica-label">Certificados emitidos</div>
+          </div>
+          <div class="metrica">
+            <div class="metrica-valor" id="cnt-activos">0</div>
+            <div class="metrica-label">Certificados activos</div>
+          </div>
+          <div class="metrica">
+            <div class="metrica-valor" id="cnt-revocados">0</div>
+            <div class="metrica-label">Certificados revocados</div>
           </div>
         </div>
 
-        <hr class="separador">
-
-        <button class="btn btn-negro btn-full" id="btn-generar" onclick="generarCertificado()">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="12" height="9" rx="1.5"/><path d="M5 3V2a2 2 0 0 1 4 0v1"/><line x1="7" y1="7" x2="7" y2="10"/><line x1="5.5" y1="8.5" x2="8.5" y2="8.5"/></svg>
-          Generar certificado .p12
-        </button>
-        <p style="font-size:11px;color:var(--gris-medio);margin-top:8px;text-align:center;">
-          Se generará una contraseña temporal que solo se mostrará una vez
-        </p>
-      </div>
-    </div>
-
-    <!-- ── VISTA: ENTREGA ─────────────────── -->
-    <div class="vista" id="vista-entrega">
-      <div class="encabezado">
-        <div class="encabezado-texto">
-          <h1>Certificado listo</h1>
-          <p>Dicta la contraseña al voluntario antes de cerrar esta pantalla</p>
+        <div class="card">
+          <p class="card-titulo">Últimos movimientos</p>
+          <p class="card-subtitulo">Actividad reciente en el sistema</p>
+          <div class="tabla-wrap">
+            <table class="tabla" id="tabla-inicio">
+              <thead>
+                <tr>
+                  <th>Voluntario</th>
+                  <th>Rol</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-inicio"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div style="max-width: 560px;">
-        <div class="alerta alerta-verde" id="alerta-entrega">
-          <p class="alerta-label">Contraseña temporal — dictarla ahora</p>
-          <p class="contrasena" id="pwd-display">—</p>
-          <p class="alerta-warn">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5.5"/><line x1="6.5" y1="4" x2="6.5" y2="7"/><circle cx="6.5" cy="9" r=".5" fill="currentColor"/></svg>
-            Esta contraseña solo se muestra una vez. Al salir de esta pantalla no podrá recuperarse.
-          </p>
-        </div>
-
-        <div class="card" style="margin-bottom: 16px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-            <div>
-              <p style="font-weight:600;font-size:15px;color:var(--negro);" id="nombre-entrega">—</p>
-              <span class="badge" id="badge-rol-entrega">—</span>
+      <!-- ── VISTA: NUEVO VOLUNTARIO ────────── -->
+      <div class="vista" id="vista-nuevo">
+        <div class="sat-wrap">
+          <div class="stepper">
+            <div class="step activo">
+              <div class="step-num">1</div>
+              <div>Datos</div>
+              <div class="step-linea"></div>
             </div>
-            <button class="btn btn-primario" onclick="descargarP12()">
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 1v8M3.5 6.5L6.5 9.5l3-3"/><path d="M1 10.5v1a1 1 0 001 1h9a1 1 0 001-1v-1"/></svg>
-              Descargar .p12
+            <div class="step">
+              <div class="step-num">2</div>
+              <div>Certificado</div>
+              <div class="step-linea"></div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div>Entrega en USB</div>
+            </div>
+          </div>
+
+          <div class="sat-titulo">Nuevo voluntario</div>
+          <div class="sat-subtitulo">Genera un certificado .p12 para un nuevo voluntario de Casa Monarca</div>
+
+          <div class="sat-card">
+            <div class="sat-card-header">Datos personales</div>
+
+            <div class="grid-2" style="margin-bottom:14px;">
+              <div class="campo">
+                <label for="inp-nombre">Nombre completo *</label>
+                <input type="text" id="inp-nombre" placeholder="Santiago Dueñas">
+                <span class="ayuda">Tal como aparecerá en el certificado</span>
+              </div>
+
+              <div class="campo">
+                <label for="inp-fecha">Fecha de nacimiento</label>
+                <input type="text" id="inp-fecha" placeholder="12/03/2005">
+              </div>
+            </div>
+
+            <div class="grid-3" style="margin-bottom:14px;">
+              <div class="campo">
+                <label for="inp-edad">Edad</label>
+                <input type="text" id="inp-edad" placeholder="20">
+              </div>
+
+              <div class="campo">
+                <label for="inp-curp">CURP</label>
+                <input type="text" id="inp-curp" placeholder="GAPL950201MDFRCN01">
+              </div>
+
+              <div class="campo">
+                <label for="inp-telefono">Teléfono</label>
+                <input type="text" id="inp-telefono" placeholder="81 1234 5678">
+              </div>
+            </div>
+
+            <div class="campo" style="margin-bottom:16px;">
+              <label for="inp-correo">Correo electrónico</label>
+              <input type="email" id="inp-correo" placeholder="voluntario@casamonarca.org">
+            </div>
+
+            <div class="campo">
+              <label>Género</label>
+              <div class="toggle-group">
+                <button type="button" class="toggle-btn activo" onclick="seleccionarGenero(this, 'Masculino')">Masculino</button>
+                <button type="button" class="toggle-btn" onclick="seleccionarGenero(this, 'Femenino')">Femenino</button>
+                <button type="button" class="toggle-btn" onclick="seleccionarGenero(this, 'Prefiero no decir')">Prefiero no decir</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sat-card">
+            <div class="sat-card-header">Rol en la organización</div>
+
+            <div class="grid-2" style="margin-bottom:16px;">
+              <div class="campo">
+                <label for="inp-rol">Rol *</label>
+                <div class="select-wrap">
+                  <select id="inp-rol">
+                    <option value="">Selecciona un rol</option>
+                    <option value="op">Operador (op)</option>
+                    <option value="coord">Coordinador (coord)</option>
+                    <option value="admin">Administrador (admin)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="campo">
+                <label for="inp-area">Área / Departamento</label>
+                <input type="text" id="inp-area" placeholder="Ej. Atención directa">
+              </div>
+            </div>
+
+            <div class="campo">
+              <label for="inp-observaciones">Observaciones (opcional)</label>
+              <textarea id="inp-observaciones" placeholder="Notas adicionales para el registro interno..."></textarea>
+            </div>
+          </div>
+
+          <div class="acciones-form">
+            <div class="alerta-amarilla" id="error-form">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" style="flex-shrink:0;margin-top:1px;">
+                <path d="M9 2.2l7 12.1a1 1 0 01-.86 1.5H2.86A1 1 0 012 14.3l7-12.1z"></path>
+                <line x1="9" y1="6.2" x2="9" y2="10.2"></line>
+                <circle cx="9" cy="13" r=".7" fill="currentColor" stroke="none"></circle>
+              </svg>
+              <span id="error-form-msg">No se pudo conectar con el servidor. Intenta de nuevo.</span>
+            </div>
+
+            <button class="btn btn-negro btn-full" id="btn-generar" onclick="generarCertificado()" style="margin-top:22px; height:52px; font-size:15px; border-radius:12px;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="2" y="5" width="12" height="9" rx="1.6"></rect>
+                <path d="M5.2 5V3.8A2.8 2.8 0 0113 3.8V5"></path>
+              </svg>
+              Generar certificado .p12
             </button>
+
+            <div class="texto-bajo">Se generará una contraseña temporal que solo se mostrará una vez</div>
           </div>
-          <hr class="separador" style="margin: 0 0 14px;">
-          <p style="font-size:12px;font-weight:600;color:var(--gris-oscuro);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Pasos de instalación</p>
-          <ol class="pasos">
-            <li>Transferir el archivo .p12 a la computadora del voluntario</li>
-            <li><strong>Chrome:</strong> Configuración → Privacidad y seguridad → Gestionar certificados → Importar</li>
-            <li><strong>Firefox:</strong> Configuración → Privacidad → Ver certificados → Sus certificados → Importar</li>
-            <li>Ingresar la contraseña temporal cuando se solicite durante la importación</li>
-            <li>Al primer acceso al sistema el voluntario establecerá su contraseña personal</li>
-          </ol>
+        </div>
+      </div>
+
+      <!-- ── VISTA: ENTREGA ─────────────────── -->
+      <div class="vista" id="vista-entrega">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <h1>Certificado listo</h1>
+            <p>Dicta la contraseña al voluntario antes de cerrar esta pantalla</p>
+          </div>
         </div>
 
-        <button class="btn btn-ghost" onclick="irA('lista')">← Volver al listado</button>
+        <div style="max-width: 560px;">
+          <div class="alerta alerta-verde" id="alerta-entrega">
+            <p class="alerta-label">Contraseña temporal — dictarla ahora</p>
+            <p class="contrasena" id="pwd-display">—</p>
+            <p class="alerta-warn">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5.5"/><line x1="6.5" y1="4" x2="6.5" y2="7"/><circle cx="6.5" cy="9" r=".5" fill="currentColor"/></svg>
+              Esta contraseña solo se muestra una vez. Al salir de esta pantalla no podrá recuperarse.
+            </p>
+          </div>
+
+          <div class="card" style="margin-bottom: 16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div>
+                <p style="font-weight:600;font-size:15px;color:var(--negro);" id="nombre-entrega">—</p>
+                <span class="badge" id="badge-rol-entrega">—</span>
+              </div>
+              <button class="btn btn-primario" onclick="descargarP12()">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 1v8M3.5 6.5L6.5 9.5l3-3"/><path d="M1 10.5v1a1 1 0 001 1h9a1 1 0 001-1v-1"/></svg>
+                Descargar .p12
+              </button>
+            </div>
+            <hr class="separador" style="margin: 0 0 14px;">
+            <p style="font-size:12px;font-weight:600;color:var(--gris-oscuro);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Pasos de instalación</p>
+            <ol class="pasos">
+              <li>Transferir el archivo .p12 a la computadora del voluntario</li>
+              <li><strong>Chrome:</strong> Configuración → Privacidad y seguridad → Gestionar certificados → Importar</li>
+              <li><strong>Firefox:</strong> Configuración → Privacidad → Ver certificados → Sus certificados → Importar</li>
+              <li>Ingresar la contraseña temporal cuando se solicite durante la importación</li>
+              <li>Al primer acceso al sistema el voluntario establecerá su contraseña personal</li>
+            </ol>
+          </div>
+
+          <button class="btn btn-ghost" onclick="irA('lista')">← Volver al listado</button>
+        </div>
       </div>
+
+      <!-- ── VISTA: LISTA CERTIFICADOS ──────── -->
+      <div class="vista" id="vista-lista">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <h1>Certificados emitidos</h1>
+            <p>Historial completo de certificados del sistema</p>
+          </div>
+          <button class="btn btn-primario" onclick="irA('nuevo')">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+            Nuevo
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="tabla-wrap">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Voluntario</th>
+                  <th>Rol</th>
+                  <th>Serial</th>
+                  <th>Emitido</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-lista"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
-
-    <!-- ── VISTA: LISTA CERTIFICADOS ──────── -->
-    <div class="vista" id="vista-lista">
-      <div class="encabezado">
-        <div class="encabezado-texto">
-          <h1>Certificados emitidos</h1>
-          <p>Historial completo de certificados del sistema</p>
-        </div>
-        <button class="btn btn-primario" onclick="irA('nuevo')">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
-          Nuevo
-        </button>
-      </div>
-
-      <div class="card">
-        <div class="tabla-wrap">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Voluntario</th>
-                <th>Rol</th>
-                <th>Serial</th>
-                <th>Emitido</th>
-                <th>Estado</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="tbody-lista"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
-</div>
 
-<!-- ── MODAL CONFIRMACIÓN REVOCAR ──── -->
 <div class="modal-overlay" id="modal-revocar">
   <div class="modal">
     <h3>Revocar certificado</h3>
@@ -829,29 +1069,23 @@ button, input, select, textarea { font-family: var(--fuente); }
   </div>
 </div>
 
-<!-- ── TOAST ─────────────────────────── -->
 <div class="toast" id="toast">
   <span class="toast-dot" id="toast-dot"></span>
   <span id="toast-msg"></span>
 </div>
 
 <script>
-// ── ESTADO DE LA APP ──────────────────────────────────────────
-let certs = [
-  { id: 1, nombre: 'Ana García López',  rol: 'op',    serial: '4A2F88C1', fecha: '2025-04-09', activo: true  },
-  { id: 2, nombre: 'Luis Martínez',     rol: 'coord', serial: '3E1D77B2', fecha: '2025-03-22', activo: false },
-];
-let proximoId = 3;
+let certs = [];
 let revocarId = null;
+let generoSeleccionado = 'Masculino';
 
 const topbarTitulos = {
-  inicio:   ['Inicio',                  'Admin'],
-  nuevo:    ['Nuevo voluntario',        'Admin'],
-  entrega:  ['Entrega de certificado',  'Admin'],
-  lista:    ['Certificados emitidos',   'Admin'],
+  inicio: ['Inicio', 'Admin'],
+  nuevo: ['Nuevo voluntario', 'Admin'],
+  entrega: ['Entrega de certificado', 'Admin'],
+  lista: ['Certificados emitidos', 'Admin'],
 };
 
-// ── NAVEGACIÓN ────────────────────────────────────────────────
 function irA(vista) {
   document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('activo'));
@@ -859,51 +1093,34 @@ function irA(vista) {
   document.getElementById('vista-' + vista).classList.add('activa');
   const t = topbarTitulos[vista] || ['—', 'Admin'];
   document.getElementById('topbar-titulo').textContent = t[0];
-  document.getElementById('topbar-badge').textContent  = t[1];
+  document.getElementById('topbar-badge').textContent = t[1];
 
   const map = { inicio: 0, nuevo: 1, lista: 2 };
   if (map[vista] !== undefined) {
-    document.querySelectorAll('.nav-item:not(.nav-label)')[map[vista]]?.classList.add('activo');
+    document.querySelectorAll('.nav-item')[map[vista]]?.classList.add('activo');
   }
 
   if (vista === 'inicio') renderTablaInicio();
-  if (vista === 'lista')  renderTablaLista();
+  if (vista === 'lista') renderTablaLista();
 }
 
-// ── GENERAR CERTIFICADO (simulado) ────────────────────────────
-function randPwd() {
-  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
-  return Array.from({length: 12}, () => c[Math.floor(Math.random() * c.length)]).join('');
+function seleccionarGenero(btn, valor) {
+  generoSeleccionado = valor;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('activo'));
+  btn.classList.add('activo');
 }
 
-function randSerial() {
-  return Math.random().toString(16).toUpperCase().replace('.', '').slice(2, 10);
+function mostrarError(msg) {
+  const box = document.getElementById('error-form');
+  const txt = document.getElementById('error-form-msg');
+  txt.textContent = msg;
+  box.classList.add('visible');
 }
 
-async function generarCertificado() {
-    const nombre = document.getElementById('inp-nombre').value.trim();
-    const rol    = document.getElementById('inp-rol').value;
-    if (!nombre) { toast('Escribe el nombre del voluntario', true); return; }
-    if (!rol)    { toast('Selecciona un rol', true); return; }
-
-    const res  = await fetch('/admin/nuevo_voluntario', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `nombre=${encodeURIComponent(nombre)}&rol=${encodeURIComponent(rol)}`,
-    });
-    const data = await res.json();
-    if (data.error) { toast(data.error, true); return; }
-
-    window.location.href = `/admin/entregar_certificado/${encodeURIComponent(nombre)}`;
+function ocultarError() {
+  document.getElementById('error-form').classList.remove('visible');
 }
 
-function descargarP12() {
-  const nombre = document.getElementById('nombre-entrega').textContent;
-  // En producción: fetch('/admin/descargar_p12')
-  toast('Descargando ' + nombre + '.p12…');
-}
-
-// ── TABLAS ────────────────────────────────────────────────────
 function badgeHtml(rol) {
   return `<span class="badge badge-${rol}">${rol}</span>`;
 }
@@ -916,23 +1133,32 @@ function estadoHtml(activo) {
 
 function renderTablaInicio() {
   const tbody = document.getElementById('tbody-inicio');
-  const recientes = [...certs].reverse().slice(0, 5);
+  const recientes = [...certs].slice(0, 5);
+
+  if (!recientes.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--gris-medio)">No hay actividad reciente</td></tr>`;
+    return;
+  }
+
   tbody.innerHTML = recientes.map(c => `
     <tr>
       <td class="nombre-celda">${c.nombre}</td>
       <td>${badgeHtml(c.rol)}</td>
       <td style="font-variant-numeric:tabular-nums;font-size:12px">${c.fecha}</td>
       <td>${estadoHtml(c.activo)}</td>
-    </tr>`).join('');
+    </tr>
+  `).join('');
 }
 
 function renderTablaLista() {
   const tbody = document.getElementById('tbody-lista');
-  if (certs.length === 0) {
+
+  if (!certs.length) {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gris-medio);font-size:13px">No hay certificados registrados</td></tr>`;
     return;
   }
-  tbody.innerHTML = [...certs].reverse().map(c => `
+
+  tbody.innerHTML = certs.map(c => `
     <tr>
       <td class="nombre-celda">${c.nombre}</td>
       <td>${badgeHtml(c.rol)}</td>
@@ -941,14 +1167,96 @@ function renderTablaLista() {
       <td>${estadoHtml(c.activo)}</td>
       <td style="text-align:right">
         ${c.activo
-          ? `<button class="btn btn-peligro btn-sm" onclick="pedirRevocacion(${c.id},'${c.nombre}')">Revocar</button>`
+          ? `<button class="btn btn-peligro btn-sm" onclick="pedirRevocacion(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')">Revocar</button>`
           : `<button class="btn btn-ghost btn-sm" disabled>Revocado</button>`
         }
       </td>
-    </tr>`).join('');
+    </tr>
+  `).join('');
 }
 
-// ── REVOCAR ───────────────────────────────────────────────────
+async function cargarMetricas() {
+  try {
+    const res = await fetch('/admin/api/metricas');
+    const data = await res.json();
+    document.getElementById('cnt-total').textContent = data.total ?? 0;
+    document.getElementById('cnt-activos').textContent = data.activos ?? 0;
+    document.getElementById('cnt-revocados').textContent = data.revocados ?? 0;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function cargarCertificados() {
+  try {
+    const res = await fetch('/admin/api/certificados');
+    const data = await res.json();
+    certs = Array.isArray(data) ? data : [];
+    renderTablaInicio();
+    renderTablaLista();
+  } catch (e) {
+    console.error(e);
+    certs = [];
+    renderTablaInicio();
+    renderTablaLista();
+  }
+}
+
+async function generarCertificado() {
+  ocultarError();
+
+  const btn = document.getElementById('btn-generar');
+  const nombre = document.getElementById('inp-nombre').value.trim();
+  const rol = document.getElementById('inp-rol').value;
+
+  if (!nombre) {
+    mostrarError('Captura el nombre completo.');
+    return;
+  }
+
+  if (!rol) {
+    mostrarError('Selecciona el rol del voluntario.');
+    return;
+  }
+
+  btn.disabled = true;
+
+  try {
+    const body = new URLSearchParams({
+      nombre: nombre,
+      rol: rol
+    });
+
+    const res = await fetch('/admin/nuevo_voluntario', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: body.toString()
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      mostrarError(data.error || 'No se pudo generar el certificado.');
+      btn.disabled = false;
+      return;
+    }
+
+    toast('Certificado generado correctamente');
+    window.location.href = data.redirect_url || '/admin/entregar_certificado';
+
+  } catch (error) {
+    console.error(error);
+    mostrarError('No se pudo conectar con el servidor. Intenta de nuevo.');
+    btn.disabled = false;
+  }
+}
+
+function descargarP12() {
+  window.location.href = '/admin/descargar_p12';
+}
+
 function pedirRevocacion(id, nombre) {
   revocarId = id;
   document.getElementById('modal-nombre').textContent = nombre;
@@ -961,29 +1269,28 @@ function cerrarModal() {
 }
 
 async function confirmarRevocacion() {
-    if (revocarId === null) return;
-    const res  = await fetch(`/admin/revocar/${revocarId}`, { method: 'POST' });
+  if (revocarId === null) return;
+
+  try {
+    const res = await fetch(`/admin/revocar/${revocarId}`, { method: 'POST' });
     const data = await res.json();
+
     if (data.ok) {
-        const cert = certs.find(c => c.id === revocarId);
-        if (cert) { cert.activo = false; actualizarMetricas(); renderTablaLista(); toast('Certificado revocado'); }
+      toast('Certificado revocado');
+      await cargarMetricas();
+      await cargarCertificados();
+    } else {
+      toast(data.error || 'No se pudo revocar', true);
     }
-    cerrarModal();
+  } catch (e) {
+    toast('Error al revocar certificado', true);
+  }
+
+  cerrarModal();
 }
 
-
-// ── MÉTRICAS ──────────────────────────────────────────────────
-function actualizarMetricas() {
-  const activos    = certs.filter(c => c.activo).length;
-  const revocados  = certs.filter(c => !c.activo).length;
-  document.getElementById('cnt-total').textContent     = certs.length;
-  document.getElementById('cnt-activos').textContent   = activos;
-  document.getElementById('cnt-revocados').textContent = revocados;
-}
-
-// ── TOAST ─────────────────────────────────────────────────────
 function toast(msg, error = false) {
-  const el  = document.getElementById('toast');
+  const el = document.getElementById('toast');
   const dot = document.getElementById('toast-dot');
   document.getElementById('toast-msg').textContent = msg;
   dot.className = 'toast-dot' + (error ? ' rojo' : '');
@@ -991,9 +1298,12 @@ function toast(msg, error = false) {
   setTimeout(() => el.classList.remove('visible'), 3000);
 }
 
-// ── INIT ──────────────────────────────────────────────────────
-actualizarMetricas();
-renderTablaInicio();
+async function init() {
+  await cargarMetricas();
+  await cargarCertificados();
+}
+
+init();
 </script>
 </body>
 </html>
