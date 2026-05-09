@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entregar certificado — Casa Monarca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f4f2ee;
+    min-height: 100vh;
+    color: #0e0e0e;
+    padding: 28px;
+  }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+  }
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #9b9b9b;
+    flex: 1;
+  }
+
+  .step:last-child { flex: 0 0 auto; }
+
+  .step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid #d5d5d5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    background: #fff;
+    color: #8b8b8b;
+    flex-shrink: 0;
+  }
+
+  .step.activo .step-num {
+    background: #0e0e0e;
+    border-color: #0e0e0e;
+    color: #fff;
+  }
+
+  .step.completo .step-num {
+    background: #0e0e0e;
+    border-color: #0e0e0e;
+    color: #fff;
+  }
+
+  .step.completo, .step.activo {
+    color: #0e0e0e;
+  }
+
+  .step-linea {
+    flex: 1;
+    height: 1px;
+    background: #d9d9d9;
+  }
+
+  .titulo {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .sub {
+    font-size: 15px;
+    color: #5f6770;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 18px;
+    padding: 28px 30px 26px;
+    margin-bottom: 22px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .nombre {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .serial {
+    font-size: 12px;
+    color: #6f6f6f;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-top: 6px;
+  }
+
+  .badge-admin { background: #f9e8ef; color: #8c1540; border: 1px solid #e8a0bb; }
+  .badge-coord { background: #eef4fd; color: #1a3e72; border: 1px solid #7daee8; }
+  .badge-op    { background: #edf7f0; color: #1a5c32; border: 1px solid #6dbf8a; }
+
+  .alerta-verde {
+    background: #edf7f0;
+    border-left: 4px solid #6dbf8a;
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 20px;
+    color: #1a5c32;
+  }
+
+  .alerta-roja {
+    background: #fef0f0;
+    border-left: 4px solid #e88080;
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 20px;
+    color: #7a1f1f;
+  }
+
+  .alerta-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    opacity: .75;
+    margin-bottom: 8px;
+  }
+
+  .contrasena {
+    font-family: 'DM Mono', monospace;
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: 5px;
+    margin: 4px 0 8px;
+    word-break: break-all;
+  }
+
+  .warn {
+    font-size: 12px;
+    opacity: .75;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 11px 18px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .15s;
+  }
+
+  .btn:active { transform: scale(.98); }
+
+  .btn-primario {
+    background: #0e0e0e;
+    color: #fff;
+  }
+
+  .btn-primario:hover { background: #1f1f1f; }
+
+  .btn-ghost {
+    background: transparent;
+    color: #3d3d3d;
+    border: 1.5px solid #e5e5e5;
+  }
+
+  .btn-ghost:hover { background: #f5f5f5; }
+
+  hr {
+    border: none;
+    border-top: 1px solid #e5e5e5;
+    margin: 20px 0;
+  }
+
+  .pasos {
+    list-style: none;
+    padding: 0;
+    counter-reset: paso;
+  }
+
+  .pasos li {
+    counter-increment: paso;
+    position: relative;
+    padding: 10px 0 10px 36px;
+    border-bottom: 1px solid #e5e5e5;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.55;
+  }
+
+  .pasos li:last-child { border-bottom: none; }
+
+  .pasos li::before {
+    content: counter(paso);
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fce8ef;
+    color: #e62055;
+    border: 1px solid #f5a8c0;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .acciones {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+
+  @media (max-width: 720px) {
+    .stepper { flex-direction: column; align-items: flex-start; }
+    .step-linea { display: none; }
+    .card-head { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="stepper">
+    <div class="step completo">
+      <div class="step-num">1</div>
+      <div>Datos</div>
+      <div class="step-linea"></div>
+    </div>
+    <div class="step completo">
+      <div class="step-num">2</div>
+      <div>Certificado</div>
+      <div class="step-linea"></div>
+    </div>
+    <div class="step activo">
+      <div class="step-num">3</div>
+      <div>Entrega en USB</div>
+    </div>
+  </div>
+
+  <div class="titulo">{% if serial %}Certificado listo{% else %}Cuenta creada{% endif %}</div>
+  <div class="sub">{% if serial %}Archivo .p12 generado correctamente{% else %}El voluntario ya puede ingresar al sistema{% endif %}</div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="nombre">{{ nombre }}</div>
+        {% if serial %}<div class="serial">Serial: {{ serial }}</div>{% endif %}
+        {% if rol %}
+          <span class="badge badge-{{ rol }}">{{ rol_legible }}</span>
+        {% endif %}
+      </div>
+
+      {% if serial %}
+      <a href="{{ url_for('descargar_p12') }}" class="btn btn-primario">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6.5 1v8M3.5 6.5L6.5 9.5l3-3"/>
+          <path d="M1 10.5v1a1 1 0 001 1h9a1 1 0 001-1v-1"/>
+        </svg>
+        Descargar .p12
+      </a>
+      {% endif %}
+    </div>
+
+    {% if pwd_login %}
+      <div class="alerta-verde">
+        <p class="alerta-label">Contraseña temporal — dictarla ahora</p>
+        <p class="contrasena">{{ pwd_login }}</p>
+        <p class="warn">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="6.5" cy="6.5" r="5.5"/>
+            <line x1="6.5" y1="4" x2="6.5" y2="7"/>
+            <circle cx="6.5" cy="9" r=".5" fill="currentColor"/>
+          </svg>
+          Esta contraseña solo se muestra una vez. Al cerrar esta página no podrá recuperarse.
+        </p>
+      </div>
+    {% else %}
+      <div class="alerta-roja">
+        <p>Esta página ya fue visitada. La contraseña temporal no puede mostrarse de nuevo.</p>
+        <p style="margin-top:6px;font-size:12px">Si necesitas entregar el certificado nuevamente, genera uno nuevo desde el panel.</p>
+      </div>
+    {% endif %}
+
+    {% if serial %}
+    <hr>
+    <p style="font-size:12px;font-weight:700;color:#3d3d3d;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">
+      Pasos de instalación
+    </p>
+    <ol class="pasos">
+      <li>Guardar el archivo .p12 en una USB o en la computadora del usuario</li>
+      <li><strong>Chrome:</strong> Configuración → Privacidad y seguridad → Gestionar certificados → Importar</li>
+      <li><strong>Firefox:</strong> Configuración → Privacidad → Ver certificados → Sus certificados → Importar</li>
+      <li>Ingresar la contraseña temporal cuando se solicite durante la importación</li>
+      <li>Conservar el archivo y la contraseña en un medio seguro</li>
+    </ol>
+    {% endif %}
+
+    <div class="acciones">
+      <a href="{{ url_for('panel_admin') }}" class="btn btn-ghost">← Volver al panel</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

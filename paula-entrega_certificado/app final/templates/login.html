@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceso — Casa Monarca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f0f4f8;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0e0e0e;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 16px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+  .logo img { width: 40px; height: 40px; border-radius: 50%; }
+  .logo-texto { display: flex; flex-direction: column; line-height: 1.2; }
+  .logo-texto strong { font-size: 15px; font-weight: 600; }
+  .logo-texto span   { font-size: 11px; color: #888; }
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  p.sub { font-size: 13px; color: #767676; margin-bottom: 24px; }
+  .campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .campo label { font-size: 12px; font-weight: 600; color: #555; }
+  .campo input {
+    font-size: 14px; font-family: inherit;
+    padding: 10px 12px;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 8px;
+    background: #f7f6f4;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .campo input:focus {
+    border-color: #e62055;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(230,32,85,.12);
+  }
+  .btn {
+    width: 100%; padding: 11px;
+    background: #0e0e0e; color: #fff;
+    border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; font-family: inherit;
+    cursor: pointer; margin-top: 8px;
+    transition: background .15s;
+  }
+  .btn:hover { background: #1c1c1c; }
+  .error {
+    background: #fef0f0; border-left: 4px solid #e88080;
+    color: #7a1f1f; border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; margin-bottom: 16px;
+  }
+  .demo-hint {
+    margin-top: 20px; padding: 12px 14px;
+    background: #f7f6f4; border-radius: 8px;
+    font-size: 12px; color: #767676; line-height: 1.6;
+  }
+  .demo-hint strong { color: #0e0e0e; }
+  .link-olvidé {
+    display: block; text-align: center; margin-top: 14px;
+    font-size: 12px; color: #767676; cursor: pointer;
+    background: none; border: none; font-family: inherit;
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+  .link-olvidé:hover { color: #e62055; }
+  .success {
+    background: #edf7f0; border-left: 4px solid #6dbf8a;
+    color: #1a5c32; border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Casa Monarca">
+    <div class="logo-texto">
+      <strong>Casa Monarca</strong>
+      <span>Sistema de certificados</span>
+    </div>
+  </div>
+
+  <h2>Bienvenida</h2>
+  <p class="sub">Inicia sesión para acceder al panel de administración</p>
+
+  {% if error %}
+    <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <!-- Panel de login -->
+  <div id="panel-login">
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="campo">
+        <label for="usuario">Usuario</label>
+        <input type="text" id="usuario" name="usuario" placeholder="usuario@casamonarca.org" autocomplete="username" required>
+      </div>
+      <div class="campo">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn">Entrar</button>
+    </form>
+    <button class="link-olvidé" onclick="mostrarOlvide()">¿Olvidaste tu contraseña?</button>
+  </div>
+
+  <!-- Panel de olvide contraseña -->
+  <div id="panel-olvide" style="display:none;">
+    <h2 style="margin-bottom:4px;">Restablecer acceso</h2>
+    <p class="sub">Ingresa tu email y el administrador recibirá una solicitud de restablecimiento.</p>
+
+    <div id="msg-olvide"></div>
+
+    <div id="form-olvide">
+      <div class="campo">
+        <label for="email-reset">Email de acceso</label>
+        <input type="email" id="email-reset" placeholder="usuario@casamonarca.org" autocomplete="email">
+      </div>
+      <button type="button" class="btn" onclick="enviarSolicitud()">Enviar solicitud</button>
+    </div>
+
+    <button class="link-olvidé" onclick="mostrarLogin()" style="margin-top:12px;">← Volver al inicio de sesión</button>
+  </div>
+
+  <div class="demo-hint">
+    <strong>Demo:</strong> usuario <code>admin@casamonarca.org</code> / contraseña <code>admin123</code>
+  </div>
+</div>
+
+<script>
+function mostrarOlvide() {
+  document.getElementById('panel-login').style.display = 'none';
+  document.getElementById('panel-olvide').style.display = 'block';
+  document.getElementById('email-reset').focus();
+}
+
+function mostrarLogin() {
+  document.getElementById('panel-olvide').style.display = 'none';
+  document.getElementById('panel-login').style.display = 'block';
+}
+
+async function enviarSolicitud() {
+  const email = document.getElementById('email-reset').value.trim();
+  const msg   = document.getElementById('msg-olvide');
+  if (!email) { msg.innerHTML = '<div class="error">Ingresa tu email.</div>'; return; }
+
+  const fd = new FormData();
+  fd.append('usuario', email);
+  try {
+    await fetch('/solicitar_reset_pwd', { method: 'POST', body: fd });
+  } catch(_) {}
+
+  document.getElementById('form-olvide').style.display = 'none';
+  msg.innerHTML = '<div class="success">Solicitud enviada. El administrador revisará tu caso y te proporcionará acceso temporal.</div>';
+}
+</script>
+</body>
+</html>
