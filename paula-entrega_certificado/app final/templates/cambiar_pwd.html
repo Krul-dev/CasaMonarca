@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cambiar contraseña — Casa Monarca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f0f4f8;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0e0e0e;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 16px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .logo img { width: 40px; height: 40px; border-radius: 50%; }
+  .logo-texto strong { font-size: 15px; font-weight: 600; display:block; }
+  .logo-texto span   { font-size: 11px; color: #888; }
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  p.sub { font-size: 13px; color: #767676; margin-bottom: 24px; line-height: 1.5; }
+  .aviso {
+    background: #faf6ea;
+    border-left: 4px solid #d8ba64;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: #8a6710;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .campo label { font-size: 12px; font-weight: 600; color: #555; }
+  .campo input {
+    font-size: 14px; font-family: inherit;
+    padding: 10px 12px;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 8px;
+    background: #f7f6f4;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .campo input:focus {
+    border-color: #e62055;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(230,32,85,.12);
+  }
+  .btn {
+    width: 100%; padding: 11px;
+    background: #0e0e0e; color: #fff;
+    border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; font-family: inherit;
+    cursor: pointer; margin-top: 8px;
+  }
+  .btn:hover { background: #1c1c1c; }
+  .error {
+    background: #fef0f0; border-left: 4px solid #e88080;
+    color: #7a1f1f; border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; margin-bottom: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo">
+    <div class="logo-texto">
+      <strong>Casa Monarca</strong>
+      <span>Primer acceso</span>
+    </div>
+  </div>
+
+  <h2>Establece tu contraseña personal</h2>
+  <p class="sub">Hola {{ nombre }}. Para continuar, reemplaza la contraseña
+  temporal que te dictaron con una personal, que solo tú conocerás.</p>
+
+  <div class="aviso">
+    La contraseña temporal ya no será válida después de este paso.
+    Mínimo 8 caracteres.
+  </div>
+
+  {% if error %}
+    <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('cambiar_pwd') }}">
+    <div class="campo">
+      <label for="nueva">Nueva contraseña</label>
+      <input type="password" id="nueva" name="nueva"
+             minlength="8" autocomplete="new-password" required>
+    </div>
+    <div class="campo">
+      <label for="confirmacion">Confirmar contraseña</label>
+      <input type="password" id="confirmacion" name="confirmacion"
+             minlength="8" autocomplete="new-password" required>
+    </div>
+    <button type="submit" class="btn">Guardar y continuar</button>
+  </form>
+</div>
+</body>
+</html>
