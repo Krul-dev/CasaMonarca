@@ -16,8 +16,14 @@
                     </x-nav-link>
 
                     @can('puede-eliminar')
-                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
-                            Usuarios
+                        <x-nav-link :href="route('admin.users.colaboradores')" :active="request()->routeIs('admin.users.colaboradores')">
+                            Colaboradores
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.users.migrantes')" :active="request()->routeIs('admin.users.migrantes')">
+                            Migrantes
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.users.voluntarios')" :active="request()->routeIs('admin.users.voluntarios')">
+                            Voluntarios
                         </x-nav-link>
                         <x-nav-link :href="route('admin.users.approvals')" :active="request()->routeIs('admin.users.approvals')">
                             Bandeja de Accesos
@@ -47,7 +53,8 @@
                         $roleId    = Auth::user()->role_id ?? 0;
                         $tieneArea = Auth::user()->area_id !== null;
                     @endphp
-                    @if($roleId >= 3 && $roleId <= 4)
+                    @php $voluntarioRoleId = \App\Models\Role::where('name','Voluntario')->value('id'); @endphp
+                    @if($roleId >= 3 && ($roleId <= 4 || $roleId === $voluntarioRoleId))
                         @if($tieneArea)
                             <x-nav-link :href="route('casos.mios')" :active="request()->routeIs('casos.mios')">
                                 Mis casos
@@ -71,7 +78,7 @@
 
                     {{-- Sin área: badge para coordinadores/admin --}}
                     @if($roleId <= 2)
-                        @php $sinAreaCount = \App\Models\User::whereIn('role_id',[3,4])->where('status','alta')->whereNull('area_id')->count(); @endphp
+                        @php $sinAreaCount = \App\Models\User::whereIn('role_id', array_filter([3, 4, $voluntarioRoleId ?? null]))->where('status','alta')->whereNull('area_id')->count(); @endphp
                         @php $membresiaPendiente = $roleId === 2 ? \App\Models\AreaSolicitud::where('area_id', Auth::user()->area_id)->where('status','pendiente')->count() : \App\Models\AreaSolicitud::where('status','pendiente')->count(); @endphp
                         <x-nav-link :href="route('admin.sin-area')" :active="request()->routeIs('admin.sin-area')">
                             Sin área
@@ -163,8 +170,14 @@
             </x-responsive-nav-link>
 
             @can('puede-eliminar')
-                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.index')">
-                    Usuarios
+                <x-responsive-nav-link :href="route('admin.users.colaboradores')" :active="request()->routeIs('admin.users.colaboradores')">
+                    Colaboradores
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.users.migrantes')" :active="request()->routeIs('admin.users.migrantes')">
+                    Migrantes
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.users.voluntarios')" :active="request()->routeIs('admin.users.voluntarios')">
+                    Voluntarios
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.users.approvals')" :active="request()->routeIs('admin.users.approvals')">
                     Bandeja de Accesos
@@ -183,8 +196,8 @@
                 </x-responsive-nav-link>
             @endcan
 
-            @php $roleId = Auth::user()->role_id ?? 0; $tieneArea = Auth::user()->area_id !== null; @endphp
-            @if($roleId >= 3 && $roleId <= 4)
+            @php $roleId = Auth::user()->role_id ?? 0; $tieneArea = Auth::user()->area_id !== null; $voluntarioRoleId = \App\Models\Role::where('name','Voluntario')->value('id'); @endphp
+            @if($roleId >= 3 && ($roleId <= 4 || $roleId === $voluntarioRoleId))
                 @if($tieneArea)
                     <x-responsive-nav-link :href="route('casos.mios')" :active="request()->routeIs('casos.mios')">
                         Mis casos

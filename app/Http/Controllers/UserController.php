@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -202,6 +203,106 @@ class UserController extends Controller
         $roles = Role::all();
 
         return view('admin.users.index', compact('users', 'areas', 'roles'));
+    }
+
+    public function colaboradores(): \Illuminate\View\View
+    {
+        Gate::authorize('puede-eliminar');
+
+        $users = User::with(['area', 'role'])
+            ->whereIn('role_id', [2, 3, 4])
+            ->orderBy('created_at', 'desc')
+            ->get();
+        $areas = Area::all();
+        $roles = Role::whereIn('id', [2, 3, 4])->get();
+
+        return view('admin.users.group', [
+            'users'  => $users,
+            'areas'  => $areas,
+            'roles'  => $roles,
+            'titulo' => 'Colaboradores',
+            'grupo'  => 'colaboradores',
+        ]);
+    }
+
+    public function migrantes(): \Illuminate\View\View
+    {
+        Gate::authorize('puede-eliminar');
+
+        $rolMigrante = Role::where('name', 'Migrante')->first();
+
+        $users = User::with(['area', 'role'])
+            ->where('role_id', $rolMigrante?->id ?? 5)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('admin.users.group', [
+            'users'  => $users,
+            'areas'  => collect(),
+            'roles'  => collect(),
+            'titulo' => 'Migrantes',
+            'grupo'  => 'migrantes',
+        ]);
+    }
+
+    public function voluntarios(): \Illuminate\View\View
+    {
+        Gate::authorize('puede-eliminar');
+
+        $rolVoluntario = Role::where('name', 'Voluntario')->first();
+
+        $users = $rolVoluntario
+            ? User::with(['area', 'role'])
+                ->where('role_id', $rolVoluntario->id)
+                ->orderBy('created_at', 'desc')
+                ->get()
+            : collect();
+
+        $areas = Area::all();
+
+        return view('admin.users.group', [
+            'users'  => $users,
+            'areas'  => $areas,
+            'roles'  => collect(),
+            'titulo' => 'Voluntarios',
+            'grupo'  => 'voluntarios',
+        ]);
+    }
+
+    public function updateCredentials(Request $request, User $user): RedirectResponse
+    {
+        Gate::authorize('puede-eliminar');
+
+        $rules = [];
+        if ($request->filled('email')) {
+            $rules['email'] = 'email|unique:users,email,' . $user->id;
+        }
+        if ($request->filled('password')) {
+            $rules['password'] = 'min:8|confirmed';
+        }
+
+        if (empty($rules)) {
+            return back()->with('status', 'No se proporcionaron cambios.');
+        }
+
+        $request->validate($rules);
+
+        $data = [];
+        if ($request->filled('email')) {
+            $data['email'] = $request->email;
+        }
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        ActividadLog::registrar('actualizó_credenciales', $user, [
+            'usuario' => $user->name,
+            'campos'  => array_keys($data),
+        ]);
+
+        return back()->with('status', "Credenciales de {$user->name} actualizadas correctamente.");
     }
 
     public function pendingApprovals(): \Illuminate\View\View

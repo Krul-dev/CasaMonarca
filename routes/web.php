@@ -62,10 +62,14 @@ Route::middleware(['auth', 'checkstatus'])->group(function () {
     Route::post('/casos/{expediente}/resolver',                            [CasoController::class, 'resolver'])->name('casos.resolver');
 
     // Gestión de usuarios
-    Route::get('/admin/usuarios',              [UserController::class, 'index'])->name('admin.users.index');
-    Route::get('/admin/usuarios/{user}',       [UserController::class, 'show'])->name('admin.users.show');
-    Route::get('/admin/aprobaciones',          [UserController::class, 'pendingApprovals'])->name('admin.users.approvals');
-    Route::patch('/admin/usuarios/{user}/update', [UserController::class, 'update'])->name('admin.users.update');
+    Route::get('/admin/usuarios',                          [UserController::class, 'index'])->name('admin.users.index');
+    Route::get('/admin/colaboradores',                     [UserController::class, 'colaboradores'])->name('admin.users.colaboradores');
+    Route::get('/admin/migrantes',                         [UserController::class, 'migrantes'])->name('admin.users.migrantes');
+    Route::get('/admin/voluntarios',                       [UserController::class, 'voluntarios'])->name('admin.users.voluntarios');
+    Route::get('/admin/usuarios/{user}',                   [UserController::class, 'show'])->name('admin.users.show');
+    Route::get('/admin/aprobaciones',                      [UserController::class, 'pendingApprovals'])->name('admin.users.approvals');
+    Route::patch('/admin/usuarios/{user}/update',          [UserController::class, 'update'])->name('admin.users.update');
+    Route::patch('/admin/usuarios/{user}/credentials',     [UserController::class, 'updateCredentials'])->name('admin.users.updateCredentials');
 
     Route::post('/usuarios/{user}/approve',    [UserController::class, 'approve'])->name('users.approve');
     Route::post('/usuarios/{user}/reject',     [UserController::class, 'reject'])->name('users.reject');

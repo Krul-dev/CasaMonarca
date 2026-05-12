@@ -17,7 +17,7 @@ class AppServiceProvider extends ServiceProvider
         // Nivel 1–2 — Admin + Coordinador: CRU
         Gate::define('puede-actualizar', fn($user) => $user->role_id <= 2);
 
-        // Nivel 1–4 — Todos menos Migrante: pueden crear registros
-        Gate::define('puede-crear', fn($user) => $user->role_id <= 4);
+        // Nivel 1–4 — Todos menos Migrante: pueden crear registros (incluye Voluntario)
+        Gate::define('puede-crear', fn($user) => $user->role?->nivel_acceso <= 4);
     }
 }

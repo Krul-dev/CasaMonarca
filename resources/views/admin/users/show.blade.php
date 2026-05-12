@@ -105,6 +105,49 @@
             </div>
         </div>
 
+        {{-- Cambio de credenciales --}}
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+            <h3 class="font-semibold text-gray-800 text-sm mb-4">Cambiar credenciales</h3>
+            <form action="{{ route('admin.users.updateCredentials', $usuario->id) }}" method="POST"
+                  class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                @csrf
+                @method('PATCH')
+
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Nuevo correo electrónico</label>
+                    <input type="email" name="email" value="{{ old('email', $usuario->email) }}"
+                           class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-400 focus:outline-none @error('email') border-red-400 @enderror">
+                    @error('email')
+                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Nueva contraseña <span class="text-gray-400">(dejar vacío para no cambiar)</span></label>
+                    <input type="password" name="password"
+                           class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-400 focus:outline-none @error('password') border-red-400 @enderror"
+                           placeholder="Mínimo 8 caracteres">
+                    @error('password')
+                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Confirmar contraseña</label>
+                    <input type="password" name="password_confirmation"
+                           class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-400 focus:outline-none"
+                           placeholder="Repetir contraseña">
+                </div>
+
+                <div class="sm:col-span-2 flex justify-end">
+                    <button type="submit"
+                            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-full transition">
+                        Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+
         {{-- Certificados del usuario --}}
         <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
