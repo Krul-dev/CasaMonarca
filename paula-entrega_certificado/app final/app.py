@@ -11,6 +11,7 @@ import pymysql
 import pymysql.cursors
 import glob
 import json
+import zipfile
 from functools import wraps
 from datetime import datetime, timedelta
 
@@ -340,17 +341,6 @@ def leer_password_admin():
                 return linea.split("Password:")[1].strip()
     return None
 
-def obtener_password_p12(email: str) -> str:
-    """
-    Devuelve la contraseña del .p12 asociada al email desde config.json
-    """
-    try:
-        with open("config.json") as f:
-            config = json.load(f)
-        return config.get(email)
-    except Exception as e:
-        print(f"[CONFIG] Error al leer config.json: {e}")
-        return None
 
 def leer_certificado_usb(password: str, email: str):
     """
@@ -445,7 +435,7 @@ def generar_p12_real(email, nombre, rol, password):
         )
     )
 
-    return p12_bytes, format(cert.serial_number, 'X').upper()
+    return p12_bytes, format(cert.serial_number, 'X').upper(), cert
 
 def badge_rol(rol):
     if rol == 'admin':
@@ -633,8 +623,8 @@ def login_usb():
         return render_template('login_usb.html',
                                error='Debes seleccionar tu archivo .p12 de la USB')
 
+    p12_password = request.form.get('p12_password', '')
     email = session.get('pending_user')
-    p12_password = obtener_password_p12(email)
 
     try:
         data = archivo.read()
@@ -718,6 +708,7 @@ def logout():
 @app.route('/admin')
 @verificar_certificado
 def panel_admin():
+    print(">>> Renderizando panel_admin")
     if g.rol != 'admin':
         abort(403)
     return render_template('admin.html', nombre=g.nombre, rol=g.rol, usuario=g.usuario)
@@ -1026,7 +1017,8 @@ def nuevo_voluntario():
             )
             db.commit()
             session['pwd_login']        = pwd_temporal
-            session['p12_nombre']       = nombre
+            session['p12_nombre']       = f"{rol}_{nombre.lower().replace(' ', '_')}"
+            session['p12_display']      = nombre    
             session['p12_email']        = email
             session['p12_rol']          = rol
             session['p12_serial']       = ''
@@ -1047,12 +1039,28 @@ def nuevo_voluntario():
         pwd_p12 = generar_contrasena_temporal()
 
     try:
-        p12_bytes, serial = generar_p12_real(email, nombre, rol, pwd_p12)
+        p12_bytes, serial, cert = generar_p12_real(email, nombre, rol, pwd_p12)
     except Exception as e:
         return jsonify(error=f'Error al generar el certificado .p12: {str(e)}'), 500
 
-    if rol in ('admin', 'coord'):
-        agregar_usuario_config(email, pwd_p12)
+    # Generar bytes del .crt en memoria (sin escribir a disco)
+    crt_bytes = cert.public_bytes(serialization.Encoding.PEM)
+
+    # Generar README en memoria
+    nombre_p12 = f"{rol}_{nombre.lower().replace(' ', '_')}"
+    readme_texto = f"""Instrucciones para instalar certificado de Casa Monarca
+
+1. Importa {email}.crt en Autoridades:
+   - Chrome/Firefox: Autoridades → Importar → marcar "Confiar para identificar sitios web".
+
+2. Ingresa con tu email y contraseña (contraseña temporal si es la primera vez)
+   en la pantalla de login de Casa Monarca.
+
+3. Selecciona el archivo {nombre_p12}.p12 en tu navegador con esta contraseña: {pwd_p12}
+
+⚠️ No copies estos archivos fuera del USB.
+⚠️ La contraseña es personal y solo se muestra aquí.
+"""
 
     fecha = datetime.now().strftime('%Y-%m-%d')
     fecha_exp = (datetime.utcnow() + timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
@@ -1087,9 +1095,14 @@ def nuevo_voluntario():
     log_evento('cert_emitido', usuario=email, rol=rol, serial=serial,
                detalle=f'Emitido por {g.usuario} para {nombre}')
 
+    # Guardar en sesión el nombre correcto del .p12
+    nombre_seguro = f"{rol}_{nombre.lower().replace(' ', '_')}"
     session['pwd_login'] = pwd_temporal
     session['p12_b64'] = base64.b64encode(p12_bytes).decode('utf-8')
-    session['p12_nombre'] = nombre
+    session['crt_b64'] = base64.b64encode(crt_bytes).decode('utf-8')
+    session['readme_txt'] = readme_texto
+    session['p12_nombre'] = nombre_seguro
+    session['p12_display'] = nombre    
     session['p12_email'] = email
     session['p12_rol'] = rol
     session['p12_serial'] = serial
@@ -1104,21 +1117,15 @@ def nuevo_voluntario():
         redirect_url=url_for('entregar_certificado')
     )
 
-def agregar_usuario_config(email, p12_password):
-    with open("config.json") as f:
-        config = json.load(f)
-    config[email] = p12_password
-    with open("config.json", "w") as f:
-        json.dump(config, f, indent=2)
-
 # ── PANTALLA DE ENTREGA ───────────────────────────────────────
 @app.route('/admin/entregar_certificado')
 @verificar_certificado
 def entregar_certificado():
+    print(">>> Renderizando entregar_certificado")
     if g.rol != 'admin':
         abort(403)
 
-    nombre = session.get('p12_nombre')
+    nombre = session.get('p12_display')
     rol = session.get('p12_rol')
     serial = session.get('p12_serial')
 
@@ -1146,9 +1153,11 @@ def descargar_p12():
     if g.rol != 'admin':
         abort(403)
 
-    p12_b64 = session.get('p12_b64')
-    nombre = session.get('p12_nombre', 'certificado')
-    rol = session.get('p12_rol', 'usuario')
+    p12_b64      = session.get('p12_b64')
+    crt_b64      = session.get('crt_b64')
+    readme_txt   = session.get('readme_txt', '')
+    nombre_seguro = session.get('p12_nombre', 'certificado')
+    email        = session.get('p12_email', 'usuario@casamonarca.org')
 
     if not p12_b64:
         abort(404, description='No hay certificado disponible para descargar.')
@@ -1158,15 +1167,21 @@ def descargar_p12():
     except Exception:
         abort(500, description='No se pudo reconstruir el archivo .p12.')
 
-    # Construir nombre seguro con formato rol_nombre.p12
-    nombre_seguro = re.sub(r'[^a-zA-Z0-9_\-]', '_', nombre.lower())
-    nombre_archivo = f"{rol}_{nombre_seguro}.p12"
+    # Construir el ZIP completamente en memoria
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(f"{nombre_seguro}.p12", p12_bytes)
+        if crt_b64:
+            zf.writestr(f"{email}.crt", base64.b64decode(crt_b64))
+        if readme_txt:
+            zf.writestr(f"README_{email}.txt", readme_txt.encode('utf-8'))
+    zip_buffer.seek(0)
 
     return send_file(
-        io.BytesIO(p12_bytes),
-        mimetype='application/x-pkcs12',
+        zip_buffer,
+        mimetype='application/zip',
         as_attachment=True,
-        download_name=nombre_archivo
+        download_name=f"{nombre_seguro}_usb.zip"
     )
 
 # ── REVOCAR CERTIFICADO ───────────────────────────────────────
@@ -1195,21 +1210,9 @@ def revocar_certificado(cert_id):
     _exec(db, 'UPDATE usuarios SET activo=0 WHERE usuario=%s', (cert['usuario'],))
     db.commit()
 
-    # Si el rol requiere USB (admin o coord), eliminar del config.json
-    if cert['rol'] in ('admin', 'coord'):
-        eliminar_usuario_config(cert['usuario'])
-
     log_evento('cert_revocado_admin', usuario=cert['usuario'], rol=cert['rol'],
                serial=cert['serial'], detalle=motivo)
     return jsonify(ok=True)
-
-def eliminar_usuario_config(email):
-    with open("config.json") as f:
-        config = json.load(f)
-    if email in config:
-        del config[email]
-        with open("config.json", "w") as f:
-            json.dump(config, f, indent=2)
 
 # ── PANEL DE COORDINADORES Y OPERADORES ───────────────────────
 @app.route('/panel')
