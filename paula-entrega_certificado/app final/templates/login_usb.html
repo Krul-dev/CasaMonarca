@@ -76,7 +76,7 @@
   </div>
 
   <h2>Validación adicional</h2>
-  <p class="sub">Selecciona tu certificado USB para continuar</p>
+  <p class="sub">Selecciona tu certificado USB y escribe la contraseña</p>
 
   {% if error %}
     <div class="error">{{ error }}</div>
@@ -86,6 +86,10 @@
     <div class="campo">
       <label for="certificado_usb">Certificado USB (.p12)</label>
       <input type="file" id="certificado_usb" name="certificado_usb" accept=".p12" required>
+    </div>
+    <div class="campo">
+      <label for="p12_password">Contraseña del .p12</label>
+      <input type="password" id="p12_password" name="p12_password" required>
     </div>
     <button type="submit" class="btn">Validar certificado</button>
   </form>
