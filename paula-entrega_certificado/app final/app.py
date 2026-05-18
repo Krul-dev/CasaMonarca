@@ -1005,8 +1005,8 @@ def nuevo_voluntario():
 
         pwd_temporal = generar_contrasena_temporal()
 
-        # Voluntario: solo cuenta con contraseña temporal, sin certificado
-        if rol == 'voluntario':
+        # Voluntario y operador: solo cuenta con contraseña temporal, sin certificado
+        if rol in ('voluntario', 'op'):
             _exec(db,
                 'INSERT INTO usuarios (usuario, nombre, rol, password_hash,'
                 ' debe_cambiar_pwd, correo, telefono, curp, fecha_nacimiento,'
@@ -1033,7 +1033,7 @@ def nuevo_voluntario():
         traceback.print_exc()
         return jsonify(error=f'Error al crear usuario: {str(e)}'), 500
 
-    # Roles con certificado (admin, coord, op)
+    # Roles con certificado (admin, coord únicamente)
     pwd_p12 = pwd_temporal
     if rol in ('admin', 'coord'):
         pwd_p12 = generar_contrasena_temporal()
@@ -1050,13 +1050,10 @@ def nuevo_voluntario():
     nombre_p12 = f"{rol}_{nombre.lower().replace(' ', '_')}"
     readme_texto = f"""Instrucciones para instalar certificado de Casa Monarca
 
-1. Importa {email}.crt en Autoridades:
-   - Chrome/Firefox: Autoridades → Importar → marcar "Confiar para identificar sitios web".
-
-2. Ingresa con tu email y contraseña (contraseña temporal si es la primera vez)
+1. Ingresa con tu email y contraseña (contraseña temporal si es la primera vez)
    en la pantalla de login de Casa Monarca.
 
-3. Selecciona el archivo {nombre_p12}.p12 en tu navegador con esta contraseña: {pwd_p12}
+2. Selecciona el archivo {nombre_p12}.p12 en tu navegador con esta contraseña: {pwd_p12}
 
 ⚠️ No copies estos archivos fuera del USB.
 ⚠️ La contraseña es personal y solo se muestra aquí.
@@ -1601,3 +1598,4 @@ if __name__ == '__main__':
         )
     else:
         app.run(debug=True, port=5001)
+        
