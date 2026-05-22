@@ -303,7 +303,7 @@
           <path d="M6.5 1v8M3.5 6.5L6.5 9.5l3-3"/>
           <path d="M1 10.5v1a1 1 0 001 1h9a1 1 0 001-1v-1"/>
         </svg>
-        Descargar .p12
+        Descargar certificados
       </a>
       {% endif %}
     </div>
@@ -331,14 +331,21 @@
     {% if serial %}
     <hr>
     <p style="font-size:12px;font-weight:700;color:#3d3d3d;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">
-      Pasos de instalación
+      Pasos de instalación (solo para Coordinadores y Administradores)
     </p>
+
     <ol class="pasos">
-      <li>Guardar el archivo .p12 en una USB o en la computadora del usuario</li>
-      <li><strong>Chrome:</strong> Configuración → Privacidad y seguridad → Gestionar certificados → Importar</li>
-      <li><strong>Firefox:</strong> Configuración → Privacidad → Ver certificados → Sus certificados → Importar</li>
-      <li>Ingresar la contraseña temporal cuando se solicite durante la importación</li>
-      <li>Conservar el archivo y la contraseña en un medio seguro</li>
+      <li>Importar el archivo .zip en una USB y descomprimirlo ahí mismo.</li>
+      <li>El paquete incluye los siguientes archivos:
+        <ul style="margin-top:6px;margin-left:18px;font-size:12px;color:#444;">
+          <li><strong>.p12</strong> → certificado personal con llave privada (necesario para login USB)</li>
+          <li><strong>.crt</strong> → copia pública del certificado (opcional, solo para verificación)</li>
+          <li><strong>README</strong> → instrucciones de instalación</li>
+        </ul>
+      </li>
+      <li>Ingresar la contraseña temporal del <strong>usuario</strong> para acceder al sistema.</li>
+      <li>Cargar el archivo <strong>.p12</strong> en el administrador de certificados del sistema operativo e ingresar la contraseña indicada en el README.</li>
+      <li>Guardar todos los archivos y contraseñas en un medio seguro (USB dedicada).</li>
     </ol>
     {% endif %}
 
