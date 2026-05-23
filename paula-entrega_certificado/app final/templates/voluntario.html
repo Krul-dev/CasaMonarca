@@ -131,120 +131,113 @@ textarea.form-control { resize: vertical; min-height: 72px; }
     </div>
   </aside>
 
-  <div class="main">
-    <div class="topbar">
-      <span class="topbar-titulo">Registro de migrante</span>
-      <span class="topbar-badge">Voluntario</span>
-    </div>
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-titulo">Entrevista de ingreso</span>
+    <span class="topbar-badge">Voluntario</span>
+  </div>
 
-    <div class="contenido">
-
-      <!-- ── FORMULARIO ─────────────────── -->
-      <div id="pantalla-form">
-        <div class="encabezado">
-          <h1>Nuevo registro</h1>
-          <p>Completa los datos del migrante. Los campos con <span style="color:var(--rosa)">*</span> son obligatorios.</p>
-        </div>
-
-        <div class="card">
-          <div class="alerta error" id="alerta-form"></div>
-
-          <div class="form-grid">
-
-            <span class="form-section">Datos personales</span>
-
-            <div class="form-group full">
-              <label class="form-label req">Nombre completo</label>
-              <input class="form-control" id="v-nombre" type="text" placeholder="Ej. María González Ruiz">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label req">Fecha de nacimiento</label>
-              <input class="form-control" id="v-fnac" type="date">
-            </div>
-            <div class="form-group"><!-- spacer --></div>
-
-            <div class="form-group">
-              <label class="form-label req">Nacionalidad</label>
-              <input class="form-control" id="v-nac" type="text" placeholder="Ej. Hondureña">
-            </div>
-            <div class="form-group">
-              <label class="form-label req">País de origen</label>
-              <input class="form-control" id="v-pais" type="text" placeholder="Ej. Honduras">
-            </div>
-
-            <span class="form-section">Documento de identificación</span>
-
-            <div class="form-group">
-              <label class="form-label req">Tipo de documento</label>
-              <select class="form-control" id="v-tipo-doc">
-                <option value="">— Seleccionar —</option>
-                <option value="Pasaporte">Pasaporte</option>
-                <option value="Visa">Visa</option>
-                <option value="INE/Cédula">INE / Cédula</option>
-                <option value="Acta de nacimiento">Acta de nacimiento</option>
-                <option value="Sin documento">Sin documento</option>
-                <option value="Otro">Otro</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label req">Número de documento</label>
-              <input class="form-control" id="v-num-doc" type="text" placeholder="Ej. A12345678">
-            </div>
-
-            <span class="form-section">Situación migratoria</span>
-
-            <div class="form-group">
-              <label class="form-label req">Estado migratorio</label>
-              <select class="form-control" id="v-estado-mig">
-                <option value="en_transito">En tránsito</option>
-                <option value="solicitante_asilo">Solicitante de asilo</option>
-                <option value="deportado">Deportado</option>
-                <option value="repatriado">Repatriado</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label req">Fecha de ingreso al albergue</label>
-              <input class="form-control" id="v-fingreso" type="date">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Fecha de egreso <span style="font-weight:400">(opcional)</span></label>
-              <input class="form-control" id="v-fegreso" type="date">
-            </div>
-            <div class="form-group"><!-- spacer --></div>
-
-            <span class="form-section">Contacto de emergencia</span>
-
-            <div class="form-group">
-              <label class="form-label req">Nombre del contacto</label>
-              <input class="form-control" id="v-contacto" type="text" placeholder="Ej. Pedro González">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Teléfono del contacto <span style="font-weight:400">(opcional)</span></label>
-              <input class="form-control" id="v-tel" type="tel" placeholder="Ej. +52 81 1234 5678">
-            </div>
-
-            <span class="form-section">Dependientes menores de edad <small style="font-weight:400;color:var(--gris-medio);text-transform:none;letter-spacing:0">(opcional)</small></span>
-
-            <div class="form-group full" id="v-deps-lista"></div>
-            <div class="form-group full">
-              <button type="button" class="btn btn-ghost" style="width:fit-content;font-size:12px;" onclick="agregarDep()">+ Agregar menor dependiente</button>
-            </div>
-
-          </div>
-
-          <div style="margin-top:28px;display:flex;gap:12px;justify-content:flex-end;">
-            <button type="button" class="btn btn-ghost" onclick="limpiarForm()">Limpiar</button>
-            <button type="button" class="btn btn-rosa" id="btn-guardar" onclick="guardarMigrante()">
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7.5l4 4 7-7"/></svg>
-              Guardar registro
-            </button>
-          </div>
-        </div>
+  <div class="contenido">
+    <!-- FORMULARIO -->
+    <div id="pantalla-form">
+      <div class="encabezado">
+        <h1>Encuesta de ingreso</h1>
+        <p>Completa los datos del migrante. Los campos con <span style="color:var(--rosa)">*</span> son obligatorios.</p>
       </div>
 
+      <div class="card">
+        <div class="alerta error" id="alerta-form"></div>
+
+        <div class="form-grid">
+          <span class="form-section">Datos de atención</span>
+          <div class="form-group">
+            <label class="form-label req">Fecha de atención</label>
+            <input class="form-control" id="v-fecha-atencion" type="date">
+          </div>
+
+          <span class="form-section">Datos personales</span>
+          <div class="form-group">
+            <label class="form-label req">Nombre de pila</label>
+            <input class="form-control" id="v-nombre" type="text" placeholder="Ej. María">
+          </div>
+          <div class="form-group">
+            <label class="form-label req">Primer apellido</label>
+            <input class="form-control" id="v-apellido1" type="text" placeholder="Ej. González">
+          </div>
+          <div class="form-group">
+            <label class="form-label req">Segundo apellido</label>
+            <input class="form-control" id="v-apellido2" type="text" placeholder="Ej. Ruiz o X">
+          </div>
+          <div class="form-group">
+            <label class="form-label req">Número telefónico de contacto</label>
+            <input class="form-control" id="v-telefono" type="tel" placeholder="Ej. +52 81 1234 5678">
+          </div>
+          <div class="form-group">
+            <label class="form-label req">Género</label>
+            <select class="form-control" id="v-genero">
+              <option value="">— Seleccionar —</option>
+              <option value="Femenino">Femenino</option>
+              <option value="Masculino">Masculino</option>
+              <option value="No binario">No binario</option>
+              <option value="LGBTIQ+">LGBTIQ+</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label req">País de origen</label>
+            <input class="form-control" id="v-pais" type="text" placeholder="Ej. Honduras">
+          </div>
+          <div class="form-group">
+            <label class="form-label req">Departamento / Estado</label>
+            <input class="form-control" id="v-depto" type="text" placeholder="Ej. Cortés">
+          </div>
+          <div class="form-group">
+            <label class="form-label req">Estado civil</label>
+            <select class="form-control" id="v-estado-civil">
+              <option value="">— Seleccionar —</option>
+              <option value="Soltero">Soltero</option>
+              <option value="Casado">Casado</option>
+              <option value="Divorciado">Divorciado</option>
+              <option value="Viudo">Viudo</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label req">Fecha de nacimiento</label>
+            <input class="form-control" id="v-fnac" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label req">Edad</label>
+            <select class="form-control" id="v-edad">
+              <option value="">— Seleccionar —</option>
+              <option value="Menor de 18">Menor de 18</option>
+              <option value="18-59">18-59</option>
+              <option value="60+">60+</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label class="form-label req">Grupo de población</label>
+            <select class="form-control" id="v-grupo">
+              <option value="">— Seleccionar —</option>
+              <option value="Adulto">Adulto (18-59 años)</option>
+              <option value="Adulto mayor">Adulto mayor (+60 años)</option>
+              <option value="Niña acompañada">Niña acompañada</option>
+              <option value="Niño acompañado">Niño acompañado</option>
+              <option value="Adolescente hombre acompañado">Adolescente hombre acompañado</option>
+              <option value="Adolescente mujer acompañado">Adolescente mujer acompañado</option>
+              <option value="NNA no acompañado">NNA no acompañado</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:28px;display:flex;gap:12px;justify-content:flex-end;">
+          <button type="button" class="btn btn-ghost" onclick="limpiarForm()">Limpiar</button>
+          <button type="button" class="btn btn-rosa" id="btn-guardar" onclick="guardarMigrante()">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7.5l4 4 7-7"/></svg>
+            Guardar registro
+          </button>
+        </div>
+      </div>
+    </div>
       <!-- ── CONFIRMACIÓN ─────────────────── -->
       <div id="pantalla-confirm">
         <div class="confirm-card">
