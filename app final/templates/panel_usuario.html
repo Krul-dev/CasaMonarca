@@ -246,6 +246,15 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid .full { grid-column: 1; }
 }
+
+/* ── ARCO: carta imprimible ── */
+@media print {
+  body > * { display: none !important; }
+  #ventana-impresion { display: block !important; position: fixed; inset: 0; background: white; z-index: 9999; }
+}
+.badge-pendiente  { background: var(--amarillo-bg); color: var(--amarillo-texto); border-color: var(--amarillo-borde); }
+.badge-aprobada   { background: var(--verde-bg);    color: var(--verde-texto);    border-color: var(--verde-borde); }
+.badge-rechazada  { background: var(--rojo-bg);     color: var(--rojo-texto);     border-color: var(--rojo-borde); }
 </style>
 </head>
 <body>
@@ -262,16 +271,22 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 
     <nav class="sidebar-nav">
       <span class="nav-label">Panel</span>
-      <button class="nav-item activo" onclick="irA('inicio')">
+      <button class="nav-item activo" id="nav-inicio" onclick="irA('inicio')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
         Inicio
       </button>
 
       <span class="nav-label">Módulos</span>
-      <button class="nav-item" onclick="irA('registros')">
+      <button class="nav-item" id="nav-registros" onclick="irA('registros')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M2 6h12M2 9h8M2 12h5"/><circle cx="13" cy="11" r="2.5"/><path d="M13 9.5V11l.8.8"/></svg>
         Registros
       </button>
+      {% if rol in ('coord', 'op') %}
+      <button class="nav-item" id="nav-arco" onclick="irA('arco')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5L2 4v4c0 3.3 2.6 5.7 6 6.5 3.4-.8 6-3.2 6-6.5V4L8 1.5z"/><path d="M5.5 8l1.8 1.8 3.2-3.2"/></svg>
+        Derechos ARCO
+      </button>
+      {% endif %}
     </nav>
 
     <div class="sidebar-footer">
@@ -408,6 +423,50 @@ textarea.form-control { resize: vertical; min-height: 72px; }
           </div>
         </div>
       </div>
+
+      <!-- ── VISTA: DERECHOS ARCO ────────── -->
+      {% if rol in ('coord', 'op') %}
+      <div class="vista" id="vista-arco">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <h1>Derechos ARCO</h1>
+            <p>Acceso, Rectificación y Cancelación de datos personales</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-titulo">Buscar registro</p>
+          <p class="card-subtitulo">Busca por nombre completo o folio del migrante</p>
+          <input type="text" id="arco-buscar-input"
+                 placeholder="Ej. María González o MIG-202505-0001"
+                 oninput="buscarArco(this.value)"
+                 style="width:100%;max-width:480px;padding:9px 12px;border:1.5px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);outline:none;margin-bottom:16px;">
+          <div id="arco-resultados">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Ingresa al menos 2 caracteres para buscar</p>
+          </div>
+        </div>
+
+        {% if rol == 'coord' %}
+        <div class="card">
+          <p class="card-titulo">Solicitudes de rectificación pendientes</p>
+          <p class="card-subtitulo">Enviadas por el personal operativo — requieren tu aprobación</p>
+          <div id="arco-solicitudes-lista">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if rol == 'op' %}
+        <div class="card">
+          <p class="card-titulo">Mis solicitudes de rectificación</p>
+          <p class="card-subtitulo">Estado de las solicitudes enviadas al coordinador</p>
+          <div id="arco-mis-solicitudes">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
 
     </div>
   </div>
@@ -556,6 +615,185 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   </div>
 </div>
 
+<!-- ── MODALES ARCO ──────────────────────────────────────── -->
+
+<!-- Acceso: carta imprimible -->
+<div class="overlay" id="overlay-arco-acceso">
+  <div class="modal" style="max-width:740px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Acceso a datos — Derecho ARCO</span>
+      <button class="modal-cerrar" onclick="cerrarArcoAcceso()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="arco-carta" style="font-family:Georgia,serif;font-size:13px;line-height:1.75;padding:4px 8px;"></div>
+      <div class="form-acciones" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gris-linea);">
+        <button class="btn btn-ghost" onclick="cerrarArcoAcceso()">Cerrar</button>
+        <button class="btn btn-primary" onclick="imprimirAcceso()">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="12" height="8" rx="1"/><path d="M4 6V3a1 1 0 011-1h6a1 1 0 011 1v3"/><line x1="5" y1="11" x2="11" y2="11"/><line x1="5" y1="13" x2="9" y2="13"/></svg>
+          Imprimir
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rectificación: formulario con valores actuales editables -->
+<div class="overlay" id="overlay-arco-rect">
+  <div class="modal" style="max-width:740px;">
+    <div class="modal-header">
+      <span class="modal-titulo" id="modal-rect-titulo">Solicitar rectificación</span>
+      <button class="modal-cerrar" onclick="cerrarArcoRect()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta error" id="alerta-rect"></div>
+      <p style="font-size:12px;color:var(--gris-medio);margin-bottom:16px;padding:10px 14px;background:var(--azul-bg);border-radius:var(--radio-md);border:1px solid var(--azul-borde);color:var(--azul-texto);">
+        Modifica únicamente los campos que requieren corrección. Solo los campos cambiados se enviarán al coordinador para su aprobación.
+      </p>
+      <div class="form-grid">
+        <span class="form-section">Nombre</span>
+        <div class="form-group">
+          <label class="form-label">Nombre de pila</label>
+          <input class="form-control" id="rect-nombre-pila" type="text">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Primer apellido</label>
+          <input class="form-control" id="rect-primer-apellido" type="text">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Segundo apellido</label>
+          <input class="form-control" id="rect-segundo-apellido" type="text">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de atención</label>
+          <input class="form-control" id="rect-fecha-atencion" type="date">
+        </div>
+
+        <span class="form-section">Datos personales</span>
+        <div class="form-group">
+          <label class="form-label">Teléfono de contacto</label>
+          <input class="form-control" id="rect-telefono" type="tel">
+        </div>
+        <div class="form-group">
+          <label class="form-label">País de origen</label>
+          <select class="form-control" id="rect-pais">
+            <option value="">— Seleccionar —</option>
+            <option>Honduras</option><option>El Salvador</option><option>Guatemala</option>
+            <option>Nicaragua</option><option>Cuba</option><option>Venezuela</option>
+            <option>Haití</option><option>Colombia</option><option>Ecuador</option>
+            <option>Perú</option><option>Bolivia</option><option>México</option>
+            <option>Estados Unidos</option><option>Brasil</option><option>Argentina</option>
+            <option>Chile</option><option>Costa Rica</option><option>Panamá</option>
+            <option>República Dominicana</option><option>Jamaica</option>
+            <option>Trinidad y Tobago</option><option>India</option><option>China</option>
+            <option>Camerún</option><option>Guinea</option><option>Senegal</option>
+            <option>Congo</option><option>Bangladesh</option><option>Nepal</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Departamento / Estado</label>
+          <input class="form-control" id="rect-depto" type="text">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado civil</label>
+          <select class="form-control" id="rect-estado-civil">
+            <option value="">— Seleccionar —</option>
+            <option>Soltero/a</option><option>Casado/a</option>
+            <option>Unión libre</option><option>Divorciado/a</option><option>Viudo/a</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de nacimiento</label>
+          <input class="form-control" id="rect-fecha-nac" type="date">
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label">Género</label>
+          <div class="checkboxes">
+            <label class="check-item"><input type="radio" name="rect-genero" value="Hombre"> Hombre</label>
+            <label class="check-item"><input type="radio" name="rect-genero" value="Mujer"> Mujer</label>
+            <label class="check-item"><input type="radio" name="rect-genero" value="No binario/a"> No binario/a</label>
+            <label class="check-item"><input type="radio" name="rect-genero" value="Prefiero no especificar"> Prefiero no especificar</label>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Grupo de población</label>
+          <div class="checkboxes" style="flex-direction:column;gap:8px;">
+            <label class="check-item"><input type="radio" name="rect-grupo" value="Adulto (18-59 años)"> Adulto (18-59 años)</label>
+            <label class="check-item"><input type="radio" name="rect-grupo" value="Adulto mayor (+60 años)"> Adulto mayor (+60 años)</label>
+            <label class="check-item"><input type="radio" name="rect-grupo" value="Niña acompañada"> Niña acompañada</label>
+            <label class="check-item"><input type="radio" name="rect-grupo" value="Niño acompañado"> Niño acompañado</label>
+            <label class="check-item"><input type="radio" name="rect-grupo" value="Adolescente hombre acompañado"> Adolescente hombre acompañado</label>
+            <label class="check-item"><input type="radio" name="rect-grupo" value="Adolescente mujer acompañada"> Adolescente mujer acompañada</label>
+            <label class="check-item"><input type="radio" name="rect-grupo" value="NNA No acompañado"> NNA No acompañado</label>
+          </div>
+        </div>
+
+        <div class="form-acciones full">
+          <button class="btn btn-ghost" onclick="cerrarArcoRect()">Cancelar</button>
+          <button class="btn btn-primary" onclick="enviarRect()">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2L7 9M14 2l-4 12-3-5-5-3 12-4z"/></svg>
+            Enviar al coordinador
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cancelación: solicitar eliminación al admin -->
+<div class="overlay" id="overlay-arco-cancel">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Solicitar cancelación — Derecho ARCO</span>
+      <button class="modal-cerrar" onclick="cerrarArcoCancel()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gris-oscuro);margin-bottom:16px;">
+        Solicitas la eliminación del registro de <strong id="cancel-nombre"></strong>.
+        La solicitud se enviará al <strong>administrador</strong> para su aprobación.
+      </p>
+      <div class="alerta error" id="alerta-cancel"></div>
+      <div class="form-group">
+        <label class="form-label required">Motivo de la cancelación</label>
+        <textarea class="form-control" id="cancel-motivo" placeholder="Explica el motivo conforme a los Derechos ARCO…"></textarea>
+      </div>
+      <div class="form-acciones" style="margin-top:16px;">
+        <button class="btn btn-ghost" onclick="cerrarArcoCancel()">Cancelar</button>
+        <button class="btn btn-danger" onclick="enviarCancel()">Enviar al administrador</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Resolver rectificación (solo coord) -->
+{% if rol == 'coord' %}
+<div class="overlay" id="overlay-arco-resolver">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Revisar solicitud de rectificación</span>
+      <button class="modal-cerrar" onclick="cerrarResolver()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="resolver-info"></div>
+      <div class="alerta error" id="alerta-resolver"></div>
+      <div class="form-group" style="margin-top:8px;">
+        <label class="form-label">Motivo (requerido solo si rechazas)</label>
+        <textarea class="form-control" id="resolver-motivo" placeholder="Explica al operativo por qué no se aplica el cambio…" style="min-height:56px;"></textarea>
+      </div>
+      <div class="form-acciones" style="margin-top:16px;">
+        <button class="btn btn-ghost" onclick="cerrarResolver()">Cancelar</button>
+        <button class="btn btn-danger" onclick="resolverRect('rechazar')">Rechazar</button>
+        <button class="btn btn-primary" onclick="resolverRect('aprobar')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 7l4 4 6-6"/></svg>
+          Aprobar y aplicar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <script>
 const ROL = '{{ rol }}';
 const PUEDE_CREAR  = ['coord','op'].includes(ROL);
@@ -568,19 +806,19 @@ let solicitudMigranteId = null;
 const topbarTitulos = {
   inicio:    'Inicio',
   registros: 'Registros de migrantes',
+  arco:      'Derechos ARCO',
 };
 
 function irA(vista) {
   document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('activo'));
-  document.getElementById('vista-' + vista).classList.add('activa');
+  const vistaEl = document.getElementById('vista-' + vista);
+  if (vistaEl) vistaEl.classList.add('activa');
   document.getElementById('topbar-titulo').textContent = topbarTitulos[vista] || '—';
-
-  const navItems = document.querySelectorAll('.nav-item');
-  const map = { inicio: 0, registros: 1 };
-  if (map[vista] !== undefined) navItems[map[vista]]?.classList.add('activo');
-
+  const navEl = document.getElementById('nav-' + vista);
+  if (navEl) navEl.classList.add('activo');
   if (vista === 'registros') cargarMigrantes();
+  if (vista === 'arco') cargarArco();
 }
 
 function irAYNuevo() {
@@ -787,6 +1025,341 @@ document.getElementById('overlay-migrante').addEventListener('click', function(e
 });
 document.getElementById('overlay-solicitud').addEventListener('click', function(e) {
   if (e.target === this) cerrarSolicitud();
+});
+
+// ── DERECHOS ARCO ─────────────────────────────────────────────
+let arcoMigrante  = null;
+let arcoOriginal  = {};
+let resolverSolId = null;
+
+function cargarArco() {
+  if (ROL === 'coord') cargarSolicitudesRect();
+  if (ROL === 'op')    cargarMisSolicitudes();
+}
+
+async function buscarArco(q) {
+  const cont = document.getElementById('arco-resultados');
+  if (q.trim().length < 2) {
+    cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Ingresa al menos 2 caracteres para buscar</p>';
+    return;
+  }
+  cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Buscando...</p>';
+  try {
+    const res  = await fetch('/api/arco/buscar?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    if (!data.length) {
+      cont.innerHTML = `<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Sin resultados para "${q}"</p>`;
+      return;
+    }
+    cont.innerHTML = `<div class="tabla-wrap"><table class="tabla">
+      <thead><tr><th>Folio</th><th>Nombre</th><th>País</th><th>Grupo de población</th><th>Acciones ARCO</th></tr></thead>
+      <tbody>${data.map(m => `
+        <tr>
+          <td style="font-family:var(--mono);font-size:11px;">${m.folio}</td>
+          <td class="nombre-celda">${m.nombre}</td>
+          <td>${m.pais_origen || '—'}</td>
+          <td style="font-size:12px;">${m.grupo_poblacion || '—'}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm" onclick="verAcceso(${m.id})">Acceso</button>
+            <button class="btn btn-ghost btn-sm" style="margin-left:4px;color:var(--azul-texto);border-color:var(--azul-borde);" onclick="abrirArcoRect(${m.id})">Rectificar</button>
+            <button class="btn btn-danger btn-sm" style="margin-left:4px;" onclick="abrirArcoCancel(${m.id},'${m.nombre.replace(/'/g,"\\'")}')">Cancelar</button>
+          </td>
+        </tr>`).join('')}
+      </tbody></table></div>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:20px 0;">Error al buscar</p>';
+  }
+}
+
+// ── ACCESO ──
+async function verAcceso(id) {
+  try {
+    const res = await fetch('/api/arco/acceso/' + id);
+    if (!res.ok) { alert('No se pudo obtener la información'); return; }
+    const m = await res.json();
+    const hoy = new Date().toLocaleDateString('es-MX', {year:'numeric',month:'long',day:'numeric'});
+    const campos = [
+      ['Nombre completo',      m.nombre],
+      ['Fecha de atención',    m.fecha_atencion   || '—'],
+      ['País de origen',       m.pais_origen      || '—'],
+      ['Departamento / Estado',m.departamento_estado || '—'],
+      ['Género',               m.genero           || '—'],
+      ['Estado civil',         m.estado_civil     || '—'],
+      ['Fecha de nacimiento',  m.fecha_nacimiento || '—'],
+      ['Grupo de población',   m.grupo_poblacion  || '—'],
+      ['Teléfono de contacto', m.telefono_contacto|| '—'],
+    ];
+    document.getElementById('arco-carta').innerHTML = `
+      <div style="text-align:center;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #222;">
+        <p style="font-size:18px;font-weight:700;margin:0;">CASA MONARCA</p>
+        <p style="font-size:11px;color:#666;margin:4px 0 0;">Albergue para Personas Migrantes · Monterrey, N.L.</p>
+      </div>
+      <p style="text-align:right;margin-bottom:18px;font-size:12px;">${hoy}</p>
+      <p style="font-weight:700;margin-bottom:12px;">EJERCICIO DEL DERECHO DE ACCESO — DERECHOS ARCO</p>
+      <p style="margin-bottom:18px;">En respuesta a la solicitud de acceso a datos personales con folio <strong>${m.folio}</strong>, se presenta la información registrada en nuestros sistemas:</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        ${campos.map(([k,v]) => `<tr style="border-bottom:1px solid #e5e5e5;">
+          <td style="padding:8px 12px;font-weight:600;width:42%;color:#555;font-size:12px;">${k}</td>
+          <td style="padding:8px 12px;font-size:13px;">${v}</td>
+        </tr>`).join('')}
+      </table>
+      <p style="font-size:11px;color:#888;border-top:1px solid #ddd;padding-top:14px;line-height:1.6;">
+        Información confidencial protegida conforme a la <em>Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)</em>.<br>
+        <strong>Casa Monarca</strong> · Documento generado el ${hoy}
+      </p>`;
+    document.getElementById('overlay-arco-acceso').classList.add('abierto');
+  } catch(e) { alert('Error al obtener datos'); }
+}
+
+function cerrarArcoAcceso() {
+  document.getElementById('overlay-arco-acceso').classList.remove('abierto');
+}
+
+function imprimirAcceso() {
+  const carta = document.getElementById('arco-carta').innerHTML;
+  const win = window.open('', '_blank', 'width=820,height=640');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Acceso ARCO — Casa Monarca</title>
+    <style>body{font-family:Georgia,serif;font-size:13px;line-height:1.75;padding:48px;max-width:700px;margin:0 auto;}
+    table{width:100%;border-collapse:collapse;}@media print{@page{margin:2cm;}}</style>
+  </head><body>${carta}</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
+}
+
+// ── RECTIFICACIÓN ──
+async function abrirArcoRect(id) {
+  try {
+    const res = await fetch('/api/arco/acceso/' + id);
+    if (!res.ok) { alert('No se pudo obtener la información'); return; }
+    const m = await res.json();
+    arcoMigrante = m;
+    arcoOriginal  = { ...m };
+    const partes = (m.nombre || '').split(' ');
+    document.getElementById('rect-nombre-pila').value     = partes[0] || '';
+    document.getElementById('rect-primer-apellido').value = partes[1] || '';
+    document.getElementById('rect-segundo-apellido').value = partes.slice(2).join(' ') || '';
+    document.getElementById('rect-fecha-atencion').value  = m.fecha_atencion || '';
+    document.getElementById('rect-telefono').value        = m.telefono_contacto || '';
+    document.getElementById('rect-pais').value            = m.pais_origen || '';
+    document.getElementById('rect-depto').value           = m.departamento_estado || '';
+    document.getElementById('rect-estado-civil').value    = m.estado_civil || '';
+    document.getElementById('rect-fecha-nac').value       = m.fecha_nacimiento || '';
+    document.querySelectorAll('input[name="rect-genero"]').forEach(r => r.checked = r.value === m.genero);
+    document.querySelectorAll('input[name="rect-grupo"]').forEach(r => r.checked = r.value === m.grupo_poblacion);
+    document.getElementById('alerta-rect').style.display = 'none';
+    document.getElementById('modal-rect-titulo').textContent = `Rectificación: ${m.nombre} · Folio ${m.folio}`;
+    document.getElementById('overlay-arco-rect').classList.add('abierto');
+  } catch(e) { alert('Error al obtener datos'); }
+}
+
+function cerrarArcoRect() {
+  document.getElementById('overlay-arco-rect').classList.remove('abierto');
+}
+
+async function enviarRect() {
+  const alerta = document.getElementById('alerta-rect');
+  const m = arcoMigrante;
+  if (!m) return;
+  const nombrePila = document.getElementById('rect-nombre-pila').value.trim();
+  const primerAp   = document.getElementById('rect-primer-apellido').value.trim();
+  const segundoAp  = document.getElementById('rect-segundo-apellido').value.trim();
+  const nombre     = [nombrePila, primerAp, segundoAp].filter(Boolean).join(' ');
+  const nuevos = {
+    nombre,
+    fecha_atencion:      document.getElementById('rect-fecha-atencion').value || null,
+    telefono_contacto:   document.getElementById('rect-telefono').value.trim() || null,
+    pais_origen:         document.getElementById('rect-pais').value || null,
+    departamento_estado: document.getElementById('rect-depto').value.trim() || null,
+    estado_civil:        document.getElementById('rect-estado-civil').value || null,
+    fecha_nacimiento:    document.getElementById('rect-fecha-nac').value || null,
+    genero:              document.querySelector('input[name="rect-genero"]:checked')?.value || null,
+    grupo_poblacion:     document.querySelector('input[name="rect-grupo"]:checked')?.value || null,
+  };
+  const orig = arcoOriginal;
+  const cambios = {};
+  const cmp = (a, b) => (a || '') !== (b || '');
+  if (cmp(nuevos.nombre,              orig.nombre))              cambios.nombre              = nuevos.nombre;
+  if (cmp(nuevos.fecha_atencion,      orig.fecha_atencion))      cambios.fecha_atencion      = nuevos.fecha_atencion;
+  if (cmp(nuevos.telefono_contacto,   orig.telefono_contacto))   cambios.telefono_contacto   = nuevos.telefono_contacto;
+  if (cmp(nuevos.pais_origen,         orig.pais_origen))         cambios.pais_origen         = nuevos.pais_origen;
+  if (cmp(nuevos.departamento_estado, orig.departamento_estado)) cambios.departamento_estado = nuevos.departamento_estado;
+  if (cmp(nuevos.estado_civil,        orig.estado_civil))        cambios.estado_civil        = nuevos.estado_civil;
+  if (cmp(nuevos.fecha_nacimiento,    orig.fecha_nacimiento))    cambios.fecha_nacimiento    = nuevos.fecha_nacimiento;
+  if (cmp(nuevos.genero,              orig.genero))              cambios.genero              = nuevos.genero;
+  if (cmp(nuevos.grupo_poblacion,     orig.grupo_poblacion))     cambios.grupo_poblacion     = nuevos.grupo_poblacion;
+  if (!Object.keys(cambios).length) {
+    alerta.textContent = 'No se detectaron cambios respecto a los datos actuales.';
+    alerta.style.display = 'block';
+    return;
+  }
+  alerta.style.display = 'none';
+  const fd = new FormData();
+  fd.append('migrante_id', m.id);
+  fd.append('cambios_json', JSON.stringify(cambios));
+  try {
+    const res  = await fetch('/api/arco/rectificacion', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) { alerta.textContent = data.error || 'Error'; alerta.style.display = 'block'; return; }
+    cerrarArcoRect();
+    alert('Solicitud enviada al coordinador para aprobación.');
+    if (ROL === 'op') cargarMisSolicitudes();
+  } catch(e) { alerta.textContent = 'Error de conexión'; alerta.style.display = 'block'; }
+}
+
+// ── CANCELACIÓN ──
+function abrirArcoCancel(id, nombre) {
+  arcoMigrante = { id, nombre };
+  document.getElementById('cancel-nombre').textContent = nombre;
+  document.getElementById('cancel-motivo').value = '';
+  document.getElementById('alerta-cancel').style.display = 'none';
+  document.getElementById('overlay-arco-cancel').classList.add('abierto');
+}
+
+function cerrarArcoCancel() {
+  document.getElementById('overlay-arco-cancel').classList.remove('abierto');
+}
+
+async function enviarCancel() {
+  const alerta = document.getElementById('alerta-cancel');
+  const motivo = document.getElementById('cancel-motivo').value.trim();
+  if (!motivo) { alerta.textContent = 'El motivo es obligatorio.'; alerta.style.display = 'block'; return; }
+  alerta.style.display = 'none';
+  const fd = new FormData();
+  fd.append('motivo', motivo);
+  try {
+    const res  = await fetch('/api/arco/cancelacion/' + arcoMigrante.id, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) { alerta.textContent = data.error || 'Error'; alerta.style.display = 'block'; return; }
+    cerrarArcoCancel();
+    alert('Solicitud de cancelación enviada al administrador.');
+  } catch(e) { alerta.textContent = 'Error de conexión'; alerta.style.display = 'block'; }
+}
+
+// ── COORDINADOR: solicitudes pendientes ──
+async function cargarSolicitudesRect() {
+  const cont = document.getElementById('arco-solicitudes-lista');
+  if (!cont) return;
+  try {
+    const res  = await fetch('/api/arco/solicitudes_rect');
+    const data = await res.json();
+    if (!data.length) {
+      cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">No hay solicitudes pendientes</p>';
+      return;
+    }
+    cont.innerHTML = `<div class="tabla-wrap"><table class="tabla">
+      <thead><tr><th>Folio</th><th>Nombre</th><th>Solicitado por</th><th>Fecha</th><th></th></tr></thead>
+      <tbody>${data.map(s => `<tr>
+        <td style="font-family:var(--mono);font-size:11px;">${s.folio}</td>
+        <td class="nombre-celda">${s.migrante_nombre}</td>
+        <td style="font-size:12px;">${s.solicitado_por}</td>
+        <td style="font-size:12px;">${(s.fecha_solicitud||'').slice(0,10)}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="abrirResolver(${s.id},${JSON.stringify(s).replace(/"/g,'&quot;')})">Revisar</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error al cargar</p>';
+  }
+}
+
+async function abrirResolver(sid, sol) {
+  resolverSolId = sid;
+  try {
+    const res2 = await fetch('/api/arco/acceso/' + sol.migrante_id);
+    const actual = res2.ok ? await res2.json() : {};
+    let cambios = {};
+    try { cambios = JSON.parse(sol.cambios_json || '{}'); } catch(e) {}
+    const etiquetas = {
+      nombre:'Nombre', fecha_atencion:'Fecha de atención', pais_origen:'País de origen',
+      departamento_estado:'Depto/Estado', estado_civil:'Estado civil', genero:'Género',
+      fecha_nacimiento:'Fecha de nacimiento', grupo_poblacion:'Grupo de población',
+      telefono_contacto:'Teléfono',
+    };
+    const filas = Object.entries(cambios).map(([k,v]) => `
+      <tr style="border-bottom:1px solid var(--gris-linea);">
+        <td style="padding:8px 12px;font-size:12px;font-weight:600;color:var(--gris-medio);">${etiquetas[k]||k}</td>
+        <td style="padding:8px 12px;font-size:13px;">${actual[k]||'—'}</td>
+        <td style="padding:8px 12px;font-size:13px;color:var(--azul-texto);font-weight:500;">${v||'—'}</td>
+      </tr>`).join('');
+    document.getElementById('resolver-info').innerHTML = `
+      <p style="font-size:13px;margin-bottom:12px;">
+        <strong>${sol.migrante_nombre}</strong> · Folio: ${sol.folio}<br>
+        <span style="color:var(--gris-medio);font-size:12px;">Solicitado por <strong>${sol.solicitado_por}</strong> el ${(sol.fecha_solicitud||'').slice(0,10)}</span>
+      </p>
+      <div class="tabla-wrap" style="margin-bottom:16px;"><table class="tabla">
+        <thead><tr>
+          <th>Campo</th>
+          <th>Valor actual</th>
+          <th style="color:var(--azul-texto);">Valor propuesto</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+      </table></div>`;
+    document.getElementById('resolver-motivo').value = '';
+    document.getElementById('alerta-resolver').style.display = 'none';
+    document.getElementById('overlay-arco-resolver').classList.add('abierto');
+  } catch(e) { alert('Error al cargar solicitud'); }
+}
+
+function cerrarResolver() {
+  document.getElementById('overlay-arco-resolver').classList.remove('abierto');
+}
+
+async function resolverRect(accion) {
+  const alerta = document.getElementById('alerta-resolver');
+  const motivo = document.getElementById('resolver-motivo').value.trim();
+  if (accion === 'rechazar' && !motivo) {
+    alerta.textContent = 'Escribe el motivo del rechazo para notificar al operativo.';
+    alerta.style.display = 'block';
+    return;
+  }
+  alerta.style.display = 'none';
+  const fd = new FormData();
+  fd.append('accion', accion === 'aprobar' ? 'aprobar' : 'rechazar');
+  fd.append('motivo', motivo);
+  try {
+    const res  = await fetch('/api/arco/solicitudes_rect/' + resolverSolId + '/resolver', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) { alerta.textContent = data.error || 'Error'; alerta.style.display = 'block'; return; }
+    cerrarResolver();
+    cargarSolicitudesRect();
+    alert(accion === 'aprobar' ? 'Cambios aplicados correctamente.' : 'Solicitud rechazada. El operativo verá el motivo en su panel.');
+  } catch(e) { alerta.textContent = 'Error de conexión'; alerta.style.display = 'block'; }
+}
+
+// ── OPERATIVO: mis solicitudes ──
+async function cargarMisSolicitudes() {
+  const cont = document.getElementById('arco-mis-solicitudes');
+  if (!cont) return;
+  try {
+    const res  = await fetch('/api/arco/solicitudes_rect');
+    const data = await res.json();
+    if (!data.length) {
+      cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">No has enviado solicitudes de rectificación</p>';
+      return;
+    }
+    cont.innerHTML = `<div class="tabla-wrap"><table class="tabla">
+      <thead><tr><th>Folio</th><th>Nombre</th><th>Estado</th><th>Motivo de rechazo</th></tr></thead>
+      <tbody>${data.map(s => {
+        const badge = s.estado === 'pendiente'
+          ? '<span class="badge badge-pendiente">Pendiente</span>'
+          : s.estado === 'aprobada'
+          ? '<span class="badge badge-aprobada">Aprobada</span>'
+          : '<span class="badge badge-rechazada">Rechazada</span>';
+        return `<tr>
+          <td style="font-family:var(--mono);font-size:11px;">${s.folio}</td>
+          <td class="nombre-celda">${s.migrante_nombre}</td>
+          <td>${badge}</td>
+          <td style="font-size:12px;color:var(--rojo-texto);">${s.motivo_rechazo||'—'}</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error al cargar</p>';
+  }
+}
+
+// Cerrar overlays ARCO al hacer click fuera
+['overlay-arco-acceso','overlay-arco-rect','overlay-arco-cancel','overlay-arco-resolver'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('abierto'); });
 });
 
 // ── INIT ───────────────────────────────────────────────────────

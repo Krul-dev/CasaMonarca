@@ -296,6 +296,48 @@ def inicializar_db():
     except Exception as e:
         print(f'[migración migrantes.fecha_ingreso nullable] {e}')
 
+    # Migración: tabla solicitudes_arco_rect para Derechos ARCO.
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS solicitudes_arco_rect ("
+            "  id              INT AUTO_INCREMENT PRIMARY KEY,"
+            "  migrante_id     INT NOT NULL,"
+            "  solicitado_por  VARCHAR(64) NOT NULL,"
+            "  cambios_json    TEXT NOT NULL,"
+            "  estado          ENUM('pendiente','aprobada','rechazada') DEFAULT 'pendiente',"
+            "  motivo_rechazo  TEXT,"
+            "  fecha_solicitud DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            "  resuelto_por    VARCHAR(64),"
+            "  resuelto_en     DATETIME,"
+            "  FOREIGN KEY (migrante_id) REFERENCES migrantes(id) ON DELETE CASCADE,"
+            "  INDEX idx_rect_estado (estado)"
+            ") ENGINE=InnoDB"
+        )
+        con.commit()
+        cur.close()
+    except Exception as e:
+        print(f'[migración solicitudes_arco_rect] {e}')
+
+    # Migración: ampliar ENUM de log para eventos ARCO.
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "ALTER TABLE log_certificados MODIFY resultado "
+            "ENUM('login_exitoso','login_fallido','pwd_incorrecta',"
+            "     'cert_revocado','cert_expirado','cert_emitido',"
+            "     'cert_revocado_admin','rol_modificado','pwd_cambiada',"
+            "     'acceso_denegado','migrante_registrado','migrante_actualizado',"
+            "     'migrante_solicitud_eliminacion','migrante_eliminado',"
+            "     'pwd_reset_solicitado','pwd_reset_aprobado','pwd_reset_rechazado',"
+            "     'arco_acceso','arco_rect_solicitada','arco_rect_aprobada',"
+            "     'arco_rect_rechazada','arco_cancel_solicitada') NOT NULL"
+        )
+        con.commit()
+        cur.close()
+    except Exception as e:
+        print(f'[migración log ENUM ARCO] {e}')
+
     # Sembrar solo si la tabla está vacía
     cur = con.cursor()
     cur.execute('SELECT COUNT(*) c FROM usuarios')
@@ -1568,6 +1610,199 @@ def api_resolver_solicitud(sid):
     else:
         db.commit()
     return jsonify(ok=True, accion=nuevo_estado)
+
+
+# ── DERECHOS ARCO ─────────────────────────────────────────────
+# Whitelist de campos editables por rectificación (previene inyección SQL)
+CAMPOS_RECT = {
+    'nombre', 'fecha_nacimiento', 'pais_origen', 'departamento_estado',
+    'estado_civil', 'genero', 'grupo_poblacion', 'telefono_contacto', 'fecha_atencion'
+}
+
+@app.route('/api/arco/buscar')
+@verificar_certificado
+def arco_buscar():
+    if g.rol not in ('admin', 'coord', 'op'):
+        abort(403)
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify([])
+    db = obtener_db()
+    rows = _exec(db,
+        'SELECT id, folio, nombre, pais_origen, fecha_atencion, genero, grupo_poblacion'
+        ' FROM migrantes WHERE nombre LIKE %s OR folio LIKE %s'
+        ' ORDER BY nombre LIMIT 20',
+        (f'%{q}%', f'%{q}%')
+    ).fetchall()
+    def _fstr(v):
+        return v.isoformat()[:10] if hasattr(v, 'isoformat') else (str(v) if v else None)
+    return jsonify([{**dict(r), 'fecha_atencion': _fstr(r['fecha_atencion'])} for r in rows])
+
+
+@app.route('/api/arco/acceso/<int:mid>')
+@verificar_certificado
+def arco_acceso(mid):
+    if g.rol not in ('admin', 'coord', 'op'):
+        abort(403)
+    db = obtener_db()
+    mig = _exec(db,
+        'SELECT id, folio, nombre, fecha_nacimiento, pais_origen,'
+        ' fecha_atencion, genero, departamento_estado, estado_civil,'
+        ' grupo_poblacion, telefono_contacto, registrado_por, creado'
+        ' FROM migrantes WHERE id=%s', (mid,)
+    ).fetchone()
+    if not mig:
+        return jsonify(error='Migrante no encontrado'), 404
+    def _fstr(v):
+        return v.isoformat()[:10] if hasattr(v, 'isoformat') else (str(v) if v else None)
+    m = dict(mig)
+    for k in ('fecha_nacimiento', 'fecha_atencion'):
+        m[k] = _fstr(m.get(k))
+    if m.get('creado'):
+        m['creado'] = m['creado'].isoformat()[:10]
+    log_evento('arco_acceso', usuario=g.usuario, rol=g.rol,
+               detalle=f'Acceso ARCO id={mid} folio={m["folio"]}')
+    return jsonify(m)
+
+
+@app.route('/api/arco/rectificacion', methods=['POST'])
+@verificar_certificado
+def arco_rectificacion():
+    import json as _json
+    if g.rol not in ('op', 'coord'):
+        abort(403)
+    migrante_id = request.form.get('migrante_id', '').strip()
+    cambios_raw = request.form.get('cambios_json', '{}')
+    if not migrante_id:
+        return jsonify(error='Migrante requerido'), 400
+    try:
+        cambios = _json.loads(cambios_raw)
+    except Exception:
+        return jsonify(error='Datos inválidos'), 400
+    cambios = {k: v for k, v in cambios.items() if k in CAMPOS_RECT}
+    if not cambios:
+        return jsonify(error='No hay cambios válidos para solicitar'), 400
+    db = obtener_db()
+    mig = _exec(db, 'SELECT folio, nombre FROM migrantes WHERE id=%s', (migrante_id,)).fetchone()
+    if not mig:
+        return jsonify(error='Migrante no encontrado'), 404
+    pendiente = _exec(db,
+        "SELECT id FROM solicitudes_arco_rect WHERE migrante_id=%s AND estado='pendiente'",
+        (migrante_id,)
+    ).fetchone()
+    if pendiente:
+        return jsonify(error='Ya existe una solicitud pendiente para este registro'), 400
+    _exec(db,
+        'INSERT INTO solicitudes_arco_rect (migrante_id, solicitado_por, cambios_json)'
+        ' VALUES (%s,%s,%s)',
+        (migrante_id, g.usuario, _json.dumps(cambios))
+    )
+    db.commit()
+    log_evento('arco_rect_solicitada', usuario=g.usuario, rol=g.rol,
+               detalle=f'Rectificación ARCO folio={mig["folio"]}')
+    return jsonify(ok=True)
+
+
+@app.route('/api/arco/solicitudes_rect')
+@verificar_certificado
+def arco_solicitudes_rect():
+    if g.rol not in ('admin', 'coord', 'op'):
+        abort(403)
+    db = obtener_db()
+    if g.rol == 'op':
+        rows = _exec(db,
+            'SELECT r.id, r.migrante_id, m.folio, m.nombre AS migrante_nombre,'
+            '  r.solicitado_por, r.cambios_json, r.estado, r.motivo_rechazo,'
+            '  r.fecha_solicitud'
+            ' FROM solicitudes_arco_rect r'
+            ' JOIN migrantes m ON m.id=r.migrante_id'
+            ' WHERE r.solicitado_por=%s ORDER BY r.fecha_solicitud DESC LIMIT 50',
+            (g.usuario,)
+        ).fetchall()
+    else:
+        rows = _exec(db,
+            'SELECT r.id, r.migrante_id, m.folio, m.nombre AS migrante_nombre,'
+            '  r.solicitado_por, r.cambios_json, r.estado, r.motivo_rechazo,'
+            '  r.fecha_solicitud'
+            ' FROM solicitudes_arco_rect r'
+            ' JOIN migrantes m ON m.id=r.migrante_id'
+            " WHERE r.estado='pendiente' ORDER BY r.fecha_solicitud ASC"
+        ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        if d.get('fecha_solicitud') and hasattr(d['fecha_solicitud'], 'isoformat'):
+            d['fecha_solicitud'] = d['fecha_solicitud'].isoformat()
+        result.append(d)
+    return jsonify(result)
+
+
+@app.route('/api/arco/solicitudes_rect/<int:sid>/resolver', methods=['POST'])
+@verificar_certificado
+def arco_resolver_rect(sid):
+    import json as _json
+    if g.rol != 'coord':
+        abort(403)
+    aprobar = request.form.get('accion') == 'aprobar'
+    motivo  = request.form.get('motivo', '').strip() or None
+    db = obtener_db()
+    sol = _exec(db,
+        'SELECT r.*, m.folio FROM solicitudes_arco_rect r'
+        ' JOIN migrantes m ON m.id=r.migrante_id WHERE r.id=%s', (sid,)
+    ).fetchone()
+    if not sol:
+        return jsonify(error='Solicitud no encontrada'), 404
+    if sol['estado'] != 'pendiente':
+        return jsonify(error='La solicitud ya fue resuelta'), 400
+    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    if aprobar:
+        try:
+            cambios = _json.loads(sol['cambios_json'] or '{}')
+        except Exception:
+            cambios = {}
+        cambios = {k: v for k, v in cambios.items() if k in CAMPOS_RECT}
+        if cambios:
+            sets = ', '.join(f'{k}=%s' for k in cambios)
+            vals = list(cambios.values()) + [sol['migrante_id']]
+            _exec(db, f'UPDATE migrantes SET {sets} WHERE id=%s', vals)
+    _exec(db,
+        'UPDATE solicitudes_arco_rect'
+        ' SET estado=%s, resuelto_por=%s, resuelto_en=%s, motivo_rechazo=%s'
+        ' WHERE id=%s',
+        ('aprobada' if aprobar else 'rechazada', g.usuario, ahora, motivo, sid)
+    )
+    db.commit()
+    log_evento('arco_rect_aprobada' if aprobar else 'arco_rect_rechazada',
+               usuario=g.usuario, rol=g.rol,
+               detalle=f'Folio {sol["folio"]}: {"aprobada" if aprobar else "rechazada"}')
+    return jsonify(ok=True, accion='aprobada' if aprobar else 'rechazada')
+
+
+@app.route('/api/arco/cancelacion/<int:mid>', methods=['POST'])
+@verificar_certificado
+def arco_cancelacion(mid):
+    if g.rol not in ('op', 'coord'):
+        abort(403)
+    db = obtener_db()
+    mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
+    if not mig:
+        return jsonify(error='Migrante no encontrado'), 404
+    pendiente = _exec(db,
+        "SELECT id FROM solicitudes_eliminacion WHERE migrante_id=%s AND estado='pendiente'",
+        (mid,)
+    ).fetchone()
+    if pendiente:
+        return jsonify(error='Ya existe una solicitud de cancelación pendiente'), 400
+    motivo = request.form.get('motivo', '').strip() or None
+    _exec(db,
+        'INSERT INTO solicitudes_eliminacion (migrante_id, solicitado_por, motivo)'
+        ' VALUES (%s,%s,%s)',
+        (mid, g.usuario, motivo)
+    )
+    db.commit()
+    log_evento('migrante_solicitud_eliminacion', usuario=g.usuario, rol=g.rol,
+               detalle=f'Cancelación ARCO: {mig["nombre"]} · Folio: {mig["folio"]} · Motivo: {motivo or "sin motivo"}')
+    return jsonify(ok=True)
 
 
 # ── ARRANQUE ──────────────────────────────────────────────────
