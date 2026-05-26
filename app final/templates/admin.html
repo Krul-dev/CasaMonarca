@@ -1248,6 +1248,37 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
         </div>
       </div>
 
+      <!-- Modal: editar usuario -->
+      <div class="modal-overlay" id="modal-editar-usuario">
+        <div class="modal" style="max-width:440px;width:90%;">
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">Editar perfil de usuario</h3>
+          <p style="font-size:12px;color:var(--gris-medio);margin-bottom:20px;" id="edit-usr-email-label"></p>
+          <input type="hidden" id="edit-usr-email">
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Nombre completo</label>
+              <input type="text" id="edit-usr-nombre"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Rol</label>
+              <select id="edit-usr-rol"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;background:#fff;">
+                <option value="admin">Admin</option>
+                <option value="coord">Coordinador</option>
+                <option value="op">Operativo</option>
+                <option value="voluntario">Voluntario</option>
+              </select>
+            </div>
+            <div id="edit-usr-alerta" style="display:none;color:var(--rojo-texto);font-size:12px;"></div>
+          </div>
+          <div class="modal-acciones" style="margin-top:20px;">
+            <button class="btn btn-ghost" onclick="cerrarEditarUsuario()">Cancelar</button>
+            <button class="btn btn-primario" onclick="guardarEditarUsuario()">Guardar cambios</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ── VISTA: ELIMINADOS ─────────────── -->
       <div class="vista" id="vista-eliminados">
         <div class="encabezado">
@@ -1385,6 +1416,17 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
             <button class="btn btn-ghost" style="font-size:12px;" onclick="cargarSolicitudesRectAdmin()">Actualizar</button>
           </div>
           <div id="admin-arco-rect-lista">
+            <div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Cargando solicitudes…</div>
+          </div>
+        </div>
+
+        <!-- CANCELACIÓN: solicitudes pendientes -->
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h2 style="font-size:14px;font-weight:600;margin:0;">Cancelación — Solicitudes pendientes</h2>
+            <button class="btn btn-ghost" style="font-size:12px;" onclick="cargarCancelacionesAdmin()">Actualizar</button>
+          </div>
+          <div id="admin-arco-cancel-lista">
             <div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Cargando solicitudes…</div>
           </div>
         </div>
@@ -1565,6 +1607,17 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-elim-cert">
+  <div class="modal">
+    <h3>Eliminar certificado</h3>
+    <p>El registro del certificado de <strong id="modal-elim-cert-nombre"></strong> se borrará permanentemente de la base de datos. Si el certificado estaba vigente, la cuenta también quedará desactivada. Esta acción no se puede deshacer.</p>
+    <div class="modal-acciones">
+      <button class="btn btn-ghost" onclick="cerrarModalElimCert()">Cancelar</button>
+      <button class="btn btn-peligro" onclick="confirmarEliminarCert()">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">
   <span class="toast-dot" id="toast-dot"></span>
   <span id="toast-msg"></span>
@@ -1573,6 +1626,7 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
 <script>
 let certs = [];
 let revocarId = null;
+let eliminarCertId = null;
 let generoSeleccionado = 'Masculino';
 
 const topbarTitulos = {
@@ -1684,11 +1738,13 @@ function renderTablaLista() {
       <td class="serial-celda">#${c.serial}</td>
       <td style="font-variant-numeric:tabular-nums;font-size:12px">${c.fecha}</td>
       <td>${estadoHtml(c.estado)}</td>
-      <td style="text-align:right">
+      <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
         ${c.estado === 'vigente'
           ? `<button class="btn btn-peligro btn-sm" onclick="pedirRevocacion(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')">Revocar</button>`
-          : `<button class="btn btn-ghost btn-sm" disabled>${c.estado === 'expirado' ? 'Expirado' : 'Revocado'}</button>`
+          : `<span class="badge badge-${c.estado === 'expirado' ? 'en_transito' : 'deportado'}" style="font-size:10px;padding:3px 8px;">${c.estado === 'expirado' ? 'Expirado' : 'Revocado'}</span>`
         }
+        <button class="btn btn-ghost btn-sm" style="color:var(--rojo-texto);border-color:var(--rojo-borde);"
+          onclick="pedirEliminarCert(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')">Eliminar</button>
       </td>
     </tr>
   `).join('');
@@ -1822,6 +1878,8 @@ async function cargarUsuarios() {
       <td>${estadoHtml}</td>
       <td style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;"
+          onclick="abrirEditarUsuario(${JSON.stringify(u).replace(/"/g,'&quot;')})">Editar</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;"
           onclick="resetPwd('${u.usuario}')">Reset pwd</button>
         ${esYo ? '' : `<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;${toggleStyle}"
           onclick="toggleActivo('${u.usuario}','${u.nombre}')">${toggleLabel}</button>`}
@@ -1873,6 +1931,42 @@ async function eliminarUsuario(email, nombre) {
     cargarUsuarios();
   } catch(e) {
     alert('Error de red: ' + e.message);
+  }
+}
+
+function abrirEditarUsuario(u) {
+  document.getElementById('edit-usr-email').value = u.usuario;
+  document.getElementById('edit-usr-email-label').textContent = u.usuario;
+  document.getElementById('edit-usr-nombre').value = u.nombre || '';
+  document.getElementById('edit-usr-rol').value = u.rol || 'op';
+  document.getElementById('edit-usr-alerta').style.display = 'none';
+  document.getElementById('modal-editar-usuario').classList.add('visible');
+}
+
+function cerrarEditarUsuario() {
+  document.getElementById('modal-editar-usuario').classList.remove('visible');
+}
+
+async function guardarEditarUsuario() {
+  const email  = document.getElementById('edit-usr-email').value;
+  const nombre = document.getElementById('edit-usr-nombre').value.trim();
+  const rol    = document.getElementById('edit-usr-rol').value;
+  const alerta = document.getElementById('edit-usr-alerta');
+  if (!nombre) { alerta.textContent = 'El nombre es requerido'; alerta.style.display = 'block'; return; }
+  const fd = new FormData();
+  fd.append('usuario', email);
+  fd.append('nombre',  nombre);
+  fd.append('rol',     rol);
+  try {
+    const res  = await fetch('/admin/api/usuarios/editar', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) { alerta.textContent = data.error || `Error (${res.status})`; alerta.style.display = 'block'; return; }
+    cerrarEditarUsuario();
+    cargarUsuarios();
+    toast('Perfil actualizado correctamente');
+  } catch(e) {
+    alerta.textContent = 'Error de conexión';
+    alerta.style.display = 'block';
   }
 }
 
@@ -2103,6 +2197,38 @@ async function confirmarRevocacion() {
   cerrarModal();
 }
 
+function pedirEliminarCert(id, nombre) {
+  eliminarCertId = id;
+  document.getElementById('modal-elim-cert-nombre').textContent = nombre;
+  document.getElementById('modal-elim-cert').classList.add('visible');
+}
+
+function cerrarModalElimCert() {
+  document.getElementById('modal-elim-cert').classList.remove('visible');
+  eliminarCertId = null;
+}
+
+async function confirmarEliminarCert() {
+  if (eliminarCertId === null) return;
+  try {
+    const res = await fetch(`/admin/certificados/${eliminarCertId}/eliminar`, { method: 'POST' });
+    let data = {};
+    try { data = await res.json(); } catch(_) {}
+    if (data.ok) {
+      cerrarModalElimCert();
+      toast('Certificado eliminado');
+      await cargarMetricas();
+      await cargarCertificados();
+    } else {
+      toast(data.error || `Error del servidor (${res.status})`, true);
+      cerrarModalElimCert();
+    }
+  } catch(e) {
+    toast('Sin conexión al servidor', true);
+    cerrarModalElimCert();
+  }
+}
+
 function toast(msg, error = false) {
   const el = document.getElementById('toast');
   const dot = document.getElementById('toast-dot');
@@ -2301,6 +2427,8 @@ async function adminConfirmarElim() {
     if (res.ok) {
       adminCerrarElim();
       adminCargarMigrantes();
+      document.getElementById('admin-arco-buscar').value = '';
+      document.getElementById('admin-arco-resultados').style.display = 'none';
       toast('Registro eliminado');
     } else {
       const data = await res.json();
@@ -2335,6 +2463,9 @@ document.getElementById('modal-mig-form').addEventListener('click', function(e) 
 document.getElementById('modal-elim-mig').addEventListener('click', function(e) {
   if (e.target === this) adminCerrarElim();
 });
+document.getElementById('modal-editar-usuario').addEventListener('click', function(e) {
+  if (e.target === this) cerrarEditarUsuario();
+});
 
 // ── DERECHOS ARCO (ADMIN) ─────────────────────────────────────
 let adminArcoAccesoData = null;
@@ -2356,7 +2487,10 @@ async function buscarArcoAdmin() {
           <td style="font-family:var(--mono);font-size:11px;">${m.folio}</td>
           <td class="nombre-celda">${m.nombre}</td>
           <td style="font-size:12px;">${m.pais_origen || '—'}</td>
-          <td><button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="verAccesoAdmin(${m.id})">Ver expediente</button></td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="verAccesoAdmin(${m.id})">Ver expediente</button>
+            <button class="btn btn-peligro" style="font-size:11px;padding:5px 10px;margin-left:6px;" onclick="adminAbrirElim(${m.id}, '${m.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+          </td>
         </tr>`).join('');
     }
     cont.style.display = 'block';
@@ -2490,8 +2624,80 @@ async function adminResolverRect(accion) {
   }
 }
 
+async function cargarCancelacionesAdmin() {
+  const cont = document.getElementById('admin-arco-cancel-lista');
+  cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Cargando…</div>';
+  try {
+    const res = await fetch('/admin/api/solicitudes');
+    const data = await res.json();
+    if (!data.length) {
+      cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Sin solicitudes de cancelación pendientes</div>';
+      return;
+    }
+    cont.innerHTML = data.map(s => {
+      const firmaBadge = s.firma_coord
+        ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:20px;background:var(--verde-bg);color:var(--verde-texto);font-weight:600;">
+            <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 7l4 4 6-6"/></svg>
+            Firmado EC
+           </span>
+           <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-left:4px;" onclick="verificarFirmaAdmin(${s.id})">Verificar</button>`
+        : `<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:var(--amarillo-bg);color:var(--amarillo-texto);">Sin firma</span>`;
+      const origen = s.solicitante_op
+        ? `Op: <strong>${s.solicitante_op}</strong> → Coord: <strong>${s.solicitado_por}</strong>`
+        : `Coord: <strong>${s.solicitado_por}</strong>`;
+      return `
+      <div style="border:1px solid var(--gris-linea);border-radius:var(--radio-md);padding:14px 16px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:600;font-size:13px;">${s.migrante_nombre} <span style="font-size:11px;font-family:var(--mono);color:var(--gris-medio);">${s.folio || ''}</span></div>
+            <div style="font-size:11px;color:var(--gris-medio);margin-top:2px;">${origen} · ${(s.fecha_solicitud||'').slice(0,10)}</div>
+            ${s.motivo ? `<div style="font-size:12px;margin-top:4px;color:var(--gris-texto);">Motivo: ${s.motivo}</div>` : ''}
+            <div style="margin-top:6px;">${firmaBadge}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px;color:var(--rojo-texto);border-color:var(--rojo-borde);" onclick="adminResolverSolArco(${s.id}, false)">Rechazar</button>
+            <button class="btn btn-peligro" style="font-size:11px;padding:6px 12px;" onclick="adminResolverSolArco(${s.id}, true)">Aprobar y eliminar</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--rojo-texto);font-size:13px;">Error al cargar solicitudes</div>';
+  }
+}
+
+async function adminResolverSolArco(solId, aprobar) {
+  const fd = new FormData(); fd.append('aprobar', aprobar ? '1' : '0');
+  try {
+    const res = await fetch(`/admin/api/solicitudes/${solId}/resolver`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (res.ok) {
+      toast(aprobar ? 'Registro eliminado y solicitud aprobada' : 'Solicitud rechazada');
+      cargarCancelacionesAdmin();
+    } else {
+      toast(data.error || 'Error', true);
+    }
+  } catch(e) {
+    toast('Error de conexión', true);
+  }
+}
+
+async function verificarFirmaAdmin(solId) {
+  try {
+    const res  = await fetch(`/api/arco/verificar_firma/${solId}`);
+    const data = await res.json();
+    if (!res.ok || data.error) { toast(data.error || 'Error al verificar', true); return; }
+    if (!data.firmada) { alert('Esta solicitud no tiene firma digital.'); return; }
+    const estado = data.valida ? '✓ FIRMA VÁLIDA' : '✗ FIRMA INVÁLIDA';
+    alert(`${estado}\n\nCoordinador: ${data.coord}\nOp solicitante: ${data.solicitante_op || '—'}\n\nMensaje firmado:\n${data.mensaje}`);
+  } catch(e) {
+    toast('Error de conexión', true);
+  }
+}
+
 function cargarArcoAdmin() {
   cargarSolicitudesRectAdmin();
+  cargarCancelacionesAdmin();
 }
 </script>
 </body>

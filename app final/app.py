@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import rsa, ec
 from cryptography.hazmat.primitives.serialization import pkcs12
 
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -167,6 +167,45 @@ def inicializar_cert_servidor():
         ))
 
 # ── BASE DE DATOS (MySQL) ─────────────────────────────────────
+# ── FIRMAS ECDSA (P-256) ──────────────────────────────────────
+def generar_claves_ec():
+    privada = ec.generate_private_key(ec.SECP256R1())
+    priv_pem = privada.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()
+    ).decode()
+    pub_pem = privada.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode()
+    return priv_pem, pub_pem
+
+def _obtener_o_crear_claves_ec(db, usuario):
+    row = _exec(db, 'SELECT ec_private_key, ec_public_key FROM usuarios WHERE usuario=%s',
+                (usuario,)).fetchone()
+    if row and row['ec_private_key']:
+        return row['ec_private_key'], row['ec_public_key']
+    priv_pem, pub_pem = generar_claves_ec()
+    _exec(db, 'UPDATE usuarios SET ec_private_key=%s, ec_public_key=%s WHERE usuario=%s',
+          (priv_pem, pub_pem, usuario))
+    db.commit()
+    return priv_pem, pub_pem
+
+def firmar_mensaje(priv_pem: str, mensaje: str) -> str:
+    privada = serialization.load_pem_private_key(priv_pem.encode(), password=None)
+    sig = privada.sign(mensaje.encode('utf-8'), ec.ECDSA(hashes.SHA256()))
+    return base64.b64encode(sig).decode()
+
+def verificar_firma(pub_pem: str, mensaje: str, firma_b64: str) -> bool:
+    try:
+        publica = serialization.load_pem_public_key(pub_pem.encode())
+        publica.verify(base64.b64decode(firma_b64),
+                       mensaje.encode('utf-8'), ec.ECDSA(hashes.SHA256()))
+        return True
+    except Exception:
+        return False
+
 def obtener_db():
     db = getattr(g, '_db', None)
     if db is None:
@@ -303,6 +342,24 @@ def inicializar_db():
         except Exception as e:
             pass  # columna ya eliminada o no existe
 
+    # Migración: corregir tipos de columnas nuevas de migrantes (por si quedaron mal definidas).
+    cols_tipos_migrantes = [
+        ('genero',             'VARCHAR(30)'),
+        ('departamento_estado','VARCHAR(100)'),
+        ('estado_civil',       'VARCHAR(30)'),
+        ('grupo_poblacion',    'VARCHAR(80)'),
+        ('telefono_contacto',  'VARCHAR(32)'),
+        ('fecha_atencion',     'DATE'),
+    ]
+    for col, tipo in cols_tipos_migrantes:
+        try:
+            cur = con.cursor()
+            cur.execute(f"ALTER TABLE migrantes MODIFY COLUMN {col} {tipo}")
+            con.commit()
+            cur.close()
+        except Exception as e:
+            print(f'[migración tipo {col}] {e}')
+
     # Migración: eliminar tabla dependientes_migrante (ya no se usa).
     try:
         cur = con.cursor()
@@ -347,12 +404,77 @@ def inicializar_db():
             "     'migrante_solicitud_eliminacion','migrante_eliminado',"
             "     'pwd_reset_solicitado','pwd_reset_aprobado','pwd_reset_rechazado',"
             "     'arco_acceso','arco_rect_solicitada','arco_rect_aprobada',"
-            "     'arco_rect_rechazada','arco_cancel_solicitada') NOT NULL"
+            "     'arco_rect_rechazada','arco_cancel_solicitada',"
+            "     'arco_cancel_op_solicitada','arco_cancel_coord_firmada',"
+            "     'arco_cancel_coord_rechazada') NOT NULL"
         )
         con.commit()
         cur.close()
     except Exception as e:
         print(f'[migración log ENUM ARCO] {e}')
+
+    # Migración: claves EC para coordinadores.
+    for col in ('ec_private_key', 'ec_public_key'):
+        try:
+            cur = con.cursor()
+            cur.execute(f"ALTER TABLE usuarios ADD COLUMN {col} TEXT")
+            con.commit()
+            cur.close()
+        except Exception:
+            pass
+
+    # Migración: tabla solicitudes_cancelacion_op (op → coord).
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS solicitudes_cancelacion_op ("
+            "  id              INT AUTO_INCREMENT PRIMARY KEY,"
+            "  migrante_id     INT NOT NULL,"
+            "  solicitado_por  VARCHAR(120) NOT NULL,"
+            "  motivo          TEXT,"
+            "  estado          ENUM('pendiente','aprobada','rechazada') DEFAULT 'pendiente',"
+            "  resuelto_por    VARCHAR(120),"
+            "  resuelto_en     DATETIME,"
+            "  fecha_solicitud DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            "  FOREIGN KEY (migrante_id) REFERENCES migrantes(id) ON DELETE CASCADE"
+            ") ENGINE=InnoDB"
+        )
+        con.commit()
+        cur.close()
+    except Exception as e:
+        print(f'[migración solicitudes_cancelacion_op] {e}')
+
+    # Migración: campos EC en solicitudes_eliminacion.
+    for col in ('solicitante_op VARCHAR(120)', 'firma_coord TEXT',
+                'coord_pubkey TEXT', 'mensaje_firmado TEXT'):
+        try:
+            cur = con.cursor()
+            cur.execute(f"ALTER TABLE solicitudes_eliminacion ADD COLUMN {col}")
+            con.commit()
+            cur.close()
+        except Exception:
+            pass
+
+    # Generar claves EC para coordinadores existentes sin clave.
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT usuario FROM usuarios WHERE rol='coord'"
+            " AND (ec_private_key IS NULL OR ec_private_key='')"
+        )
+        coords_sin_clave = cur.fetchall()
+        cur.close()
+        for row in coords_sin_clave:
+            priv_pem, pub_pem = generar_claves_ec()
+            cur = con.cursor()
+            cur.execute(
+                "UPDATE usuarios SET ec_private_key=%s, ec_public_key=%s WHERE usuario=%s",
+                (priv_pem, pub_pem, row['usuario'])
+            )
+            con.commit()
+            cur.close()
+    except Exception as e:
+        print(f'[migración claves EC coord] {e}')
 
     # Sembrar solo si la tabla está vacía
     cur = con.cursor()
@@ -975,6 +1097,30 @@ def admin_eliminar_usuario():
     return jsonify(ok=True)
 
 
+@app.route('/admin/api/usuarios/editar', methods=['POST'])
+@verificar_certificado
+def admin_editar_usuario():
+    if g.rol != 'admin':
+        abort(403)
+    usuario = request.form.get('usuario', '').strip()
+    nombre  = request.form.get('nombre', '').strip()
+    rol     = request.form.get('rol', '').strip()
+    if not usuario or not nombre or not rol:
+        return jsonify(error='Datos incompletos'), 400
+    if rol not in ('admin', 'coord', 'op', 'voluntario'):
+        return jsonify(error='Rol no válido'), 400
+    db = obtener_db()
+    user = _exec(db, 'SELECT id FROM usuarios WHERE usuario=%s', (usuario,)).fetchone()
+    if not user:
+        return jsonify(error='Usuario no encontrado'), 404
+    _exec(db, 'UPDATE usuarios SET nombre=%s, rol=%s WHERE usuario=%s',
+          (nombre, rol, usuario))
+    db.commit()
+    log_evento('rol_modificado', usuario=usuario, rol=g.rol,
+               detalle=f'Perfil editado por {g.usuario}: nombre="{nombre}", rol="{rol}"')
+    return jsonify(ok=True)
+
+
 @app.route('/solicitar_reset_pwd', methods=['POST'])
 def solicitar_reset_pwd():
     usuario = request.form.get('usuario', '').strip().lower()
@@ -1295,6 +1441,33 @@ def revocar_certificado(cert_id):
                serial=cert['serial'], detalle=motivo)
     return jsonify(ok=True)
 
+# ── ELIMINAR CERTIFICADO ──────────────────────────────────────
+@app.route('/admin/certificados/<int:cert_id>/eliminar', methods=['POST'])
+@verificar_certificado
+def eliminar_certificado(cert_id):
+    if g.rol != 'admin':
+        abort(403)
+    db = obtener_db()
+    cert = _exec(db, 'SELECT * FROM certificados WHERE id=%s', (cert_id,)).fetchone()
+    if cert is None:
+        return jsonify(error='Certificado no encontrado'), 404
+    try:
+        if cert['estado'] == 'vigente':
+            _exec(db, 'UPDATE usuarios SET activo=0 WHERE usuario=%s', (cert['usuario'],))
+            _exec(db,
+                'INSERT IGNORE INTO certificados_revocados'
+                ' (serial, usuario, rol, revocado_por, motivo) VALUES (%s,%s,%s,%s,%s)',
+                (cert['serial'], cert['usuario'], cert['rol'], g.usuario, 'Eliminado desde panel admin')
+            )
+        _exec(db, 'DELETE FROM certificados WHERE id=%s', (cert_id,))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        return jsonify(error=f'Error al eliminar: {e}'), 500
+    log_evento('cert_revocado_admin', usuario=cert['usuario'], rol=cert['rol'],
+               serial=cert['serial'], detalle=f'Certificado eliminado por {g.usuario}')
+    return jsonify(ok=True)
+
 # ── PANEL DE COORDINADORES Y OPERADORES ───────────────────────
 @app.route('/panel')
 @verificar_certificado
@@ -1369,6 +1542,16 @@ def panel_api_mi_certificado():
         'estado': cert['estado'],
     })
 
+# ── DIAGNÓSTICO DB ────────────────────────────────────────────
+@app.route('/api/debug/columnas_migrantes')
+@verificar_certificado
+def debug_columnas():
+    if g.rol != 'admin':
+        abort(403)
+    db = obtener_db()
+    rows = _exec(db, 'DESCRIBE migrantes').fetchall()
+    return jsonify([dict(r) for r in rows])
+
 # ── REGISTROS DE MIGRANTES ────────────────────────────────────
 @app.route('/api/migrantes')
 @verificar_certificado
@@ -1428,18 +1611,22 @@ def api_migrantes_crear():
     nombre = ' '.join(partes)
 
     db = obtener_db()
-    cur = _exec(db,
-        'INSERT INTO migrantes'
-        ' (folio, nombre, fecha_nacimiento, pais_origen,'
-        '  fecha_atencion, genero, departamento_estado, estado_civil,'
-        '  grupo_poblacion, telefono_contacto, registrado_por)'
-        ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
-        (
-            'TEMP', nombre, fecha_nac, pais_origen,
-            fecha_atencion, genero, departamento_estado, estado_civil,
-            grupo_poblacion, telefono_contacto, g.usuario,
+    try:
+        cur = _exec(db,
+            'INSERT INTO migrantes'
+            ' (folio, nombre, fecha_nacimiento, pais_origen,'
+            '  fecha_atencion, genero, departamento_estado, estado_civil,'
+            '  grupo_poblacion, telefono_contacto, registrado_por)'
+            ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+            (
+                'TEMP', nombre, fecha_nac, pais_origen,
+                fecha_atencion, genero, departamento_estado, estado_civil,
+                grupo_poblacion, telefono_contacto, g.usuario,
+            )
         )
-    )
+    except Exception as e:
+        return jsonify(error=f'Error al guardar en base de datos: {e}'), 500
+
     nuevo_id = cur.lastrowid
     folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
     _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
@@ -1493,18 +1680,21 @@ def api_migrantes_editar(mid):
     if not mig:
         return jsonify(error='Migrante no encontrado'), 404
 
-    _exec(db,
-        'UPDATE migrantes SET'
-        '  nombre=%s, fecha_nacimiento=%s, pais_origen=%s,'
-        '  fecha_atencion=%s, genero=%s, departamento_estado=%s,'
-        '  estado_civil=%s, grupo_poblacion=%s, telefono_contacto=%s'
-        ' WHERE id=%s',
-        (
-            nombre, fecha_nac, pais_origen,
-            fecha_atencion, genero, departamento_estado,
-            estado_civil, grupo_poblacion, telefono_contacto, mid,
+    try:
+        _exec(db,
+            'UPDATE migrantes SET'
+            '  nombre=%s, fecha_nacimiento=%s, pais_origen=%s,'
+            '  fecha_atencion=%s, genero=%s, departamento_estado=%s,'
+            '  estado_civil=%s, grupo_poblacion=%s, telefono_contacto=%s'
+            ' WHERE id=%s',
+            (
+                nombre, fecha_nac, pais_origen,
+                fecha_atencion, genero, departamento_estado,
+                estado_civil, grupo_poblacion, telefono_contacto, mid,
+            )
         )
-    )
+    except Exception as e:
+        return jsonify(error=f'Error al actualizar en base de datos: {e}'), 500
     db.commit()
 
     _s = lambda v: v.isoformat()[:10] if hasattr(v, 'isoformat') else (str(v) if v else '')
@@ -1578,7 +1768,8 @@ def api_solicitudes_lista():
     db = obtener_db()
     rows = _exec(db,
         'SELECT s.id, s.migrante_id, m.folio, m.nombre AS migrante_nombre,'
-        '  s.solicitado_por, s.motivo, s.estado, s.fecha_solicitud'
+        '  s.solicitado_por, s.motivo, s.estado, s.fecha_solicitud,'
+        '  s.solicitante_op, s.firma_coord'
         ' FROM solicitudes_eliminacion s'
         ' JOIN migrantes m ON m.id = s.migrante_id'
         " WHERE s.estado='pendiente'"
@@ -1690,11 +1881,23 @@ def arco_rectificacion():
         return jsonify(error='Datos inválidos'), 400
     cambios = {k: v for k, v in cambios.items() if k in CAMPOS_RECT}
     if not cambios:
-        return jsonify(error='No hay cambios válidos para solicitar'), 400
+        return jsonify(error='No hay cambios válidos'), 400
     db = obtener_db()
     mig = _exec(db, 'SELECT folio, nombre FROM migrantes WHERE id=%s', (migrante_id,)).fetchone()
     if not mig:
         return jsonify(error='Migrante no encontrado'), 404
+
+    # Coordinador: aplica los cambios de inmediato
+    if g.rol == 'coord':
+        sets = ', '.join(f'{k}=%s' for k in cambios)
+        vals = list(cambios.values()) + [migrante_id]
+        _exec(db, f'UPDATE migrantes SET {sets} WHERE id=%s', vals)
+        db.commit()
+        log_evento('arco_rect_aprobada', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Rectificación inmediata ARCO folio={mig["folio"]}')
+        return jsonify(ok=True, aplicado=True)
+
+    # Operativo: crea solicitud pendiente para el coordinador
     pendiente = _exec(db,
         "SELECT id FROM solicitudes_arco_rect WHERE migrante_id=%s AND estado='pendiente'",
         (migrante_id,)
@@ -1709,7 +1912,7 @@ def arco_rectificacion():
     db.commit()
     log_evento('arco_rect_solicitada', usuario=g.usuario, rol=g.rol,
                detalle=f'Rectificación ARCO folio={mig["folio"]}')
-    return jsonify(ok=True)
+    return jsonify(ok=True, aplicado=False)
 
 
 @app.route('/api/arco/solicitudes_rect')
@@ -1787,10 +1990,169 @@ def arco_resolver_rect(sid):
     return jsonify(ok=True, accion='aprobada' if aprobar else 'rechazada')
 
 
+# Operativo → Coordinador: solicitar cancelación
+@app.route('/api/arco/cancelacion_op/<int:mid>', methods=['POST'])
+@verificar_certificado
+def arco_cancelacion_op(mid):
+    if g.rol != 'op':
+        abort(403)
+    db = obtener_db()
+    mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
+    if not mig:
+        return jsonify(error='Migrante no encontrado'), 404
+    pendiente = _exec(db,
+        "SELECT id FROM solicitudes_cancelacion_op WHERE migrante_id=%s AND estado='pendiente'",
+        (mid,)
+    ).fetchone()
+    if pendiente:
+        return jsonify(error='Ya existe una solicitud de cancelación pendiente para este registro'), 400
+    motivo = request.form.get('motivo', '').strip() or None
+    _exec(db,
+        'INSERT INTO solicitudes_cancelacion_op (migrante_id, solicitado_por, motivo)'
+        ' VALUES (%s,%s,%s)',
+        (mid, g.usuario, motivo)
+    )
+    db.commit()
+    log_evento('arco_cancel_op_solicitada', usuario=g.usuario, rol=g.rol,
+               detalle=f'Op solicita cancelación: {mig["nombre"]} · Folio: {mig["folio"]}')
+    return jsonify(ok=True)
+
+
+# Coordinador: ver solicitudes de cancelación enviadas por operativos
+@app.route('/api/arco/solicitudes_cancelacion_op')
+@verificar_certificado
+def arco_solicitudes_cancelacion_op():
+    if g.rol != 'coord':
+        abort(403)
+    db = obtener_db()
+    rows = _exec(db,
+        'SELECT s.id, s.migrante_id, m.folio, m.nombre AS migrante_nombre,'
+        '  s.solicitado_por, s.motivo, s.estado, s.fecha_solicitud'
+        ' FROM solicitudes_cancelacion_op s'
+        ' JOIN migrantes m ON m.id = s.migrante_id'
+        " WHERE s.estado='pendiente'"
+        ' ORDER BY s.fecha_solicitud ASC'
+    ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        if d.get('fecha_solicitud') and hasattr(d['fecha_solicitud'], 'isoformat'):
+            d['fecha_solicitud'] = d['fecha_solicitud'].isoformat()
+        result.append(d)
+    return jsonify(result)
+
+
+# Op: ver mis solicitudes de cancelación (historial)
+@app.route('/api/arco/mis_solicitudes_cancelacion')
+@verificar_certificado
+def arco_mis_solicitudes_cancelacion():
+    if g.rol != 'op':
+        abort(403)
+    db = obtener_db()
+    rows = _exec(db,
+        'SELECT s.id, s.migrante_id, m.folio, m.nombre AS migrante_nombre,'
+        '  s.motivo, s.estado, s.fecha_solicitud, s.resuelto_por, s.resuelto_en'
+        ' FROM solicitudes_cancelacion_op s'
+        ' JOIN migrantes m ON m.id = s.migrante_id'
+        ' WHERE s.solicitado_por=%s ORDER BY s.fecha_solicitud DESC LIMIT 50',
+        (g.usuario,)
+    ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        for f in ('fecha_solicitud', 'resuelto_en'):
+            if d.get(f) and hasattr(d[f], 'isoformat'):
+                d[f] = d[f].isoformat()
+        result.append(d)
+    return jsonify(result)
+
+
+# Coordinador → Admin: aprobar (firma EC + escala) o rechazar cancelación de op
+@app.route('/api/arco/solicitudes_cancelacion_op/<int:sid>/resolver', methods=['POST'])
+@verificar_certificado
+def arco_resolver_cancelacion_op(sid):
+    if g.rol != 'coord':
+        abort(403)
+    aprobar = request.form.get('accion') == 'aprobar'
+    db = obtener_db()
+    sol = _exec(db,
+        'SELECT s.*, m.folio, m.nombre AS migrante_nombre'
+        ' FROM solicitudes_cancelacion_op s'
+        ' JOIN migrantes m ON m.id=s.migrante_id WHERE s.id=%s', (sid,)
+    ).fetchone()
+    if not sol:
+        return jsonify(error='Solicitud no encontrada'), 404
+    if sol['estado'] != 'pendiente':
+        return jsonify(error='La solicitud ya fue resuelta'), 400
+
+    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    nuevo_estado = 'aprobada' if aprobar else 'rechazada'
+    _exec(db,
+        'UPDATE solicitudes_cancelacion_op'
+        ' SET estado=%s, resuelto_por=%s, resuelto_en=%s WHERE id=%s',
+        (nuevo_estado, g.usuario, ahora, sid)
+    )
+
+    if aprobar:
+        # Genera firma EC del coordinador
+        priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
+        mensaje = (f"CANCELACION|{sol['migrante_id']}|{sol['folio']}"
+                   f"|{sol['solicitado_por']}|{g.usuario}|{ahora}|{sol['motivo'] or ''}")
+        firma = firmar_mensaje(priv_pem, mensaje)
+        # Verifica que la firma sea válida antes de guardar
+        if not verificar_firma(pub_pem, mensaje, firma):
+            db.rollback()
+            return jsonify(error='Error al generar firma digital'), 500
+        # Escala a solicitudes_eliminacion para admin
+        _exec(db,
+            'INSERT INTO solicitudes_eliminacion'
+            ' (migrante_id, solicitado_por, motivo, solicitante_op, firma_coord, coord_pubkey, mensaje_firmado)'
+            ' VALUES (%s,%s,%s,%s,%s,%s,%s)',
+            (sol['migrante_id'], g.usuario, sol['motivo'],
+             sol['solicitado_por'], firma, pub_pem, mensaje)
+        )
+        db.commit()
+        log_evento('arco_cancel_coord_firmada', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Cancelación firmada y escalada al admin: {sol["migrante_nombre"]} · Folio: {sol["folio"]}')
+    else:
+        db.commit()
+        log_evento('arco_cancel_coord_rechazada', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Cancelación rechazada por coord: {sol["migrante_nombre"]}')
+
+    return jsonify(ok=True, accion=nuevo_estado)
+
+
+# Admin: verificar firma EC de una solicitud de eliminación
+@app.route('/api/arco/verificar_firma/<int:sol_id>')
+@verificar_certificado
+def arco_verificar_firma(sol_id):
+    if g.rol != 'admin':
+        abort(403)
+    db = obtener_db()
+    sol = _exec(db,
+        'SELECT firma_coord, coord_pubkey, mensaje_firmado, solicitado_por, solicitante_op'
+        ' FROM solicitudes_eliminacion WHERE id=%s', (sol_id,)
+    ).fetchone()
+    if not sol:
+        return jsonify(error='Solicitud no encontrada'), 404
+    if not sol['firma_coord']:
+        return jsonify(firmada=False, mensaje='Esta solicitud no tiene firma digital')
+    valida = verificar_firma(sol['coord_pubkey'], sol['mensaje_firmado'], sol['firma_coord'])
+    return jsonify(
+        firmada=True,
+        valida=valida,
+        coord=sol['solicitado_por'],
+        solicitante_op=sol['solicitante_op'],
+        mensaje=sol['mensaje_firmado'],
+        pubkey=sol['coord_pubkey'],
+    )
+
+
+# Coordinador: cancelación directa propia (sin escalado de op) — mantiene flujo existente
 @app.route('/api/arco/cancelacion/<int:mid>', methods=['POST'])
 @verificar_certificado
 def arco_cancelacion(mid):
-    if g.rol not in ('op', 'coord'):
+    if g.rol != 'coord':
         abort(403)
     db = obtener_db()
     mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
@@ -1803,14 +2165,20 @@ def arco_cancelacion(mid):
     if pendiente:
         return jsonify(error='Ya existe una solicitud de cancelación pendiente'), 400
     motivo = request.form.get('motivo', '').strip() or None
+    priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
+    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    mensaje = (f"CANCELACION|{mid}|{mig['folio']}"
+               f"||{g.usuario}|{ahora}|{motivo or ''}")
+    firma = firmar_mensaje(priv_pem, mensaje)
     _exec(db,
-        'INSERT INTO solicitudes_eliminacion (migrante_id, solicitado_por, motivo)'
-        ' VALUES (%s,%s,%s)',
-        (mid, g.usuario, motivo)
+        'INSERT INTO solicitudes_eliminacion'
+        ' (migrante_id, solicitado_por, motivo, firma_coord, coord_pubkey, mensaje_firmado)'
+        ' VALUES (%s,%s,%s,%s,%s,%s)',
+        (mid, g.usuario, motivo, firma, pub_pem, mensaje)
     )
     db.commit()
-    log_evento('migrante_solicitud_eliminacion', usuario=g.usuario, rol=g.rol,
-               detalle=f'Cancelación ARCO: {mig["nombre"]} · Folio: {mig["folio"]} · Motivo: {motivo or "sin motivo"}')
+    log_evento('arco_cancel_coord_firmada', usuario=g.usuario, rol=g.rol,
+               detalle=f'Cancelación directa firmada: {mig["nombre"]} · Folio: {mig["folio"]}')
     return jsonify(ok=True)
 
 

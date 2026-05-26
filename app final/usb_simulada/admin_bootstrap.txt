@@ -1,0 +1,14 @@
+Email:         admin@casamonarca.org
+Password:      admin123
+Serial cert:   33E611F0D22495398515AD4F1830F12E2D2E50F6
+Password .p12: VvmbEDyoCdy3
+
+Pasos:
+  1. Importar admin_bootstrap.p12 en Chrome/Firefox
+     (Configuracion > Privacidad > Gestionar certificados > Importar)
+  2. Usar la password del .p12 que aparece arriba.
+  3. Importar ca/ca_cert.pem como CA de confianza.
+  4. Abrir https://localhost:5001 y seleccionar el cert cuando Chrome pregunte.
+  5. Login con:
+     Email:    admin@casamonarca.org
+     Password: admin123

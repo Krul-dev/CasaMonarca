@@ -454,6 +454,13 @@ textarea.form-control { resize: vertical; min-height: 72px; }
             <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
           </div>
         </div>
+        <div class="card">
+          <p class="card-titulo">Solicitudes de cancelación pendientes</p>
+          <p class="card-subtitulo">Enviadas por operativos — al aprobar se firma con tu clave EC y se escala al administrador</p>
+          <div id="arco-cancelaciones-lista">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+          </div>
+        </div>
         {% endif %}
 
         {% if rol == 'op' %}
@@ -461,6 +468,13 @@ textarea.form-control { resize: vertical; min-height: 72px; }
           <p class="card-titulo">Mis solicitudes de rectificación</p>
           <p class="card-subtitulo">Estado de las solicitudes enviadas al coordinador</p>
           <div id="arco-mis-solicitudes">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+          </div>
+        </div>
+        <div class="card">
+          <p class="card-titulo">Mis solicitudes de cancelación</p>
+          <p class="card-subtitulo">Estado de las solicitudes de eliminación enviadas al coordinador</p>
+          <div id="arco-mis-cancelaciones">
             <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
           </div>
         </div>
@@ -646,8 +660,8 @@ textarea.form-control { resize: vertical; min-height: 72px; }
     </div>
     <div class="modal-body">
       <div class="alerta error" id="alerta-rect"></div>
-      <p style="font-size:12px;color:var(--gris-medio);margin-bottom:16px;padding:10px 14px;background:var(--azul-bg);border-radius:var(--radio-md);border:1px solid var(--azul-borde);color:var(--azul-texto);">
-        Modifica únicamente los campos que requieren corrección. Solo los campos cambiados se enviarán al coordinador para su aprobación.
+      <p style="font-size:12px;margin-bottom:16px;padding:10px 14px;background:var(--azul-bg);border-radius:var(--radio-md);border:1px solid var(--azul-borde);color:var(--azul-texto);" id="rect-info-rol">
+        Modifica únicamente los campos que requieren corrección.
       </p>
       <div class="form-grid">
         <span class="form-section">Nombre</span>
@@ -731,9 +745,9 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 
         <div class="form-acciones full">
           <button class="btn btn-ghost" onclick="cerrarArcoRect()">Cancelar</button>
-          <button class="btn btn-primary" onclick="enviarRect()">
+          <button class="btn btn-primary" id="btn-enviar-rect" onclick="enviarRect()">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2L7 9M14 2l-4 12-3-5-5-3 12-4z"/></svg>
-            Enviar al coordinador
+            <span id="btn-enviar-rect-label">Enviar al coordinador</span>
           </button>
         </div>
       </div>
@@ -749,9 +763,9 @@ textarea.form-control { resize: vertical; min-height: 72px; }
       <button class="modal-cerrar" onclick="cerrarArcoCancel()">✕</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--gris-oscuro);margin-bottom:16px;">
+      <p style="font-size:13px;color:var(--gris-oscuro);margin-bottom:16px;" id="cancel-descripcion">
         Solicitas la eliminación del registro de <strong id="cancel-nombre"></strong>.
-        La solicitud se enviará al <strong>administrador</strong> para su aprobación.
+        La solicitud se enviará al coordinador para su validación.
       </p>
       <div class="alerta error" id="alerta-cancel"></div>
       <div class="form-group">
@@ -760,11 +774,35 @@ textarea.form-control { resize: vertical; min-height: 72px; }
       </div>
       <div class="form-acciones" style="margin-top:16px;">
         <button class="btn btn-ghost" onclick="cerrarArcoCancel()">Cancelar</button>
-        <button class="btn btn-danger" onclick="enviarCancel()">Enviar al administrador</button>
+        <button class="btn btn-danger" id="btn-enviar-cancel" onclick="enviarCancel()">Enviar al coordinador</button>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Resolver cancelación de operativo (solo coord) -->
+{% if rol == 'coord' %}
+<div class="overlay" id="overlay-arco-resolver-cancel">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Revisar solicitud de cancelación</span>
+      <button class="modal-cerrar" onclick="cerrarResolverCancel()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="resolver-cancel-info"></div>
+      <div class="alerta error" id="alerta-resolver-cancel"></div>
+      <div class="form-acciones" style="margin-top:16px;">
+        <button class="btn btn-ghost" onclick="cerrarResolverCancel()">Cancelar</button>
+        <button class="btn btn-danger" onclick="resolverCancelacion('rechazar')">Rechazar</button>
+        <button class="btn btn-primary" onclick="resolverCancelacion('aprobar')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 7l4 4 6-6"/></svg>
+          Aprobar y escalar al admin
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Resolver rectificación (solo coord) -->
 {% if rol == 'coord' %}
@@ -1033,8 +1071,21 @@ let arcoOriginal  = {};
 let resolverSolId = null;
 
 function cargarArco() {
-  if (ROL === 'coord') cargarSolicitudesRect();
-  if (ROL === 'op')    cargarMisSolicitudes();
+  // Ajustar textos según rol
+  if (ROL === 'coord') {
+    document.getElementById('rect-info-rol').textContent =
+      'Modifica únicamente los campos que requieren corrección. Como coordinador, los cambios se aplicarán de inmediato.';
+    document.getElementById('btn-enviar-rect-label').textContent = 'Aplicar cambios';
+    document.getElementById('btn-enviar-cancel').textContent = 'Enviar al administrador';
+    document.getElementById('cancel-descripcion').innerHTML =
+      'Solicitas la eliminación del registro de <strong id="cancel-nombre"></strong>. La solicitud se firmará con tu clave EC y se enviará al <strong>administrador</strong>.';
+    cargarSolicitudesRect();
+    cargarSolicitudesCancel();
+  }
+  if (ROL === 'op') {
+    cargarMisSolicitudes();
+    cargarMisSolicitudesCancel();
+  }
 }
 
 async function buscarArco(q) {
@@ -1202,15 +1253,21 @@ async function enviarRect() {
     const data = await res.json();
     if (!res.ok || data.error) { alerta.textContent = data.error || 'Error'; alerta.style.display = 'block'; return; }
     cerrarArcoRect();
-    alert('Solicitud enviada al coordinador para aprobación.');
-    if (ROL === 'op') cargarMisSolicitudes();
+    if (data.aplicado) {
+      alert('Cambios aplicados correctamente al registro.');
+    } else {
+      alert('Solicitud enviada al coordinador para aprobación.');
+      cargarMisSolicitudes();
+    }
   } catch(e) { alerta.textContent = 'Error de conexión'; alerta.style.display = 'block'; }
 }
 
 // ── CANCELACIÓN ──
 function abrirArcoCancel(id, nombre) {
   arcoMigrante = { id, nombre };
-  document.getElementById('cancel-nombre').textContent = nombre;
+  // Actualizar el nombre dentro del párrafo (puede haber sido reemplazado por innerHTML)
+  const nomEl = document.getElementById('cancel-nombre');
+  if (nomEl) nomEl.textContent = nombre;
   document.getElementById('cancel-motivo').value = '';
   document.getElementById('alerta-cancel').style.display = 'none';
   document.getElementById('overlay-arco-cancel').classList.add('abierto');
@@ -1227,12 +1284,21 @@ async function enviarCancel() {
   alerta.style.display = 'none';
   const fd = new FormData();
   fd.append('motivo', motivo);
+  // Op → coordinator; Coord → admin (firmado con EC)
+  const url = ROL === 'op'
+    ? '/api/arco/cancelacion_op/' + arcoMigrante.id
+    : '/api/arco/cancelacion/'    + arcoMigrante.id;
   try {
-    const res  = await fetch('/api/arco/cancelacion/' + arcoMigrante.id, { method: 'POST', body: fd });
+    const res  = await fetch(url, { method: 'POST', body: fd });
     const data = await res.json();
     if (!res.ok || data.error) { alerta.textContent = data.error || 'Error'; alerta.style.display = 'block'; return; }
     cerrarArcoCancel();
-    alert('Solicitud de cancelación enviada al administrador.');
+    if (ROL === 'op') {
+      alert('Solicitud de cancelación enviada al coordinador para validación.');
+      cargarMisSolicitudesCancel();
+    } else {
+      alert('Solicitud de cancelación firmada y enviada al administrador.');
+    }
   } catch(e) { alerta.textContent = 'Error de conexión'; alerta.style.display = 'block'; }
 }
 
@@ -1356,8 +1422,110 @@ async function cargarMisSolicitudes() {
   }
 }
 
+// ── COORDINADOR: solicitudes de cancelación de operativos ──
+let resolverCancelId = null;
+
+async function cargarSolicitudesCancel() {
+  const cont = document.getElementById('arco-cancelaciones-lista');
+  if (!cont) return;
+  try {
+    const res  = await fetch('/api/arco/solicitudes_cancelacion_op');
+    const data = await res.json();
+    if (!data.length) {
+      cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">No hay solicitudes de cancelación pendientes</p>';
+      return;
+    }
+    cont.innerHTML = `<div class="tabla-wrap"><table class="tabla">
+      <thead><tr><th>Folio</th><th>Nombre</th><th>Solicitado por</th><th>Motivo</th><th>Fecha</th><th></th></tr></thead>
+      <tbody>${data.map(s => `<tr>
+        <td style="font-family:var(--mono);font-size:11px;">${s.folio}</td>
+        <td class="nombre-celda">${s.migrante_nombre}</td>
+        <td style="font-size:12px;">${s.solicitado_por}</td>
+        <td style="font-size:12px;">${s.motivo || '—'}</td>
+        <td style="font-size:12px;">${(s.fecha_solicitud||'').slice(0,10)}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-ghost btn-sm" style="color:var(--rojo-texto);border-color:var(--rojo-borde);"
+            onclick="abrirResolverCancel(${s.id},'${s.migrante_nombre.replace(/'/g,"\\'")}','${s.folio}','${(s.motivo||'').replace(/'/g,"\\'")}','${s.solicitado_por}')">Revisar</button>
+        </td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error al cargar</p>';
+  }
+}
+
+function abrirResolverCancel(sid, nombre, folio, motivo, solicitadoPor) {
+  resolverCancelId = sid;
+  document.getElementById('resolver-cancel-info').innerHTML = `
+    <p style="font-size:13px;margin-bottom:12px;">
+      <strong>${nombre}</strong> · Folio: ${folio}<br>
+      <span style="color:var(--gris-medio);font-size:12px;">Solicitado por <strong>${solicitadoPor}</strong></span>
+    </p>
+    <p style="font-size:13px;padding:10px 14px;background:var(--gris-fondo);border-radius:var(--radio-md);margin-bottom:12px;">
+      <strong>Motivo:</strong> ${motivo || 'Sin motivo'}
+    </p>
+    <p style="font-size:12px;color:var(--amarillo-texto);padding:8px 12px;background:var(--amarillo-bg);border-radius:var(--radio-md);">
+      Al aprobar, la solicitud se firmará con tu clave EC y se escalará al administrador para la eliminación definitiva.
+    </p>`;
+  document.getElementById('alerta-resolver-cancel').style.display = 'none';
+  document.getElementById('overlay-arco-resolver-cancel').classList.add('abierto');
+}
+
+function cerrarResolverCancel() {
+  document.getElementById('overlay-arco-resolver-cancel').classList.remove('abierto');
+  resolverCancelId = null;
+}
+
+async function resolverCancelacion(accion) {
+  const alerta = document.getElementById('alerta-resolver-cancel');
+  alerta.style.display = 'none';
+  const fd = new FormData();
+  fd.append('accion', accion);
+  try {
+    const res  = await fetch('/api/arco/solicitudes_cancelacion_op/' + resolverCancelId + '/resolver', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) { alerta.textContent = data.error || 'Error'; alerta.style.display = 'block'; return; }
+    cerrarResolverCancel();
+    cargarSolicitudesCancel();
+    alert(accion === 'aprobar'
+      ? 'Solicitud firmada y escalada al administrador correctamente.'
+      : 'Solicitud rechazada.');
+  } catch(e) { alerta.textContent = 'Error de conexión'; alerta.style.display = 'block'; }
+}
+
+// ── OPERATIVO: mis solicitudes de cancelación ──
+async function cargarMisSolicitudesCancel() {
+  const cont = document.getElementById('arco-mis-cancelaciones');
+  if (!cont) return;
+  try {
+    const res  = await fetch('/api/arco/mis_solicitudes_cancelacion');
+    const data = await res.json();
+    if (!data.length) {
+      cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">No has enviado solicitudes de cancelación</p>';
+      return;
+    }
+    cont.innerHTML = `<div class="tabla-wrap"><table class="tabla">
+      <thead><tr><th>Folio</th><th>Nombre</th><th>Estado</th><th>Fecha</th></tr></thead>
+      <tbody>${data.map(s => {
+        const badge = s.estado === 'pendiente'
+          ? '<span class="badge badge-pendiente">Pendiente</span>'
+          : s.estado === 'aprobada'
+          ? '<span class="badge badge-aprobada">Escalada al admin</span>'
+          : '<span class="badge badge-rechazada">Rechazada</span>';
+        return `<tr>
+          <td style="font-family:var(--mono);font-size:11px;">${s.folio}</td>
+          <td class="nombre-celda">${s.migrante_nombre}</td>
+          <td>${badge}</td>
+          <td style="font-size:12px;">${(s.fecha_solicitud||'').slice(0,10)}</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error al cargar</p>';
+  }
+}
+
 // Cerrar overlays ARCO al hacer click fuera
-['overlay-arco-acceso','overlay-arco-rect','overlay-arco-cancel','overlay-arco-resolver'].forEach(id => {
+['overlay-arco-acceso','overlay-arco-rect','overlay-arco-cancel','overlay-arco-resolver',
+ 'overlay-arco-resolver-cancel'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('abierto'); });
 });
