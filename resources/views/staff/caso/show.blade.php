@@ -146,7 +146,22 @@
                 @if($expediente->documentos->isNotEmpty())
                 <div class="divide-y divide-gray-100">
                     @foreach($expediente->documentos as $doc)
-                    <div class="px-5 py-3" x-data="{ openEditar: false, openEliminar: false }">
+                    @php $yoFirmé = $tieneCertActivo && $doc->firmas->contains('firmado_por', auth()->id()); @endphp
+                    <div class="px-5 py-3" x-data="{ openEditar: false, openEliminar: false, openFirmar: false }">
+
+                        {{-- Per-document firma feedback --}}
+                        @if(session('firma_ok_' . $doc->id))
+                        <div class="flex items-center gap-2 mb-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            {{ session('firma_ok_' . $doc->id) }}
+                        </div>
+                        @endif
+                        @if(session('firma_error_' . $doc->id))
+                        <div class="flex items-center gap-2 mb-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+                            {{ session('firma_error_' . $doc->id) }}
+                        </div>
+                        @endif
+
                         <div class="flex items-center gap-3">
                             <div class="w-7 h-7 rounded bg-indigo-50 flex items-center justify-center shrink-0">
                                 <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,18 +173,40 @@
                                 <p class="text-xs text-gray-400">
                                     {{ strtoupper($doc->tipo) }} · {{ $doc->autor?->name ?? '—' }} · {{ $doc->created_at->format('d/m/Y') }}
                                 </p>
+                                {{-- Firma badges --}}
+                                @if($doc->firmas->isNotEmpty())
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    @foreach($doc->firmas as $firma)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-full font-medium"
+                                          title="Firmado {{ $firma->firmado_at->format('d/m/Y H:i') }}">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                        {{ $firma->firmante?->name ?? 'Firmante eliminado' }}
+                                        <span class="text-emerald-400">· {{ $firma->firmado_at->format('d/m/Y') }}</span>
+                                    </span>
+                                    @endforeach
+                                </div>
+                                @endif
                             </div>
                             {{-- Coordinator-only actions --}}
                             @if($esCoordinador && $expediente->status !== 'terminado')
                             <div class="flex gap-1 shrink-0">
-                                <button @click="openEditar = !openEditar; openEliminar = false"
+                                @if($tieneCertActivo && !$yoFirmé)
+                                <button @click="openFirmar = !openFirmar; openEditar = false; openEliminar = false"
+                                        title="Firmar digitalmente"
+                                        class="p-1.5 text-gray-400 hover:text-emerald-600 transition rounded-lg hover:bg-emerald-50">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                    </svg>
+                                </button>
+                                @endif
+                                <button @click="openEditar = !openEditar; openEliminar = false; openFirmar = false"
                                         title="Editar (requiere llave PEM)"
                                         class="p-1.5 text-gray-400 hover:text-indigo-600 transition rounded-lg hover:bg-indigo-50">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                     </svg>
                                 </button>
-                                <button @click="openEliminar = !openEliminar; openEditar = false"
+                                <button @click="openEliminar = !openEliminar; openEditar = false; openFirmar = false"
                                         title="Eliminar (requiere llave PEM)"
                                         class="p-1.5 text-gray-400 hover:text-red-600 transition rounded-lg hover:bg-red-50">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -232,6 +269,44 @@
                                 </div>
                             </form>
                         </div>
+                        {{-- Firma digital panel --}}
+                        @if($tieneCertActivo && !$yoFirmé)
+                        <div x-show="openFirmar" style="display:none" class="mt-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                            <p class="text-xs font-semibold text-emerald-700 mb-1 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                Firma digital · Arrastra tu llave .pem o selecciónala
+                            </p>
+                            <p class="text-xs text-emerald-600 mb-2">La llave privada nunca sale de tu navegador.</p>
+
+                            <div id="firmar-drop-{{ $doc->id }}"
+                                 class="border-2 border-dashed border-emerald-300 rounded-lg p-4 text-center"
+                                 ondragover="event.preventDefault(); this.style.borderColor='#059669'"
+                                 ondragleave="this.style.borderColor=''"
+                                 ondrop="event.preventDefault(); this.style.borderColor=''; firmarConPem({{ $doc->id }}, event.dataTransfer.files[0])">
+                                <p class="text-xs text-emerald-600">Arrastra el archivo .pem aquí</p>
+                                <p class="text-xs text-emerald-500 my-1">— o —</p>
+                                <label class="inline-block cursor-pointer px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-full transition">
+                                    Seleccionar archivo
+                                    <input type="file" accept=".pem" class="hidden"
+                                           onchange="firmarConPem({{ $doc->id }}, this.files[0]); this.value=''">
+                                </label>
+                            </div>
+
+                            <div id="firma-status-{{ $doc->id }}" class="text-xs mt-2 hidden"></div>
+
+                            <form id="firma-form-{{ $doc->id }}"
+                                  action="{{ route('firmar.store', $doc->id) }}"
+                                  method="POST" class="hidden">
+                                @csrf
+                                <input type="hidden" name="signature" id="firma-sig-{{ $doc->id }}">
+                            </form>
+
+                            <button type="button" @click="openFirmar = false" class="mt-2 text-xs text-emerald-600 hover:text-emerald-800">
+                                Cancelar
+                            </button>
+                        </div>
+                        @endif
+
                         @endif
                     </div>
                     @endforeach
@@ -266,4 +341,64 @@
         </div>
 
     </div>
+
+    <script>
+    async function firmarConPem(docId, file) {
+        if (!file) return;
+        const statusEl = document.getElementById('firma-status-' + docId);
+
+        function setStatus(msg, type) {
+            const colors = { error: 'text-red-600', ok: 'text-emerald-600', info: 'text-gray-500' };
+            statusEl.className = 'text-xs mt-2 ' + (colors[type] ?? colors.info);
+            statusEl.textContent = msg;
+            statusEl.classList.remove('hidden');
+        }
+
+        try {
+            setStatus('Leyendo llave…', 'info');
+            const pem = await file.text();
+            const pemBody = pem.replace(/-----[^-\r\n]+-----/g, '').replace(/\s+/g, '');
+            const derBuf = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0)).buffer;
+
+            let key;
+            try {
+                key = await crypto.subtle.importKey(
+                    'pkcs8', derBuf,
+                    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+                    false, ['sign']
+                );
+            } catch {
+                setStatus('No se pudo cargar la llave. Asegúrate de que sea la llave RSA privada (.pem) de tu certificado activo.', 'error');
+                return;
+            }
+
+            setStatus('Solicitando challenge…', 'info');
+            const resp = await fetch('{{ url("/firmar/challenge") }}/' + docId, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                setStatus(err.error ?? 'Error al solicitar el challenge. Recarga e intenta de nuevo.', 'error');
+                return;
+            }
+
+            const { payload } = await resp.json();
+
+            setStatus('Firmando…', 'info');
+            const sigBuf = await crypto.subtle.sign(
+                'RSASSA-PKCS1-v1_5', key,
+                new TextEncoder().encode(payload)
+            );
+            const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+
+            document.getElementById('firma-sig-' + docId).value = sigB64;
+            setStatus('Enviando firma…', 'info');
+            document.getElementById('firma-form-' + docId).submit();
+
+        } catch (e) {
+            setStatus('Error inesperado: ' + e.message, 'error');
+        }
+    }
+    </script>
 </x-app-layout>

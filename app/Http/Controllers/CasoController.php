@@ -253,15 +253,17 @@ class CasoController extends Controller
             'solicitudes.solicitante',
             'colaborador',
             'documentos.autor',
+            'documentos.firmas.firmante',
             'resueltoPor',
             'area',
         ]);
 
-        $user          = auth()->user();
-        $esCoordinador = $user->role_id <= 2;
-        $esMiCaso      = $expediente->colaborador_id === $user->id;
+        $user            = auth()->user();
+        $esCoordinador   = $user->role_id <= 2;
+        $esMiCaso        = $expediente->colaborador_id === $user->id;
+        $tieneCertActivo = $esCoordinador && $user->certificadoActivo !== null;
 
-        return view('staff.caso.show', compact('expediente', 'esCoordinador', 'esMiCaso'));
+        return view('staff.caso.show', compact('expediente', 'esCoordinador', 'esMiCaso', 'tieneCertActivo'));
     }
 
     // ─── Mis casos (vista de tareas del colaborador) ─────────────────────────

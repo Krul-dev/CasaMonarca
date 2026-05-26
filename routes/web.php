@@ -6,6 +6,7 @@ use App\Http\Controllers\CasoController;
 use App\Http\Controllers\CertificadoController;
 use App\Http\Controllers\DiagnosticoController;
 use App\Http\Controllers\DocumentoIdentidadController;
+use App\Http\Controllers\FirmaController;
 use App\Http\Controllers\MigranteSolicitudController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
@@ -88,6 +89,10 @@ Route::middleware(['auth', 'checkstatus'])->group(function () {
 
     // Diagnóstico del sistema (solo admin)
     Route::get('/admin/diagnostico', [DiagnosticoController::class, 'index'])->name('admin.diagnostico');
+
+    // Firma digital de documentos (coordinadores con certificado activo)
+    Route::get('/firmar/challenge/{documento}',  [FirmaController::class, 'challenge'])->name('firmar.challenge');
+    Route::post('/firmar/{documento}',           [FirmaController::class, 'store'])->name('firmar.store');
 
     // Log de acciones sobre documentos (solo admin)
     Route::get('/admin/log-documentos', function () {

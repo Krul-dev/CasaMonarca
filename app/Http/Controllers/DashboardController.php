@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActividadLog;
 use App\Models\Area;
 use App\Models\AreaSolicitud;
 use App\Models\Certificado;
@@ -36,17 +37,33 @@ class DashboardController extends Controller
 
     private function dashboardAdmin($user)
     {
-        $totalActivos    = User::where('status', 'alta')->whereIn('role_id', [2, 3, 4])->count();
-        $totalPendientes = User::where('status', 'pendiente')->count();
-        $totalCerrados   = Expediente::where('status', 'terminado')->count();
-        $totalCerts      = Certificado::where('status', 'activo')->count();
+        // Core counts
+        $totalActivos     = User::where('status', 'alta')->whereIn('role_id', [2, 3, 4])->count();
+        $totalPendientes  = User::where('status', 'pendiente')->count();
+        $totalMigrantes   = User::where('role_id', 5)->where('status', 'alta')->count();
+        $expedientesActivos = Expediente::whereIn('status', ['sin_asignar', 'en_proceso'])->count();
+        $totalCerts       = Certificado::where('status', 'activo')->count();
+
+        // Users waiting for approval (show list, not just count)
+        $usuariosPendientes = User::where('status', 'pendiente')
+            ->with('role')
+            ->latest()
+            ->take(10)
+            ->get();
+
+        // Recent activity (last 15 entries)
+        $actividadReciente = \App\Models\ActividadLog::latest()
+            ->take(15)
+            ->get();
 
         $areas = Area::withCount([
             'users as colaboradores_activos' => fn($q) => $q->where('status', 'alta'),
         ])->get();
 
         return view('admin.dashboard', compact(
-            'totalActivos', 'totalPendientes', 'totalCerrados', 'totalCerts', 'areas'
+            'totalActivos', 'totalPendientes', 'totalMigrantes',
+            'expedientesActivos', 'totalCerts',
+            'usuariosPendientes', 'actividadReciente', 'areas'
         ));
     }
 
