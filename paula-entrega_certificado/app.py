@@ -4,10 +4,7 @@ import base64
 import re
 import secrets
 import string
-<<<<<<< Updated upstream
-=======
 import base64
->>>>>>> Stashed changes
 from functools import wraps
 from datetime import datetime, timedelta
 
