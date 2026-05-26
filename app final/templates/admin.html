@@ -895,6 +895,12 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M4 6h8M4 9h8M4 12h5"/></svg>
         Auditoría
       </button>
+
+      <span class="nav-label">Privacidad</span>
+      <button class="nav-item" id="admin-nav-arco" onclick="irA('arco')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L3 4v4c0 3 2.5 5.5 5 6 2.5-.5 5-3 5-6V4L8 2z"/></svg>
+        Derechos ARCO
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -1333,10 +1339,10 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
                 <tr>
                   <th>Folio</th>
                   <th>Nombre</th>
-                  <th>Nacionalidad</th>
-                  <th>Estado migratorio</th>
-                  <th>Fecha ingreso</th>
-                  <th>Documento</th>
+                  <th>País de origen</th>
+                  <th>Grupo de población</th>
+                  <th>Fecha de atención</th>
+                  <th>Género</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -1346,6 +1352,43 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
             </table>
           </div>
         </div>
+      </div>
+
+      <!-- ── VISTA: DERECHOS ARCO ─────────── -->
+      <div class="vista" id="vista-arco">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <h1>Derechos ARCO</h1>
+            <p>Acceso, Rectificación, Cancelación y Oposición de datos personales</p>
+          </div>
+        </div>
+
+        <!-- ACCESO: búsqueda y visualización -->
+        <div class="card" style="margin-bottom:20px;">
+          <h2 style="font-size:14px;font-weight:600;margin-bottom:12px;">Acceso — Consultar expediente</h2>
+          <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <input type="text" id="admin-arco-buscar" placeholder="Buscar por nombre o folio…"
+              oninput="buscarArcoAdmin()" style="flex:1;padding:8px 12px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);outline:none;">
+          </div>
+          <div id="admin-arco-resultados" style="display:none;">
+            <table class="tabla">
+              <thead><tr><th>Folio</th><th>Nombre</th><th>País</th><th>Acción</th></tr></thead>
+              <tbody id="admin-arco-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- RECTIFICACIÓN: solicitudes pendientes -->
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h2 style="font-size:14px;font-weight:600;margin:0;">Rectificación — Solicitudes pendientes</h2>
+            <button class="btn btn-ghost" style="font-size:12px;" onclick="cargarSolicitudesRectAdmin()">Actualizar</button>
+          </div>
+          <div id="admin-arco-rect-lista">
+            <div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Cargando solicitudes…</div>
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -1363,74 +1406,80 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
       <div class="mig-alerta" id="admin-mig-alerta"></div>
       <div class="mig-form-grid">
         <input type="hidden" id="admin-mig-id">
+        <span class="mig-form-section">Atención</span>
+        <div class="mig-form-group">
+          <label class="mig-form-label req">Fecha de atención</label>
+          <input class="mig-form-control" id="admin-mig-fatencion" type="date">
+        </div>
+        <div class="mig-form-group">
+          <label class="mig-form-label">Teléfono de contacto</label>
+          <input class="mig-form-control" id="admin-mig-telefono" type="tel" placeholder="Ej. +504 9876 5432">
+        </div>
         <span class="mig-form-section">Datos personales</span>
+        <div class="mig-form-group">
+          <label class="mig-form-label req">Nombre de pila</label>
+          <input class="mig-form-control" id="admin-mig-nombre-pila" type="text" placeholder="Ej. María">
+        </div>
+        <div class="mig-form-group">
+          <label class="mig-form-label req">Primer apellido</label>
+          <input class="mig-form-control" id="admin-mig-primer-apellido" type="text" placeholder="Ej. González">
+        </div>
+        <div class="mig-form-group">
+          <label class="mig-form-label">Segundo apellido <small style="font-weight:400;color:var(--gris-medio)">(opcional)</small></label>
+          <input class="mig-form-control" id="admin-mig-segundo-apellido" type="text" placeholder="Ej. Ruiz">
+        </div>
+        <div class="mig-form-group"><!-- spacer --></div>
         <div class="mig-form-group full">
-          <label class="mig-form-label req">Nombre completo</label>
-          <input class="mig-form-control" id="admin-mig-nombre" type="text" placeholder="Ej. María González Ruiz">
-        </div>
-        <div class="mig-form-group">
-          <label class="mig-form-label req">Fecha de nacimiento</label>
-          <input class="mig-form-control" id="admin-mig-fnac" type="date">
-        </div>
-        <div class="mig-form-group">
-          <label class="mig-form-label req">Nacionalidad</label>
-          <input class="mig-form-control" id="admin-mig-nac" type="text" placeholder="Ej. Hondureña">
+          <label class="mig-form-label req">Género</label>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-genero" value="Hombre"> Hombre</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-genero" value="Mujer"> Mujer</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-genero" value="No binario/a"> No binario/a</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-genero" value="Prefiero no especificar"> Prefiero no especificar</label>
+          </div>
         </div>
         <div class="mig-form-group">
           <label class="mig-form-label req">País de origen</label>
-          <input class="mig-form-control" id="admin-mig-pais" type="text" placeholder="Ej. Honduras">
-        </div>
-        <div class="mig-form-group"><!-- spacer --></div>
-        <span class="mig-form-section">Documento</span>
-        <div class="mig-form-group">
-          <label class="mig-form-label req">Tipo de documento</label>
-          <select class="mig-form-control" id="admin-mig-tipo-doc">
+          <select class="mig-form-control" id="admin-mig-pais">
             <option value="">— Seleccionar —</option>
-            <option value="Pasaporte">Pasaporte</option>
-            <option value="Visa">Visa</option>
-            <option value="INE/Cédula">INE / Cédula</option>
-            <option value="Acta de nacimiento">Acta de nacimiento</option>
-            <option value="Sin documento">Sin documento</option>
-            <option value="Otro">Otro</option>
+            <option>Honduras</option><option>El Salvador</option><option>Guatemala</option>
+            <option>Nicaragua</option><option>Cuba</option><option>Venezuela</option>
+            <option>Haití</option><option>Colombia</option><option>Ecuador</option>
+            <option>Perú</option><option>Bolivia</option><option>Brasil</option>
+            <option>México</option><option>Otro</option>
           </select>
         </div>
         <div class="mig-form-group">
-          <label class="mig-form-label req">Número de documento</label>
-          <input class="mig-form-control" id="admin-mig-num-doc" type="text" placeholder="Ej. A12345678">
+          <label class="mig-form-label">Departamento / Estado</label>
+          <input class="mig-form-control" id="admin-mig-depto" type="text" placeholder="Ej. Cortés">
         </div>
-        <span class="mig-form-section">Situación migratoria</span>
         <div class="mig-form-group">
-          <label class="mig-form-label req">Estado migratorio</label>
-          <select class="mig-form-control" id="admin-mig-estado-mig">
-            <option value="en_transito">En tránsito</option>
-            <option value="solicitante_asilo">Solicitante de asilo</option>
-            <option value="deportado">Deportado</option>
-            <option value="repatriado">Repatriado</option>
-            <option value="otro">Otro</option>
+          <label class="mig-form-label">Estado civil</label>
+          <select class="mig-form-control" id="admin-mig-estado-civil">
+            <option value="">— Seleccionar —</option>
+            <option>Soltero/a</option><option>Casado/a</option>
+            <option>Unión libre</option><option>Divorciado/a</option><option>Viudo/a</option>
           </select>
         </div>
         <div class="mig-form-group">
-          <label class="mig-form-label req">Fecha de ingreso al albergue</label>
-          <input class="mig-form-control" id="admin-mig-fingreso" type="date">
+          <label class="mig-form-label req">Fecha de nacimiento</label>
+          <input class="mig-form-control" id="admin-mig-fnac" type="date" oninput="calcularEdadAdmin()">
         </div>
         <div class="mig-form-group">
-          <label class="mig-form-label">Fecha de egreso</label>
-          <input class="mig-form-control" id="admin-mig-fegreso" type="date">
+          <label class="mig-form-label">Edad</label>
+          <input class="mig-form-control" id="admin-mig-edad" type="number" min="0" max="120" readonly placeholder="Auto">
         </div>
-        <div class="mig-form-group"><!-- spacer --></div>
-        <span class="mig-form-section">Contacto</span>
-        <div class="mig-form-group">
-          <label class="mig-form-label req">Nombre del contacto</label>
-          <input class="mig-form-control" id="admin-mig-contacto" type="text" placeholder="Ej. Pedro González">
-        </div>
-        <div class="mig-form-group">
-          <label class="mig-form-label">Teléfono del contacto</label>
-          <input class="mig-form-control" id="admin-mig-tel" type="tel" placeholder="Ej. +52 81 1234 5678">
-        </div>
-        <span class="mig-form-section">Dependientes menores de edad <small style="font-weight:400;color:var(--gris-medio)">(opcional)</small></span>
-        <div class="mig-form-group full" id="admin-deps-container"></div>
         <div class="mig-form-group full">
-          <button type="button" class="btn btn-ghost" style="font-size:12px;" onclick="adminAgregarDep()">+ Agregar dependiente</button>
+          <label class="mig-form-label req">Grupo de población</label>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-grupo" value="Adulto (18-59 años)"> Adulto (18-59 años)</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-grupo" value="Adulto mayor (+60 años)"> Adulto mayor (+60 años)</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-grupo" value="Niña acompañada"> Niña acompañada</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-grupo" value="Niño acompañado"> Niño acompañado</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-grupo" value="Adolescente hombre acompañado"> Adolescente hombre acompañado</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-grupo" value="Adolescente mujer acompañada"> Adolescente mujer acompañada</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-grupo" value="NNA No acompañado"> NNA No acompañado</label>
+          </div>
         </div>
       </div>
       <div class="modal-mig-acciones">
@@ -1449,6 +1498,47 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
     <div class="modal-acciones">
       <button class="btn btn-ghost" onclick="adminCerrarElim()">Cancelar</button>
       <button class="btn btn-peligro" onclick="adminConfirmarElim()">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: ARCO ACCESO (ADMIN) ─── -->
+<div class="modal-overlay" id="admin-overlay-arco-acceso" style="display:none;align-items:center;justify-content:center;">
+  <div class="modal-mig" style="max-width:640px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-mig-header">
+      <span class="modal-mig-titulo">Acceso — Expediente de datos personales</span>
+      <button class="modal-mig-cerrar" onclick="document.getElementById('admin-overlay-arco-acceso').style.display='none'">✕</button>
+    </div>
+    <div class="modal-mig-body">
+      <div id="admin-arco-carta" style="padding:16px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;line-height:1.7;"></div>
+      <div class="modal-mig-acciones" style="margin-top:16px;">
+        <button class="btn btn-ghost" onclick="document.getElementById('admin-overlay-arco-acceso').style.display='none'">Cerrar</button>
+        <button class="btn btn-primario" onclick="imprimirAccesoAdmin()">Imprimir / Guardar PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: ARCO RESOLVER RECT (ADMIN) ─── -->
+<div class="modal-overlay" id="admin-overlay-arco-resolver" style="display:none;align-items:center;justify-content:center;">
+  <div class="modal-mig" style="max-width:560px;">
+    <div class="modal-mig-header">
+      <span class="modal-mig-titulo">Rectificación — Revisar solicitud</span>
+      <button class="modal-mig-cerrar" onclick="document.getElementById('admin-overlay-arco-resolver').style.display='none'">✕</button>
+    </div>
+    <div class="modal-mig-body">
+      <input type="hidden" id="admin-resolver-sid">
+      <div id="admin-resolver-cambios" style="margin-bottom:16px;font-size:13px;line-height:1.6;"></div>
+      <div class="mig-form-group full" id="admin-resolver-motivo-group" style="display:none;">
+        <label class="mig-form-label">Motivo de rechazo</label>
+        <textarea id="admin-resolver-motivo" rows="3" style="width:100%;padding:8px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);resize:vertical;"></textarea>
+      </div>
+      <div class="modal-mig-acciones">
+        <button class="btn btn-ghost" onclick="document.getElementById('admin-overlay-arco-resolver').style.display='none'">Cancelar</button>
+        <button class="btn btn-ghost" id="admin-resolver-btn-rechazar" style="color:var(--rojo-texto);border-color:var(--rojo-borde);" onclick="adminMostrarMotivo()">Rechazar</button>
+        <button class="btn btn-ghost" id="admin-resolver-btn-confirm-rechazo" style="display:none;color:var(--rojo-texto);border-color:var(--rojo-borde);" onclick="adminResolverRect('rechazar')">Confirmar rechazo</button>
+        <button class="btn btn-primario" id="admin-resolver-btn-aprobar" onclick="adminResolverRect('aprobar')">Aprobar cambios</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1494,6 +1584,7 @@ const topbarTitulos = {
   eliminados:['Migrantes eliminados', 'Admin'],
   usuarios:  ['Gestión de usuarios', 'Admin'],
   log:       ['Auditoría', 'Admin'],
+  arco:      ['Derechos ARCO', 'Admin'],
 };
 
 function irA(vista) {
@@ -1505,7 +1596,7 @@ function irA(vista) {
   document.getElementById('topbar-titulo').textContent = t[0];
   document.getElementById('topbar-badge').textContent = t[1];
 
-  const map = { inicio: 0, nuevo: 1, lista: 2, registros: 3, eliminados: 4, usuarios: 5, log: 6 };
+  const map = { inicio: 0, nuevo: 1, lista: 2, registros: 3, eliminados: 4, usuarios: 5, log: 6, arco: 7 };
   if (map[vista] !== undefined) {
     document.querySelectorAll('.nav-item')[map[vista]]?.classList.add('activo');
   }
@@ -1516,6 +1607,18 @@ function irA(vista) {
   if (vista === 'usuarios')   cargarUsuarios();
   if (vista === 'log')        cargarLog();
   if (vista === 'registros')  adminCargarMigrantes();
+  if (vista === 'arco')       cargarArcoAdmin();
+}
+
+function calcularEdadAdmin() {
+  const v = document.getElementById('admin-mig-fnac')?.value;
+  const el = document.getElementById('admin-mig-edad');
+  if (!el) return;
+  if (!v) { el.value = ''; return; }
+  const hoy = new Date(), nac = new Date(v);
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  if (hoy.getMonth() < nac.getMonth() || (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate())) edad--;
+  el.value = edad >= 0 ? edad : '';
 }
 
 function seleccionarGenero(btn, valor) {
@@ -2019,36 +2122,6 @@ init();
 // ── REGISTROS DE MIGRANTES (ADMIN) ────────────────────────────
 let adminMigEditId = null;
 let adminElimId = null;
-let adminDependientes = [];
-
-function adminRenderDeps() {
-  const c = document.getElementById('admin-deps-container');
-  if (!adminDependientes.length) { c.innerHTML = ''; return; }
-  c.innerHTML = adminDependientes.map((d, i) => `
-    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;">
-      <div>
-        <label class="mig-form-label">Nombre del menor</label>
-        <input class="mig-form-control" placeholder="Nombre completo" value="${d.nombre}"
-          oninput="adminDependientes[${i}].nombre=this.value">
-      </div>
-      <div>
-        <label class="mig-form-label">Documento (opcional)</label>
-        <input class="mig-form-control" placeholder="Núm. documento" value="${d.num_documento || ''}"
-          oninput="adminDependientes[${i}].num_documento=this.value">
-      </div>
-      <button type="button" class="btn btn-ghost" style="padding:8px 10px;font-size:13px;" onclick="adminEliminarDep(${i})">✕</button>
-    </div>`).join('');
-}
-
-function adminAgregarDep() {
-  adminDependientes.push({ nombre: '', num_documento: '' });
-  adminRenderDeps();
-}
-
-function adminEliminarDep(i) {
-  adminDependientes.splice(i, 1);
-  adminRenderDeps();
-}
 
 function migEstadoHtml(estado) {
   const labels = { en_transito: 'En tránsito', solicitante_asilo: 'Sol. asilo', deportado: 'Deportado', repatriado: 'Repatriado', otro: 'Otro' };
@@ -2068,10 +2141,10 @@ function _renderFilaMig(m) {
     <tr>
       <td style="font-family:var(--mono);font-size:11px;color:var(--gris-medio)">${m.folio}</td>
       <td class="nombre-celda">${m.nombre}</td>
-      <td>${m.nacionalidad || '—'}</td>
-      <td>${migEstadoHtml(m.estado_migratorio)}</td>
-      <td style="font-size:12px;">${m.fecha_ingreso || '—'}</td>
-      <td style="font-size:12px;">${m.tipo_documento || '—'}${m.num_documento ? `<br><span style="font-family:var(--mono);font-size:11px;color:var(--gris-medio)">${m.num_documento}</span>` : ''}</td>
+      <td style="font-size:12px;">${m.pais_origen || '—'}</td>
+      <td style="font-size:12px;">${m.grupo_poblacion || '—'}</td>
+      <td style="font-size:12px;">${m.fecha_atencion || '—'}</td>
+      <td style="font-size:12px;">${m.genero || '—'}</td>
       <td>
         <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px;" onclick="adminAbrirMig(${JSON.stringify(m).replace(/"/g,'&quot;')})">Editar</button>
         <button class="btn btn-peligro" style="font-size:11px;padding:6px 12px;margin-left:6px;" onclick="adminAbrirElim(${m.id}, '${m.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
@@ -2134,22 +2207,23 @@ async function adminCargarMigrantes() {
 
 function adminAbrirMig(m) {
   adminMigEditId = m ? m.id : null;
-  adminDependientes = m?.dependientes ? JSON.parse(JSON.stringify(m.dependientes)) : [];
   document.getElementById('admin-modal-titulo').textContent = m ? 'Editar registro' : 'Nuevo registro';
   document.getElementById('admin-mig-alerta').style.display = 'none';
-  document.getElementById('admin-mig-id').value          = m ? m.id : '';
-  document.getElementById('admin-mig-nombre').value      = m?.nombre || '';
-  document.getElementById('admin-mig-fnac').value        = (m?.fecha_nacimiento || '').slice(0, 10);
-  document.getElementById('admin-mig-nac').value         = m?.nacionalidad || '';
-  document.getElementById('admin-mig-pais').value        = m?.pais_origen || '';
-  document.getElementById('admin-mig-tipo-doc').value    = m?.tipo_documento || '';
-  document.getElementById('admin-mig-num-doc').value     = m?.num_documento || '';
-  document.getElementById('admin-mig-estado-mig').value  = m?.estado_migratorio || 'en_transito';
-  document.getElementById('admin-mig-fingreso').value    = (m?.fecha_ingreso || '').slice(0, 10);
-  document.getElementById('admin-mig-fegreso').value     = (m?.fecha_egreso || '').slice(0, 10);
-  document.getElementById('admin-mig-contacto').value    = m?.contacto_emergencia || '';
-  document.getElementById('admin-mig-tel').value         = m?.telefono_emergencia || '';
-  adminRenderDeps();
+  document.getElementById('admin-mig-id').value = m ? m.id : '';
+
+  const partes = (m?.nombre || '').split(' ');
+  document.getElementById('admin-mig-nombre-pila').value      = partes[0] || '';
+  document.getElementById('admin-mig-primer-apellido').value  = partes[1] || '';
+  document.getElementById('admin-mig-segundo-apellido').value = partes.slice(2).join(' ') || '';
+  document.getElementById('admin-mig-fatencion').value        = (m?.fecha_atencion || '').slice(0, 10);
+  document.getElementById('admin-mig-telefono').value         = m?.telefono_contacto || '';
+  document.getElementById('admin-mig-pais').value             = m?.pais_origen || '';
+  document.getElementById('admin-mig-depto').value            = m?.departamento_estado || '';
+  document.getElementById('admin-mig-estado-civil').value     = m?.estado_civil || '';
+  document.getElementById('admin-mig-fnac').value             = (m?.fecha_nacimiento || '').slice(0, 10);
+  calcularEdadAdmin();
+  document.querySelectorAll('input[name="admin-mig-genero"]').forEach(r => { r.checked = r.value === (m?.genero || ''); });
+  document.querySelectorAll('input[name="admin-mig-grupo"]').forEach(r => { r.checked = r.value === (m?.grupo_poblacion || ''); });
   document.getElementById('modal-mig-form').classList.add('visible');
 }
 
@@ -2159,18 +2233,16 @@ function adminCerrarMig() {
 }
 
 async function adminGuardarMig() {
-  const alerta   = document.getElementById('admin-mig-alerta');
-  const nombre   = document.getElementById('admin-mig-nombre').value.trim();
-  const fnac     = document.getElementById('admin-mig-fnac').value;
-  const nac      = document.getElementById('admin-mig-nac').value.trim();
-  const pais     = document.getElementById('admin-mig-pais').value.trim();
-  const tipoDoc  = document.getElementById('admin-mig-tipo-doc').value;
-  const numDoc   = document.getElementById('admin-mig-num-doc').value.trim();
-  const estadoMig= document.getElementById('admin-mig-estado-mig').value;
-  const fingreso = document.getElementById('admin-mig-fingreso').value;
-  const contacto = document.getElementById('admin-mig-contacto').value.trim();
+  const alerta       = document.getElementById('admin-mig-alerta');
+  const nombrePila   = document.getElementById('admin-mig-nombre-pila').value.trim();
+  const primerAp     = document.getElementById('admin-mig-primer-apellido').value.trim();
+  const segundoAp    = document.getElementById('admin-mig-segundo-apellido').value.trim();
+  const fnac         = document.getElementById('admin-mig-fnac').value;
+  const pais         = document.getElementById('admin-mig-pais').value;
+  const genero       = document.querySelector('input[name="admin-mig-genero"]:checked')?.value || '';
+  const grupo        = document.querySelector('input[name="admin-mig-grupo"]:checked')?.value || '';
 
-  if (!nombre || !fnac || !nac || !pais || !tipoDoc || !numDoc || !estadoMig || !fingreso || !contacto) {
+  if (!nombrePila || !primerAp || !fnac || !pais || !genero || !grupo) {
     alerta.textContent = 'Completa todos los campos obligatorios (marcados con *).';
     alerta.style.display = 'block';
     return;
@@ -2178,30 +2250,35 @@ async function adminGuardarMig() {
   alerta.style.display = 'none';
 
   const fd = new FormData();
-  fd.append('nombre',              nombre);
-  fd.append('fecha_nacimiento',    fnac);
-  fd.append('nacionalidad',        nac);
+  fd.append('nombre_pila',         nombrePila);
+  fd.append('primer_apellido',     primerAp);
+  fd.append('segundo_apellido',    segundoAp);
+  fd.append('fecha_atencion',      document.getElementById('admin-mig-fatencion').value);
+  fd.append('telefono_contacto',   document.getElementById('admin-mig-telefono').value.trim());
+  fd.append('genero',              genero);
   fd.append('pais_origen',         pais);
-  fd.append('tipo_documento',      tipoDoc);
-  fd.append('num_documento',       numDoc);
-  fd.append('estado_migratorio',   estadoMig);
-  fd.append('fecha_ingreso',       fingreso);
-  fd.append('fecha_egreso',        document.getElementById('admin-mig-fegreso').value);
-  fd.append('contacto_emergencia', contacto);
-  fd.append('telefono_emergencia', document.getElementById('admin-mig-tel').value);
-  fd.append('dependientes_json',   JSON.stringify(adminDependientes));
+  fd.append('departamento_estado', document.getElementById('admin-mig-depto').value.trim());
+  fd.append('estado_civil',        document.getElementById('admin-mig-estado-civil').value);
+  fd.append('fecha_nacimiento',    fnac);
+  fd.append('grupo_poblacion',     grupo);
 
   const url    = adminMigEditId ? `/api/migrantes/${adminMigEditId}` : '/api/migrantes';
   const method = adminMigEditId ? 'PUT' : 'POST';
   try {
     const res  = await fetch(url, { method, body: fd });
-    const data = await res.json();
-    if (!res.ok || data.error) { alerta.textContent = data.error || 'Error al guardar.'; alerta.style.display = 'block'; return; }
+    let data = {};
+    try { data = await res.json(); } catch(_) {}
+    if (!res.ok || data.error) {
+      alerta.textContent = data.error || `Error del servidor (${res.status}). Revisa la consola del servidor.`;
+      alerta.style.display = 'block';
+      return;
+    }
     adminCerrarMig();
     adminCargarMigrantes();
     toast('Registro guardado correctamente');
   } catch(e) {
-    alerta.textContent = 'Error de conexión.'; alerta.style.display = 'block';
+    alerta.textContent = 'Sin conexión al servidor.';
+    alerta.style.display = 'block';
   }
 }
 
@@ -2258,6 +2335,164 @@ document.getElementById('modal-mig-form').addEventListener('click', function(e) 
 document.getElementById('modal-elim-mig').addEventListener('click', function(e) {
   if (e.target === this) adminCerrarElim();
 });
+
+// ── DERECHOS ARCO (ADMIN) ─────────────────────────────────────
+let adminArcoAccesoData = null;
+let adminResolverRechazando = false;
+
+async function buscarArcoAdmin() {
+  const q = document.getElementById('admin-arco-buscar').value.trim();
+  const cont = document.getElementById('admin-arco-resultados');
+  const tbody = document.getElementById('admin-arco-tbody');
+  if (q.length < 2) { cont.style.display = 'none'; return; }
+  try {
+    const res = await fetch(`/api/arco/buscar?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--gris-medio);">Sin resultados para "${q}"</td></tr>`;
+    } else {
+      tbody.innerHTML = data.map(m => `
+        <tr>
+          <td style="font-family:var(--mono);font-size:11px;">${m.folio}</td>
+          <td class="nombre-celda">${m.nombre}</td>
+          <td style="font-size:12px;">${m.pais_origen || '—'}</td>
+          <td><button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="verAccesoAdmin(${m.id})">Ver expediente</button></td>
+        </tr>`).join('');
+    }
+    cont.style.display = 'block';
+  } catch(e) {
+    toast('Error al buscar', true);
+  }
+}
+
+async function verAccesoAdmin(mid) {
+  try {
+    const res = await fetch(`/api/arco/acceso/${mid}`);
+    const m = await res.json();
+    if (!res.ok || m.error) { toast(m.error || 'Error al obtener datos', true); return; }
+    adminArcoAccesoData = m;
+    const hoy = new Date().toLocaleDateString('es-MX', { year:'numeric', month:'long', day:'numeric' });
+    document.getElementById('admin-arco-carta').innerHTML = `
+      <p style="text-align:right;font-size:11px;color:var(--gris-medio);">${hoy}</p>
+      <p><strong>Asunto:</strong> Respuesta a solicitud de Acceso — Derecho ARCO</p>
+      <p>Estimada/o <strong>${m.nombre || '—'}</strong>,</p>
+      <p>En respuesta a su solicitud de acceso a sus datos personales, le informamos que Casa Monarca A.B.P. tiene registrada la siguiente información:</p>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin:12px 0;">
+        <tr style="background:var(--gris-fondo);"><td style="padding:6px 8px;font-weight:600;width:40%;">Folio</td><td style="padding:6px 8px;">${m.folio || '—'}</td></tr>
+        <tr><td style="padding:6px 8px;font-weight:600;">Nombre completo</td><td style="padding:6px 8px;">${m.nombre || '—'}</td></tr>
+        <tr style="background:var(--gris-fondo);"><td style="padding:6px 8px;font-weight:600;">Fecha de atención</td><td style="padding:6px 8px;">${m.fecha_atencion || '—'}</td></tr>
+        <tr><td style="padding:6px 8px;font-weight:600;">País de origen</td><td style="padding:6px 8px;">${m.pais_origen || '—'}</td></tr>
+        <tr style="background:var(--gris-fondo);"><td style="padding:6px 8px;font-weight:600;">Departamento / Estado</td><td style="padding:6px 8px;">${m.departamento_estado || '—'}</td></tr>
+        <tr><td style="padding:6px 8px;font-weight:600;">Fecha de nacimiento</td><td style="padding:6px 8px;">${m.fecha_nacimiento || '—'}</td></tr>
+        <tr style="background:var(--gris-fondo);"><td style="padding:6px 8px;font-weight:600;">Género</td><td style="padding:6px 8px;">${m.genero || '—'}</td></tr>
+        <tr><td style="padding:6px 8px;font-weight:600;">Estado civil</td><td style="padding:6px 8px;">${m.estado_civil || '—'}</td></tr>
+        <tr style="background:var(--gris-fondo);"><td style="padding:6px 8px;font-weight:600;">Grupo de población</td><td style="padding:6px 8px;">${m.grupo_poblacion || '—'}</td></tr>
+        <tr><td style="padding:6px 8px;font-weight:600;">Teléfono de contacto</td><td style="padding:6px 8px;">${m.telefono_contacto || '—'}</td></tr>
+        <tr style="background:var(--gris-fondo);"><td style="padding:6px 8px;font-weight:600;">Registrado por</td><td style="padding:6px 8px;">${m.registrado_por || '—'}</td></tr>
+      </table>
+      <p style="font-size:11px;color:var(--gris-medio);">Los datos personales son tratados conforme a nuestra política de privacidad y la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).</p>
+    `;
+    document.getElementById('admin-overlay-arco-acceso').style.display = 'flex';
+  } catch(e) {
+    toast('Error de conexión', true);
+  }
+}
+
+function imprimirAccesoAdmin() {
+  if (!adminArcoAccesoData) return;
+  const contenido = document.getElementById('admin-arco-carta').innerHTML;
+  const win = window.open('', '_blank', 'width=700,height=800');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Acceso ARCO - ${adminArcoAccesoData.nombre}</title>
+  <style>body{font-family:Georgia,serif;font-size:13px;padding:40px;line-height:1.7;color:#111;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  td{padding:6px 8px;border:1px solid #ccc;}</style></head>
+  <body>${contenido}<script>window.print();<\/script></body></html>`);
+  win.document.close();
+}
+
+async function cargarSolicitudesRectAdmin() {
+  const cont = document.getElementById('admin-arco-rect-lista');
+  cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Cargando…</div>';
+  try {
+    const res = await fetch('/api/arco/solicitudes_rect');
+    const data = await res.json();
+    const pendientes = data.filter(s => s.estado === 'pendiente');
+    if (!pendientes.length) {
+      cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Sin solicitudes de rectificación pendientes</div>';
+      return;
+    }
+    cont.innerHTML = pendientes.map(s => {
+      let cambios = [];
+      try { cambios = Object.entries(JSON.parse(s.cambios_json || '{}')); } catch(_) {}
+      return `
+        <div style="border:1px solid var(--gris-linea);border-radius:var(--radio-md);padding:14px 16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:600;font-size:13px;">${s.migrante_nombre} <span style="font-size:11px;font-family:var(--mono);color:var(--gris-medio);">${s.migrante_folio || ''}</span></div>
+              <div style="font-size:11px;color:var(--gris-medio);margin-top:2px;">Solicitado por ${s.solicitado_por} · ${(s.fecha_solicitud||'').slice(0,10)}</div>
+              <div style="font-size:12px;margin-top:8px;">${cambios.map(([k,v])=>`<span style="background:var(--gris-fondo);border-radius:4px;padding:2px 6px;margin-right:4px;"><strong>${k}</strong>: "${v}"</span>`).join('')}</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px;" onclick="adminAbrirResolver(${s.id}, ${JSON.stringify(cambios).replace(/"/g,'&quot;')}, '${s.migrante_nombre.replace(/'/g,"\\'")}', '${s.migrante_folio||''}')">Revisar</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--rojo-texto);font-size:13px;">Error al cargar solicitudes</div>';
+  }
+}
+
+function adminAbrirResolver(sid, cambios, nombre, folio) {
+  document.getElementById('admin-resolver-sid').value = sid;
+  adminResolverRechazando = false;
+  document.getElementById('admin-resolver-motivo-group').style.display = 'none';
+  document.getElementById('admin-resolver-motivo').value = '';
+  document.getElementById('admin-resolver-btn-aprobar').style.display = '';
+  document.getElementById('admin-resolver-btn-rechazar').style.display = '';
+  document.getElementById('admin-resolver-btn-confirm-rechazo').style.display = 'none';
+
+  let html = `<div style="margin-bottom:10px;font-weight:600;">${nombre} <span style="font-size:11px;font-family:var(--mono);color:var(--gris-medio);">${folio}</span></div>`;
+  html += '<p style="font-size:12px;color:var(--gris-medio);margin-bottom:10px;">Cambios solicitados:</p>';
+  html += cambios.map(([k,v]) => `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--gris-fondo);border-radius:var(--radio-sm);margin-bottom:4px;font-size:12px;">
+    <strong style="min-width:140px;">${k}</strong><span style="color:var(--gris-medio);">→</span><span>${v}</span></div>`).join('');
+  document.getElementById('admin-resolver-cambios').innerHTML = html;
+  document.getElementById('admin-overlay-arco-resolver').style.display = 'flex';
+}
+
+function adminMostrarMotivo() {
+  adminResolverRechazando = true;
+  document.getElementById('admin-resolver-motivo-group').style.display = 'block';
+  document.getElementById('admin-resolver-btn-aprobar').style.display = 'none';
+  document.getElementById('admin-resolver-btn-rechazar').style.display = 'none';
+  document.getElementById('admin-resolver-btn-confirm-rechazo').style.display = '';
+  document.getElementById('admin-resolver-motivo').focus();
+}
+
+async function adminResolverRect(accion) {
+  const sid = document.getElementById('admin-resolver-sid').value;
+  const fd = new FormData();
+  fd.append('accion', accion);
+  if (accion === 'rechazar') {
+    const motivo = document.getElementById('admin-resolver-motivo').value.trim();
+    if (!motivo) { alert('Escribe el motivo de rechazo'); return; }
+    fd.append('motivo', motivo);
+  }
+  try {
+    const res = await fetch(`/api/arco/solicitudes_rect/${sid}/resolver`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) { toast(data.error || 'Error al resolver', true); return; }
+    document.getElementById('admin-overlay-arco-resolver').style.display = 'none';
+    toast(accion === 'aprobar' ? 'Cambios aplicados correctamente' : 'Solicitud rechazada');
+    cargarSolicitudesRectAdmin();
+  } catch(e) {
+    toast('Error de conexión', true);
+  }
+}
+
+function cargarArcoAdmin() {
+  cargarSolicitudesRectAdmin();
+}
 </script>
 </body>
 </html>

@@ -287,14 +287,30 @@ def inicializar_db():
         except Exception as e:
             print(f'[migración migrantes.{col}] {e}')
 
-    # Migración: hacer fecha_ingreso nullable (ya no obligatoria en el formulario).
+    # Migración: eliminar columnas obsoletas de migrantes (reemplazadas por el nuevo formulario).
+    cols_obsoletas_migrantes = [
+        'tipo_documento', 'num_documento', 'nacionalidad', 'estado_migratorio',
+        'fecha_ingreso', 'fecha_egreso', 'tiene_pasaporte', 'tiene_visa',
+        'tiene_identificacion', 'estado_salud', 'obs_medicas',
+        'contacto_emergencia', 'telefono_emergencia', 'observaciones',
+    ]
+    for col in cols_obsoletas_migrantes:
+        try:
+            cur = con.cursor()
+            cur.execute(f"ALTER TABLE migrantes DROP COLUMN {col}")
+            con.commit()
+            cur.close()
+        except Exception as e:
+            pass  # columna ya eliminada o no existe
+
+    # Migración: eliminar tabla dependientes_migrante (ya no se usa).
     try:
         cur = con.cursor()
-        cur.execute("ALTER TABLE migrantes MODIFY fecha_ingreso DATE")
+        cur.execute("DROP TABLE IF EXISTS dependientes_migrante")
         con.commit()
         cur.close()
     except Exception as e:
-        print(f'[migración migrantes.fecha_ingreso nullable] {e}')
+        pass
 
     # Migración: tabla solicitudes_arco_rect para Derechos ARCO.
     try:
@@ -1414,16 +1430,14 @@ def api_migrantes_crear():
     db = obtener_db()
     cur = _exec(db,
         'INSERT INTO migrantes'
-        ' (folio, nombre, fecha_nacimiento, pais_origen, nacionalidad,'
-        '  estado_migratorio, fecha_ingreso, fecha_atencion,'
-        '  genero, departamento_estado, estado_civil, grupo_poblacion,'
-        '  telefono_contacto, registrado_por)'
-        ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+        ' (folio, nombre, fecha_nacimiento, pais_origen,'
+        '  fecha_atencion, genero, departamento_estado, estado_civil,'
+        '  grupo_poblacion, telefono_contacto, registrado_por)'
+        ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
         (
-            'TEMP', nombre, fecha_nac, pais_origen, pais_origen,
-            'en_transito', fecha_atencion, fecha_atencion,
-            genero, departamento_estado, estado_civil, grupo_poblacion,
-            telefono_contacto, g.usuario,
+            'TEMP', nombre, fecha_nac, pais_origen,
+            fecha_atencion, genero, departamento_estado, estado_civil,
+            grupo_poblacion, telefono_contacto, g.usuario,
         )
     )
     nuevo_id = cur.lastrowid
@@ -1481,16 +1495,14 @@ def api_migrantes_editar(mid):
 
     _exec(db,
         'UPDATE migrantes SET'
-        '  nombre=%s, fecha_nacimiento=%s, pais_origen=%s, nacionalidad=%s,'
-        '  fecha_ingreso=%s, fecha_atencion=%s,'
-        '  genero=%s, departamento_estado=%s, estado_civil=%s,'
-        '  grupo_poblacion=%s, telefono_contacto=%s'
+        '  nombre=%s, fecha_nacimiento=%s, pais_origen=%s,'
+        '  fecha_atencion=%s, genero=%s, departamento_estado=%s,'
+        '  estado_civil=%s, grupo_poblacion=%s, telefono_contacto=%s'
         ' WHERE id=%s',
         (
-            nombre, fecha_nac, pais_origen, pais_origen,
-            fecha_atencion, fecha_atencion,
-            genero, departamento_estado, estado_civil,
-            grupo_poblacion, telefono_contacto, mid,
+            nombre, fecha_nac, pais_origen,
+            fecha_atencion, genero, departamento_estado,
+            estado_civil, grupo_poblacion, telefono_contacto, mid,
         )
     )
     db.commit()
@@ -1516,14 +1528,13 @@ def api_migrantes_eliminar(mid):
     if g.rol != 'admin':
         abort(403)
     db = obtener_db()
-    mig = _exec(db, 'SELECT nombre, folio, tipo_documento, num_documento FROM migrantes WHERE id=%s', (mid,)).fetchone()
+    mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
     if not mig:
         return jsonify(error='Migrante no encontrado'), 404
     _exec(db, 'DELETE FROM migrantes WHERE id=%s', (mid,))
     db.commit()
-    doc_info = f'{mig["tipo_documento"]}: {mig["num_documento"]}' if mig.get('num_documento') else ''
     log_evento('migrante_eliminado', usuario=g.usuario, rol=g.rol,
-               detalle=f'Eliminación directa: {mig["nombre"]} · {doc_info} · Folio: {mig["folio"]}')
+               detalle=f'Eliminación directa: {mig["nombre"]} · Folio: {mig["folio"]}')
     return jsonify(ok=True)
 
 
@@ -1545,7 +1556,7 @@ def api_solicitar_eliminacion(mid):
     if pendiente:
         return jsonify(error='Ya existe una solicitud pendiente para este registro'), 400
 
-    mig = _exec(db, 'SELECT nombre, folio, num_documento, tipo_documento FROM migrantes WHERE id=%s', (mid,)).fetchone()
+    mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
     motivo = request.form.get('motivo', '').strip() or None
     _exec(db,
         'INSERT INTO solicitudes_eliminacion (migrante_id, solicitado_por, motivo)'
@@ -1554,9 +1565,8 @@ def api_solicitar_eliminacion(mid):
     )
     db.commit()
 
-    doc_info = f'{mig["tipo_documento"]}: {mig["num_documento"]}' if mig and mig.get('num_documento') else ''
     log_evento('migrante_solicitud_eliminacion', usuario=g.usuario, rol=g.rol,
-               detalle=f'Solicitud eliminación: {mig["nombre"] if mig else mid} · {doc_info} · Motivo: {motivo or "sin motivo"}')
+               detalle=f'Solicitud eliminación: {mig["nombre"] if mig else mid} · Motivo: {motivo or "sin motivo"}')
     return jsonify(ok=True)
 
 
@@ -1599,14 +1609,13 @@ def api_resolver_solicitud(sid):
         (nuevo_estado, g.usuario, ahora, sid)
     )
     if aprobar:
-        mig = _exec(db, 'SELECT nombre, folio, tipo_documento, num_documento FROM migrantes WHERE id=%s',
+        mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s',
                     (sol['migrante_id'],)).fetchone()
         _exec(db, 'DELETE FROM migrantes WHERE id=%s', (sol['migrante_id'],))
         db.commit()
         if mig:
-            doc_info = f'{mig["tipo_documento"]}: {mig["num_documento"]}' if mig.get('num_documento') else ''
             log_evento('migrante_eliminado', usuario=g.usuario, rol=g.rol,
-                       detalle=f'Eliminación aprobada (sol. #{sid}): {mig["nombre"]} · {doc_info} · Folio: {mig["folio"]}')
+                       detalle=f'Eliminación aprobada (sol. #{sid}): {mig["nombre"]} · Folio: {mig["folio"]}')
     else:
         db.commit()
     return jsonify(ok=True, accion=nuevo_estado)
@@ -1741,7 +1750,7 @@ def arco_solicitudes_rect():
 @verificar_certificado
 def arco_resolver_rect(sid):
     import json as _json
-    if g.rol != 'coord':
+    if g.rol not in ('coord', 'admin'):
         abort(403)
     aprobar = request.form.get('accion') == 'aprobar'
     motivo  = request.form.get('motivo', '').strip() or None
