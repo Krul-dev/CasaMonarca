@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Acceso — Casa Monarca</title>
+<title>Certificado USB — Casa Monarca</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -63,12 +63,6 @@
     color: #7a1f1f; border-radius: 8px;
     padding: 10px 14px; font-size: 13px; margin-bottom: 16px;
   }
-  .demo-hint {
-    margin-top: 20px; padding: 12px 14px;
-    background: #f7f6f4; border-radius: 8px;
-    font-size: 12px; color: #767676; line-height: 1.6;
-  }
-  .demo-hint strong { color: #0e0e0e; }
 </style>
 </head>
 <body>
@@ -81,28 +75,24 @@
     </div>
   </div>
 
-  <h2>Bienvenida</h2>
-  <p class="sub">Inicia sesión para acceder al panel de administración</p>
+  <h2>Validación adicional</h2>
+  <p class="sub">Selecciona tu certificado USB y escribe la contraseña</p>
 
   {% if error %}
     <div class="error">{{ error }}</div>
   {% endif %}
 
-  <form method="POST" action="{{ url_for('login') }}">
+  <form method="POST" action="{{ url_for('login_usb') }}" enctype="multipart/form-data">
     <div class="campo">
-      <label for="usuario">Usuario</label>
-      <input type="text" id="usuario" name="usuario" placeholder="admin" autocomplete="username" required>
+      <label for="certificado_usb">Certificado USB (.p12)</label>
+      <input type="file" id="certificado_usb" name="certificado_usb" accept=".p12" required>
     </div>
     <div class="campo">
-      <label for="password">Contraseña</label>
-      <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+      <label for="p12_password">Contraseña del .p12</label>
+      <input type="password" id="p12_password" name="p12_password" required>
     </div>
-    <button type="submit" class="btn">Entrar</button>
+    <button type="submit" class="btn">Validar certificado</button>
   </form>
-
-  <div class="demo-hint">
-    <strong>Demo:</strong> usuario <code>admin</code> / contraseña <code>admin123</code>
-  </div>
 </div>
 </body>
 </html>

@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Monarca — Panel {{ rol_legible }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --rosa: #e62055;
+  --rosa-claro: #fce8ef;
+  --rosa-borde: #f5a8c0;
+  --negro: #0e0e0e;
+  --negro-soft: #1c1c1c;
+  --gris-oscuro: #3d3d3d;
+  --gris-medio: #767676;
+  --gris-claro: #efefef;
+  --gris-linea: #e5e5e5;
+  --blanco: #ffffff;
+  --fondo: #f7f6f4;
+
+  --verde-bg: #edf7f0;
+  --verde-borde: #6dbf8a;
+  --verde-texto: #1a5c32;
+
+  --rojo-bg: #fef0f0;
+  --rojo-borde: #e88080;
+  --rojo-texto: #7a1f1f;
+
+  --azul-bg: #eef4fd;
+  --azul-borde: #7daee8;
+  --azul-texto: #1a3e72;
+
+  --amarillo-bg: #faf6ea;
+  --amarillo-borde: #d8ba64;
+  --amarillo-texto: #8a6710;
+
+  --radio-sm: 5px;
+  --radio-md: 9px;
+  --radio-lg: 14px;
+  --radio-xl: 20px;
+
+  --sombra-sm: 0 1px 3px rgba(0,0,0,.08);
+  --fuente: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --transicion: .18s ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--fuente);
+  background: var(--fondo);
+  color: var(--negro);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button, input, select, textarea { font-family: var(--fuente); }
+
+.layout { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px; min-width: 220px;
+  background: var(--negro);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: 12px;
+}
+.sidebar-logo img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--blanco); }
+.sidebar-logo-text { display: flex; flex-direction: column; line-height: 1.2; }
+.sidebar-logo-text span:first-child { font-size: 13px; font-weight: 600; color: var(--blanco); }
+.sidebar-logo-text span:last-child { font-size: 10px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .08em; }
+
+.sidebar-nav { padding: 16px 10px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.nav-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.28); padding: 8px 10px 4px; margin-top: 8px; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radio-md);
+  color: rgba(255,255,255,.55); font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background var(--transicion), color var(--transicion);
+  border: none; background: transparent; width: 100%; text-align: left;
+}
+.nav-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.85); }
+.nav-item.activo { background: var(--rosa); color: var(--blanco); }
+.nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .7; }
+.nav-item.activo svg { opacity: 1; }
+
+.sidebar-footer { padding: 16px 10px; border-top: 1px solid rgba(255,255,255,.08); }
+.sidebar-user { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radio-md); }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--rosa); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--blanco); flex-shrink: 0; }
+.sidebar-user-info { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.sidebar-user-info span:first-child { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-user-info span:last-child { font-size: 10px; color: rgba(255,255,255,.3); }
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.topbar {
+  background: var(--blanco); border-bottom: 1px solid var(--gris-linea);
+  padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 10;
+}
+.topbar-titulo { font-size: 15px; font-weight: 600; color: var(--negro); }
+.topbar-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; border: 1px solid; }
+.topbar-badge.coord { background: var(--azul-bg); color: var(--azul-texto); border-color: var(--azul-borde); }
+.topbar-badge.op { background: var(--verde-bg); color: var(--verde-texto); border-color: var(--verde-borde); }
+
+.contenido { padding: 32px; flex: 1; }
+.vista { display: none; }
+.vista.activa { display: block; }
+
+.card {
+  background: var(--blanco); border: 1px solid var(--gris-linea);
+  border-radius: var(--radio-xl); padding: 28px 32px; box-shadow: var(--sombra-sm);
+  margin-bottom: 20px;
+}
+.card-titulo { font-size: 16px; font-weight: 600; color: var(--negro); margin-bottom: 4px; }
+.card-subtitulo { font-size: 13px; color: var(--gris-medio); margin-bottom: 24px; }
+
+.metricas { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
+.metrica { background: var(--blanco); border: 1px solid var(--gris-linea); border-radius: var(--radio-lg); padding: 20px 22px; box-shadow: var(--sombra-sm); }
+.metrica-valor { font-size: 28px; font-weight: 600; color: var(--negro); line-height: 1; margin-bottom: 4px; }
+.metrica-valor.rosa { color: var(--rosa); }
+.metrica-label { font-size: 12px; color: var(--gris-medio); font-weight: 500; }
+
+.encabezado { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
+.encabezado-texto h1 { font-size: 20px; font-weight: 700; color: var(--negro); margin-bottom: 2px; }
+.encabezado-texto p { font-size: 13px; color: var(--gris-medio); }
+
+/* Acciones rápidas en inicio */
+.acciones-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 8px; }
+.accion-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  padding: 16px 18px; border-radius: var(--radio-lg);
+  background: var(--fondo); border: 1.5px solid var(--gris-linea);
+  cursor: pointer; text-align: left;
+  transition: border-color var(--transicion), box-shadow var(--transicion), background var(--transicion);
+}
+.accion-card:hover { border-color: var(--rosa-borde); background: var(--rosa-claro); box-shadow: var(--sombra-sm); }
+.accion-card svg { width: 18px; height: 18px; color: var(--rosa); }
+.accion-card-titulo { font-size: 13px; font-weight: 600; color: var(--negro); }
+.accion-card-desc { font-size: 11px; color: var(--gris-medio); line-height: 1.3; }
+
+/* Tabla */
+.tabla-wrap { overflow-x: auto; }
+.tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabla thead th { text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--gris-medio); padding: 10px 12px; border-bottom: 2px solid var(--gris-linea); white-space: nowrap; }
+.tabla tbody td { padding: 12px 12px; border-bottom: 1px solid var(--gris-linea); color: var(--gris-oscuro); vertical-align: middle; }
+.tabla tbody tr:last-child td { border-bottom: none; }
+.tabla tbody tr:hover td { background: var(--fondo); }
+.nombre-celda { font-weight: 500; color: var(--negro); }
+
+.badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: .06em; border: 1px solid transparent; }
+.badge-en_transito { background: var(--azul-bg); color: var(--azul-texto); border-color: var(--azul-borde); }
+.badge-solicitante_asilo { background: var(--amarillo-bg); color: var(--amarillo-texto); border-color: var(--amarillo-borde); }
+.badge-deportado { background: var(--rojo-bg); color: var(--rojo-texto); border-color: var(--rojo-borde); }
+.badge-repatriado { background: var(--verde-bg); color: var(--verde-texto); border-color: var(--verde-borde); }
+.badge-otro { background: var(--gris-claro); color: var(--gris-oscuro); border-color: var(--gris-linea); }
+
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+.dot-verde { background: var(--verde-borde); }
+.dot-rojo { background: var(--rojo-borde); }
+.dot-amarillo { background: var(--amarillo-borde); }
+
+.info-usuario { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.info-item { padding: 14px 0; border-bottom: 1px solid var(--gris-linea); }
+.info-item:last-child { border-bottom: none; }
+.info-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--gris-medio); margin-bottom: 4px; }
+.info-valor { font-size: 14px; font-weight: 500; color: var(--negro); }
+.info-valor.mono { font-family: var(--mono); font-size: 12px; color: var(--gris-oscuro); }
+
+/* Botones */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: var(--radio-md); border: none; cursor: pointer; transition: all var(--transicion); }
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--rosa); color: var(--blanco); }
+.btn-primary:hover { background: #c41a47; }
+.btn-ghost { background: transparent; color: var(--gris-oscuro); border: 1.5px solid var(--gris-linea); }
+.btn-ghost:hover { background: var(--gris-claro); }
+.btn-sm { font-size: 11px; padding: 6px 12px; }
+.btn-danger { background: var(--rojo-bg); color: var(--rojo-texto); border: 1px solid var(--rojo-borde); }
+.btn-danger:hover { background: #fdd8d8; }
+
+/* Modal */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 100;
+  align-items: center; justify-content: center;
+  padding: 24px;
+}
+.overlay.abierto { display: flex; }
+.modal {
+  background: var(--blanco); border-radius: var(--radio-xl);
+  width: 100%; max-width: 680px; max-height: 90vh;
+  overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,.18);
+}
+.modal-header {
+  padding: 24px 28px 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-titulo { font-size: 16px; font-weight: 700; }
+.modal-cerrar { background: none; border: none; cursor: pointer; padding: 6px; border-radius: var(--radio-sm); color: var(--gris-medio); font-size: 18px; line-height: 1; }
+.modal-cerrar:hover { background: var(--gris-claro); color: var(--negro); }
+.modal-body { padding: 20px 28px 28px; }
+
+/* Formulario */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--gris-medio); }
+.form-label.required::after { content: ' *'; color: var(--rosa); }
+.form-control {
+  padding: 9px 12px; border-radius: var(--radio-md);
+  border: 1.5px solid var(--gris-linea); font-size: 13px;
+  background: var(--blanco); color: var(--negro);
+  transition: border-color var(--transicion);
+  width: 100%;
+}
+.form-control:focus { outline: none; border-color: var(--rosa); }
+textarea.form-control { resize: vertical; min-height: 72px; }
+.form-section { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--gris-medio); padding-top: 8px; border-top: 1px solid var(--gris-linea); grid-column: 1 / -1; margin-top: 4px; }
+
+.checkboxes { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 4px; }
+.check-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--negro); cursor: pointer; }
+.check-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--rosa); cursor: pointer; }
+
+.form-acciones { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--gris-linea); }
+
+.alerta { padding: 10px 14px; border-radius: var(--radio-md); font-size: 13px; margin-bottom: 16px; display: none; }
+.alerta.error { background: var(--rojo-bg); color: var(--rojo-texto); border: 1px solid var(--rojo-borde); }
+.alerta.exito { background: var(--verde-bg); color: var(--verde-texto); border: 1px solid var(--verde-borde); }
+
+@media (max-width: 720px) {
+  .sidebar { width: 200px; min-width: 200px; }
+  .contenido { padding: 20px; }
+  .metricas { grid-template-columns: 1fr; }
+  .info-usuario { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .full { grid-column: 1; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Casa Monarca">
+      <div class="sidebar-logo-text">
+        <span>Casa Monarca</span>
+        <span>Sistema de certificados</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-label">Panel</span>
+      <button class="nav-item activo" onclick="irA('inicio')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+        Inicio
+      </button>
+
+      <span class="nav-label">Módulos</span>
+      <button class="nav-item" onclick="irA('registros')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M2 6h12M2 9h8M2 12h5"/><circle cx="13" cy="11" r="2.5"/><path d="M13 9.5V11l.8.8"/></svg>
+        Registros
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="avatar">{{ nombre[:2]|upper }}</div>
+        <div class="sidebar-user-info">
+          <span>{{ nombre }}</span>
+          <span>{{ rol_legible }}</span>
+        </div>
+      </div>
+      <a href="/logout" class="nav-item" style="margin-top:10px;">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3"/><path d="M10 11l3-3-3-3M13 8H6"/></svg>
+        Cerrar sesión
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-titulo" id="topbar-titulo">Inicio</span>
+      <span class="topbar-badge {{ rol }}" id="topbar-badge">{{ rol_legible }}</span>
+    </div>
+
+    <div class="contenido">
+
+      <!-- ── VISTA: INICIO ─────────────────── -->
+      <div class="vista activa" id="vista-inicio">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <h1>Bienvenido, {{ nombre }}</h1>
+            <p>Panel de {{ rol_legible | lower }} — Casa Monarca</p>
+          </div>
+        </div>
+
+        <div class="metricas">
+          <div class="metrica">
+            <div class="metrica-valor rosa">{{ rol_legible }}</div>
+            <div class="metrica-label">Tu rol en el sistema</div>
+          </div>
+          <div class="metrica">
+            <div class="metrica-valor" id="cnt-migrantes">—</div>
+            <div class="metrica-label">Migrantes registrados</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-titulo">Acciones disponibles</p>
+          <div class="acciones-grid">
+            <button class="accion-card" onclick="irA('registros')">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M2 6h12M2 9h8M2 12h5"/></svg>
+              <span class="accion-card-titulo">Ver registros</span>
+              <span class="accion-card-desc">Consultar todos los migrantes</span>
+            </button>
+            {% if rol in ('coord', 'op') %}
+            <button class="accion-card" onclick="irAYNuevo()">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v6M5 8h6"/></svg>
+              <span class="accion-card-titulo">Registrar datos</span>
+              <span class="accion-card-desc">Nuevo registro de migrante</span>
+            </button>
+            {% endif %}
+            {% if rol == 'coord' %}
+            <button class="accion-card" onclick="irA('registros')">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2l3 3-7 7H4v-3L11 2z"/><path d="M9 4l3 3"/></svg>
+              <span class="accion-card-titulo">Editar registros</span>
+              <span class="accion-card-desc">Actualizar información de migrantes</span>
+            </button>
+            <button class="accion-card" onclick="irA('registros')">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M4.5 6.5L8 10l3.5-3.5"/><path d="M2 13h12"/></svg>
+              <span class="accion-card-titulo">Solicitar eliminación</span>
+              <span class="accion-card-desc">Enviar solicitud al administrador</span>
+            </button>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-titulo">Tu información</p>
+          <p class="card-subtitulo">Datos asociados a tu cuenta</p>
+          <div class="info-usuario">
+            <div class="info-item">
+              <div class="info-label">Nombre</div>
+              <div class="info-valor">{{ nombre }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Usuario</div>
+              <div class="info-valor mono">{{ usuario }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Rol</div>
+              <div class="info-valor">{{ rol_legible }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VISTA: REGISTROS DE MIGRANTES ─── -->
+      <div class="vista" id="vista-registros">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <h1>Registros de migrantes</h1>
+            <p>Información de personas atendidas por Casa Monarca</p>
+          </div>
+          {% if rol in ('coord', 'op') %}
+          <button class="btn btn-primary" onclick="abrirFormulario()">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M8 2v12M2 8h12"/></svg>
+            Nuevo registro
+          </button>
+          {% endif %}
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--gris-linea);">
+            <input type="text" id="buscar-migrante" placeholder="Buscar por nombre o número de documento…"
+              oninput="filtrarMigrantes(this.value)"
+              style="width:100%;max-width:400px;padding:8px 12px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);outline:none;">
+          </div>
+          <div class="tabla-wrap">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Nombre</th>
+                  <th>País de origen</th>
+                  <th>Grupo de población</th>
+                  <th>Fecha de atención</th>
+                  <th>Género</th>
+                  {% if rol in ('coord', 'op') %}<th>Acciones</th>{% endif %}
+                </tr>
+              </thead>
+              <tbody id="tbody-migrantes">
+                <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gris-medio)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: FORMULARIO MIGRANTE ──────────────────── -->
+<div class="overlay" id="overlay-migrante">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-titulo" id="modal-titulo-form">Nuevo registro</span>
+      <button class="modal-cerrar" onclick="cerrarFormulario()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta error" id="alerta-form"></div>
+
+      <form id="form-migrante" class="form-grid">
+        <input type="hidden" id="mig-id" value="">
+
+        <span class="form-section">Datos de atención <span style="font-weight:400;color:var(--rosa);font-size:10px;">* obligatorio</span></span>
+
+        <div class="form-group">
+          <label class="form-label required">Fecha de atención</label>
+          <input class="form-control" id="mig-fecha-atencion" type="date">
+        </div>
+        <div class="form-group"><!-- spacer --></div>
+
+        <span class="form-section">Datos personales</span>
+
+        <div class="form-group">
+          <label class="form-label required">Nombre de pila <span style="font-weight:400;">(sin apellidos)</span></label>
+          <input class="form-control" id="mig-nombre-pila" type="text" placeholder="Ej. María">
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Primer apellido</label>
+          <input class="form-control" id="mig-primer-apellido" type="text" placeholder="Ej. González">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Segundo apellido <span style="font-weight:400;">(opcional)</span></label>
+          <input class="form-control" id="mig-segundo-apellido" type="text" placeholder="Ej. Ruiz">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Número telefónico de contacto</label>
+          <input class="form-control" id="mig-telefono" type="tel" placeholder="Ej. +504 9812 3456">
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label required">Género</label>
+          <div class="checkboxes">
+            <label class="check-item"><input type="radio" name="mig-genero" value="Hombre"> Hombre</label>
+            <label class="check-item"><input type="radio" name="mig-genero" value="Mujer"> Mujer</label>
+            <label class="check-item"><input type="radio" name="mig-genero" value="No binario/a"> No binario/a</label>
+            <label class="check-item"><input type="radio" name="mig-genero" value="Prefiero no especificar"> Prefiero no especificar</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required">País de origen</label>
+          <select class="form-control" id="mig-pais">
+            <option value="">— Seleccionar —</option>
+            <option>Honduras</option><option>El Salvador</option><option>Guatemala</option>
+            <option>Nicaragua</option><option>Cuba</option><option>Venezuela</option>
+            <option>Haití</option><option>Colombia</option><option>Ecuador</option>
+            <option>Perú</option><option>Bolivia</option><option>México</option>
+            <option>Estados Unidos</option><option>Brasil</option><option>Argentina</option>
+            <option>Chile</option><option>Costa Rica</option><option>Panamá</option>
+            <option>República Dominicana</option><option>Jamaica</option>
+            <option>Trinidad y Tobago</option><option>India</option><option>China</option>
+            <option>Camerún</option><option>Guinea</option><option>Senegal</option>
+            <option>Congo</option><option>Bangladesh</option><option>Nepal</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Departamento / Estado</label>
+          <input class="form-control" id="mig-depto" type="text" placeholder="Ej. Cortés">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Estado civil</label>
+          <select class="form-control" id="mig-estado-civil">
+            <option value="">— Seleccionar —</option>
+            <option>Soltero/a</option>
+            <option>Casado/a</option>
+            <option>Unión libre</option>
+            <option>Divorciado/a</option>
+            <option>Viudo/a</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Fecha de nacimiento</label>
+          <input class="form-control" id="mig-fecha-nac" type="date" oninput="calcularEdad('mig-fecha-nac','mig-edad')">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Edad</label>
+          <input class="form-control" id="mig-edad" type="number" min="0" max="120" placeholder="Se calcula automáticamente">
+        </div>
+        <div class="form-group"><!-- spacer --></div>
+
+        <div class="form-group full">
+          <label class="form-label required">¿A qué grupo de población pertenece?</label>
+          <div class="checkboxes" style="flex-direction:column;gap:10px;">
+            <label class="check-item"><input type="radio" name="mig-grupo" value="Adulto (18-59 años)"> Adulto (18-59 años)</label>
+            <label class="check-item"><input type="radio" name="mig-grupo" value="Adulto mayor (+60 años)"> Adulto mayor (+60 años)</label>
+            <label class="check-item"><input type="radio" name="mig-grupo" value="Niña acompañada"> Niña acompañada</label>
+            <label class="check-item"><input type="radio" name="mig-grupo" value="Niño acompañado"> Niño acompañado</label>
+            <label class="check-item"><input type="radio" name="mig-grupo" value="Adolescente hombre acompañado"> Adolescente hombre acompañado</label>
+            <label class="check-item"><input type="radio" name="mig-grupo" value="Adolescente mujer acompañada"> Adolescente mujer acompañada</label>
+            <label class="check-item"><input type="radio" name="mig-grupo" value="NNA No acompañado"> NNA No acompañado</label>
+          </div>
+        </div>
+
+        <div class="form-acciones full">
+          <button type="button" class="btn btn-ghost" onclick="cerrarFormulario()">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarMigrante()">Guardar registro</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: SOLICITAR ELIMINACIÓN ────────────────── -->
+<div class="overlay" id="overlay-solicitud">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Solicitar eliminación</span>
+      <button class="modal-cerrar" onclick="cerrarSolicitud()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gris-oscuro);margin-bottom:16px;">
+        Estás solicitando al administrador la eliminación del registro de
+        <strong id="sol-nombre-migrante"></strong>. El registro no se eliminará
+        hasta que el administrador lo apruebe.
+      </p>
+      <div class="alerta error" id="alerta-sol"></div>
+      <div class="form-group">
+        <label class="form-label required">Motivo de la solicitud</label>
+        <textarea class="form-control" id="sol-motivo" placeholder="Explica por qué se debe eliminar este registro..."></textarea>
+      </div>
+      <div class="form-acciones">
+        <button class="btn btn-ghost" onclick="cerrarSolicitud()">Cancelar</button>
+        <button class="btn btn-danger" onclick="enviarSolicitud()">Enviar solicitud</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ROL = '{{ rol }}';
+const PUEDE_CREAR  = ['coord','op'].includes(ROL);
+const PUEDE_EDITAR = ['coord'].includes(ROL);
+const PUEDE_SOLICITAR = ROL === 'coord';
+
+let migranteEditandoId = null;
+let solicitudMigranteId = null;
+
+const topbarTitulos = {
+  inicio:    'Inicio',
+  registros: 'Registros de migrantes',
+};
+
+function irA(vista) {
+  document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('activo'));
+  document.getElementById('vista-' + vista).classList.add('activa');
+  document.getElementById('topbar-titulo').textContent = topbarTitulos[vista] || '—';
+
+  const navItems = document.querySelectorAll('.nav-item');
+  const map = { inicio: 0, registros: 1 };
+  if (map[vista] !== undefined) navItems[map[vista]]?.classList.add('activo');
+
+  if (vista === 'registros') cargarMigrantes();
+}
+
+function irAYNuevo() {
+  irA('registros');
+  setTimeout(abrirFormulario, 80);
+}
+
+function calcularEdad(inputFechaId, inputEdadId) {
+  const val = document.getElementById(inputFechaId).value;
+  const edadEl = document.getElementById(inputEdadId);
+  if (!val) { edadEl.value = ''; return; }
+  const hoy = new Date();
+  const nac = new Date(val);
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const m = hoy.getMonth() - nac.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+  edadEl.value = edad >= 0 ? edad : '';
+}
+
+// ── REGISTROS ─────────────────────────────────────────────────
+let listaMigrantes = [];
+
+async function cargarMigrantes() {
+  const tbody = document.getElementById('tbody-migrantes');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gris-medio)">Cargando...</td></tr>';
+  try {
+    const res = await fetch('/api/migrantes');
+    listaMigrantes = await res.json();
+    const q = document.getElementById('buscar-migrante')?.value || '';
+    filtrarMigrantes(q);
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--rojo-texto)">Error al cargar registros</td></tr>`;
+  }
+}
+
+function filtrarMigrantes(q) {
+  const tbody = document.getElementById('tbody-migrantes');
+  const cols = PUEDE_CREAR ? 7 : 6;
+  const term = q.trim().toLowerCase();
+  const lista = term
+    ? listaMigrantes.filter(m =>
+        (m.nombre || '').toLowerCase().includes(term) ||
+        (m.pais_origen || '').toLowerCase().includes(term))
+    : listaMigrantes;
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center;padding:40px;color:var(--gris-medio)">${term ? 'Sin resultados para "' + term + '"' : 'No hay registros todavía'}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lista.map(m => {
+    const grupoBadge = m.grupo_poblacion
+      ? `<span class="badge badge-otro" style="text-transform:none;">${m.grupo_poblacion}</span>`
+      : '—';
+    const acciones = PUEDE_EDITAR ? `
+      <button class="btn btn-ghost btn-sm" onclick="abrirFormulario(${JSON.stringify(m).replace(/"/g,'&quot;')})">Editar</button>
+      ${PUEDE_SOLICITAR ? `<button class="btn btn-danger btn-sm" style="margin-left:6px;" onclick="abrirSolicitud(${m.id},'${m.nombre.replace(/'/g,"\\'")}')">Solicitar eliminación</button>` : ''}
+    ` : '';
+    return `
+      <tr>
+        <td class="serial-celda" style="font-family:var(--mono);font-size:11px;">${m.folio}</td>
+        <td class="nombre-celda">${m.nombre}</td>
+        <td>${m.pais_origen || '—'}</td>
+        <td>${grupoBadge}</td>
+        <td style="font-size:12px;">${m.fecha_atencion || '—'}</td>
+        <td>${m.genero || '—'}</td>
+        ${PUEDE_CREAR ? `<td>${acciones}</td>` : ''}
+      </tr>`;
+  }).join('');
+}
+
+// ── FORMULARIO CREAR / EDITAR ──────────────────────────────────
+function abrirFormulario(migrante) {
+  migranteEditandoId = migrante ? migrante.id : null;
+  document.getElementById('modal-titulo-form').textContent = migrante ? 'Editar registro' : 'Nuevo registro';
+  document.getElementById('alerta-form').style.display = 'none';
+  document.getElementById('mig-id').value = migrante ? migrante.id : '';
+
+  // Descomponer nombre en partes si es edición
+  const partes = (migrante?.nombre || '').split(' ');
+  document.getElementById('mig-nombre-pila').value     = partes[0] || '';
+  document.getElementById('mig-primer-apellido').value = partes[1] || '';
+  document.getElementById('mig-segundo-apellido').value = partes.slice(2).join(' ') || '';
+
+  document.getElementById('mig-fecha-atencion').value  = (migrante?.fecha_atencion || '').slice(0, 10);
+  document.getElementById('mig-telefono').value        = migrante?.telefono_contacto || '';
+  document.getElementById('mig-pais').value            = migrante?.pais_origen || '';
+  document.getElementById('mig-depto').value           = migrante?.departamento_estado || '';
+  document.getElementById('mig-estado-civil').value    = migrante?.estado_civil || '';
+  document.getElementById('mig-fecha-nac').value       = (migrante?.fecha_nacimiento || '').slice(0, 10);
+  calcularEdad('mig-fecha-nac', 'mig-edad');
+
+  // Género
+  document.querySelectorAll('input[name="mig-genero"]').forEach(r => {
+    r.checked = r.value === (migrante?.genero || '');
+  });
+  // Grupo de población
+  document.querySelectorAll('input[name="mig-grupo"]').forEach(r => {
+    r.checked = r.value === (migrante?.grupo_poblacion || '');
+  });
+
+  document.getElementById('overlay-migrante').classList.add('abierto');
+}
+
+function cerrarFormulario() {
+  document.getElementById('overlay-migrante').classList.remove('abierto');
+  migranteEditandoId = null;
+}
+
+async function guardarMigrante() {
+  const alerta      = document.getElementById('alerta-form');
+  const nombrePila  = document.getElementById('mig-nombre-pila').value.trim();
+  const primerAp    = document.getElementById('mig-primer-apellido').value.trim();
+  const fechaNac    = document.getElementById('mig-fecha-nac').value;
+  const pais        = document.getElementById('mig-pais').value;
+  const genero      = document.querySelector('input[name="mig-genero"]:checked')?.value || '';
+  const grupo       = document.querySelector('input[name="mig-grupo"]:checked')?.value || '';
+
+  if (!nombrePila || !primerAp || !fechaNac || !pais || !genero || !grupo) {
+    alerta.textContent = 'Completa todos los campos obligatorios (marcados con *).';
+    alerta.style.display = 'block';
+    return;
+  }
+  alerta.style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('nombre_pila',        nombrePila);
+  fd.append('primer_apellido',    primerAp);
+  fd.append('segundo_apellido',   document.getElementById('mig-segundo-apellido').value.trim());
+  fd.append('fecha_atencion',     document.getElementById('mig-fecha-atencion').value);
+  fd.append('telefono_contacto',  document.getElementById('mig-telefono').value.trim());
+  fd.append('genero',             genero);
+  fd.append('pais_origen',        pais);
+  fd.append('departamento_estado', document.getElementById('mig-depto').value.trim());
+  fd.append('estado_civil',       document.getElementById('mig-estado-civil').value);
+  fd.append('fecha_nacimiento',   fechaNac);
+  fd.append('grupo_poblacion',    grupo);
+
+  const esEdicion = !!migranteEditandoId;
+  const url    = esEdicion ? `/api/migrantes/${migranteEditandoId}` : '/api/migrantes';
+  const method = esEdicion ? 'PUT' : 'POST';
+
+  try {
+    const res  = await fetch(url, { method, body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      alerta.textContent = data.error || 'Error al guardar.';
+      alerta.style.display = 'block';
+      return;
+    }
+    cerrarFormulario();
+    cargarMigrantes();
+  } catch(e) {
+    alerta.textContent = 'Error de conexión. Revisa la consola.';
+    alerta.style.display = 'block';
+    console.error(e);
+  }
+}
+
+// ── SOLICITUD ELIMINACIÓN ──────────────────────────────────────
+function abrirSolicitud(id, nombre) {
+  solicitudMigranteId = id;
+  document.getElementById('sol-nombre-migrante').textContent = nombre;
+  document.getElementById('sol-motivo').value = '';
+  document.getElementById('alerta-sol').style.display = 'none';
+  document.getElementById('overlay-solicitud').classList.add('abierto');
+}
+
+function cerrarSolicitud() {
+  document.getElementById('overlay-solicitud').classList.remove('abierto');
+  solicitudMigranteId = null;
+}
+
+async function enviarSolicitud() {
+  const motivo = document.getElementById('sol-motivo').value.trim();
+  const alerta = document.getElementById('alerta-sol');
+  if (!motivo) {
+    alerta.textContent = 'El motivo es obligatorio.';
+    alerta.style.display = 'block';
+    return;
+  }
+  alerta.style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('motivo', motivo);
+  try {
+    const res = await fetch(`/api/migrantes/${solicitudMigranteId}/solicitar_eliminacion`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      alerta.textContent = data.error || 'Error al enviar.';
+      alerta.style.display = 'block';
+      return;
+    }
+    cerrarSolicitud();
+    alert('Solicitud enviada al administrador.');
+  } catch(e) {
+    alerta.textContent = 'Error de conexión.';
+    alerta.style.display = 'block';
+  }
+}
+
+// Cerrar overlays al hacer click fuera del modal
+document.getElementById('overlay-migrante').addEventListener('click', function(e) {
+  if (e.target === this) cerrarFormulario();
+});
+document.getElementById('overlay-solicitud').addEventListener('click', function(e) {
+  if (e.target === this) cerrarSolicitud();
+});
+
+// ── INIT ───────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch('/api/migrantes');
+    const lista = await res.json();
+    document.getElementById('cnt-migrantes').textContent = Array.isArray(lista) ? lista.length : 0;
+  } catch(e) {
+    document.getElementById('cnt-migrantes').textContent = '—';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

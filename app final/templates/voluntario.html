@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Monarca — Registro de migrante</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --rosa: #e62055; --rosa-claro: #fce8ef; --rosa-borde: #f5a8c0;
+  --negro: #0e0e0e; --gris-oscuro: #3d3d3d; --gris-medio: #767676;
+  --gris-claro: #efefef; --gris-linea: #e5e5e5; --blanco: #ffffff; --fondo: #f7f6f4;
+  --verde-bg: #edf7f0; --verde-borde: #6dbf8a; --verde-texto: #1a5c32;
+  --rojo-bg: #fef0f0; --rojo-borde: #e88080; --rojo-texto: #7a1f1f;
+  --azul-bg: #eef4fd; --azul-borde: #7daee8; --azul-texto: #1a3e72;
+  --amarillo-bg: #faf6ea; --amarillo-borde: #d8ba64; --amarillo-texto: #8a6710;
+  --radio-md: 9px; --radio-lg: 14px; --radio-xl: 20px;
+  --sombra-sm: 0 1px 3px rgba(0,0,0,.08); --sombra-md: 0 4px 16px rgba(0,0,0,.1);
+  --fuente: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace; --transicion: .18s ease;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--fuente); background: var(--fondo); color: var(--negro); min-height: 100vh; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font-family: var(--fuente); }
+
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; min-width: 220px; background: var(--negro); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+.sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 12px; }
+.sidebar-logo img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.sidebar-logo-text span:first-child { font-size: 13px; font-weight: 600; color: var(--blanco); display: block; }
+.sidebar-logo-text span:last-child { font-size: 10px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .08em; display: block; }
+.sidebar-nav { padding: 16px 10px; flex: 1; }
+.sidebar-footer { padding: 16px 10px; border-top: 1px solid rgba(255,255,255,.08); }
+.sidebar-user { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--rosa); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--blanco); flex-shrink: 0; }
+.sidebar-user-info span:first-child { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.75); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.sidebar-user-info span:last-child { font-size: 10px; color: rgba(255,255,255,.3); text-transform: uppercase; display: block; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radio-md); color: rgba(255,255,255,.55); font-size: 13px; font-weight: 500; transition: background var(--transicion), color var(--transicion); border: none; background: transparent; width: 100%; text-align: left; cursor: pointer; text-decoration: none; }
+.nav-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.85); }
+.nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .7; }
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar { background: var(--blanco); border-bottom: 1px solid var(--gris-linea); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.topbar-titulo { font-size: 15px; font-weight: 600; }
+.topbar-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; border: 1px solid; background: var(--amarillo-bg); color: var(--amarillo-texto); border-color: var(--amarillo-borde); }
+.contenido { padding: 32px; flex: 1; max-width: 860px; }
+
+/* Form */
+.encabezado { margin-bottom: 24px; }
+.encabezado h1 { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+.encabezado p { font-size: 13px; color: var(--gris-medio); }
+
+.card { background: var(--blanco); border: 1px solid var(--gris-linea); border-radius: var(--radio-xl); padding: 28px 32px; box-shadow: var(--sombra-sm); margin-bottom: 20px; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--gris-medio); }
+.form-label.req::after { content: ' *'; color: var(--rosa); }
+.form-control {
+  padding: 9px 12px; border: 1.5px solid var(--gris-linea); border-radius: var(--radio-md);
+  font-size: 13px; background: var(--blanco); color: var(--negro); outline: none;
+  transition: border-color var(--transicion);
+  width: 100%;
+}
+.form-control:focus { border-color: var(--rosa); }
+textarea.form-control { resize: vertical; min-height: 72px; }
+.form-section {
+  display: block; grid-column: 1 / -1;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--negro); padding-bottom: 8px; border-bottom: 2px solid var(--gris-linea);
+  margin-top: 4px;
+}
+
+.alerta { padding: 10px 14px; border-radius: var(--radio-md); font-size: 13px; border: 1px solid; margin-bottom: 16px; display: none; }
+.alerta.error { background: var(--rojo-bg); border-color: var(--rojo-borde); color: var(--rojo-texto); }
+
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: var(--radio-md); font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: opacity var(--transicion); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-rosa { background: var(--rosa); color: var(--blanco); }
+.btn-rosa:hover:not(:disabled) { opacity: .88; }
+.btn-ghost { background: transparent; color: var(--gris-oscuro); border: 1.5px solid var(--gris-linea); }
+.btn-ghost:hover { background: var(--gris-claro); }
+.btn-full { width: 100%; justify-content: center; }
+
+/* Pantalla de confirmación */
+#pantalla-confirm { display: none; }
+.confirm-card {
+  background: var(--blanco); border: 1px solid var(--verde-borde); border-radius: var(--radio-xl);
+  padding: 48px 40px; text-align: center; box-shadow: var(--sombra-md); max-width: 520px; margin: 0 auto;
+}
+.confirm-icono {
+  width: 72px; height: 72px; border-radius: 50%; background: var(--verde-bg);
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;
+}
+.confirm-icono svg { width: 36px; height: 36px; color: var(--verde-texto); }
+.confirm-titulo { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.confirm-sub { font-size: 14px; color: var(--gris-medio); margin-bottom: 28px; }
+.confirm-datos { background: var(--fondo); border-radius: var(--radio-lg); padding: 20px 24px; text-align: left; margin-bottom: 28px; }
+.confirm-fila { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--gris-linea); font-size: 13px; gap: 16px; }
+.confirm-fila:last-child { border-bottom: none; }
+.confirm-key { color: var(--gris-medio); }
+.confirm-val { font-weight: 600; }
+.confirm-folio { font-family: var(--mono); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo">
+      <div class="sidebar-logo-text">
+        <span>Casa Monarca</span>
+        <span>Sistema de registros</span>
+      </div>
+    </div>
+    <div class="sidebar-nav"></div>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="avatar">{{ nombre[0]|upper if nombre else 'V' }}</div>
+        <div class="sidebar-user-info">
+          <span>{{ nombre }}</span>
+          <span>Voluntario</span>
+        </div>
+      </div>
+      <a href="/logout" class="nav-item" style="margin-top:6px;">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3"/><path d="M10 11l3-3-3-3M13 8H6"/></svg>
+        Cerrar sesión
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-titulo">Registro de migrante</span>
+      <span class="topbar-badge">Voluntario</span>
+    </div>
+
+    <div class="contenido">
+
+      <!-- ── FORMULARIO ─────────────────── -->
+      <div id="pantalla-form">
+        <div class="encabezado">
+          <h1>Nuevo registro</h1>
+          <p>Completa los datos del migrante. Los campos con <span style="color:var(--rosa)">*</span> son obligatorios.</p>
+        </div>
+
+        <div class="card">
+          <div class="alerta error" id="alerta-form"></div>
+
+          <div class="form-grid">
+
+            <span class="form-section">Datos de atención</span>
+
+            <div class="form-group">
+              <label class="form-label req">Fecha de atención</label>
+              <input class="form-control" id="v-fecha-atencion" type="date">
+            </div>
+            <div class="form-group"><!-- spacer --></div>
+
+            <span class="form-section">Datos personales</span>
+
+            <div class="form-group">
+              <label class="form-label req">Nombre de pila <span style="font-weight:400">(sin apellidos)</span></label>
+              <input class="form-control" id="v-nombre-pila" type="text" placeholder="Ej. María">
+            </div>
+            <div class="form-group">
+              <label class="form-label req">Primer apellido</label>
+              <input class="form-control" id="v-primer-apellido" type="text" placeholder="Ej. González">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Segundo apellido <span style="font-weight:400">(opcional)</span></label>
+              <input class="form-control" id="v-segundo-apellido" type="text" placeholder="Ej. Ruiz">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Número telefónico de contacto</label>
+              <input class="form-control" id="v-telefono" type="tel" placeholder="Ej. +504 9812 3456">
+            </div>
+
+            <div class="form-group full">
+              <label class="form-label req">Género</label>
+              <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:4px;">
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-genero" value="Hombre" style="accent-color:var(--rosa);width:15px;height:15px;"> Hombre
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-genero" value="Mujer" style="accent-color:var(--rosa);width:15px;height:15px;"> Mujer
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-genero" value="No binario/a" style="accent-color:var(--rosa);width:15px;height:15px;"> No binario/a
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-genero" value="Prefiero no especificar" style="accent-color:var(--rosa);width:15px;height:15px;"> Prefiero no especificar
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label req">País de origen</label>
+              <select class="form-control" id="v-pais">
+                <option value="">— Seleccionar —</option>
+                <option>Honduras</option><option>El Salvador</option><option>Guatemala</option>
+                <option>Nicaragua</option><option>Cuba</option><option>Venezuela</option>
+                <option>Haití</option><option>Colombia</option><option>Ecuador</option>
+                <option>Perú</option><option>Bolivia</option><option>México</option>
+                <option>Estados Unidos</option><option>Brasil</option><option>Argentina</option>
+                <option>Chile</option><option>Costa Rica</option><option>Panamá</option>
+                <option>República Dominicana</option><option>Jamaica</option>
+                <option>Trinidad y Tobago</option><option>India</option><option>China</option>
+                <option>Camerún</option><option>Guinea</option><option>Senegal</option>
+                <option>Congo</option><option>Bangladesh</option><option>Nepal</option>
+                <option>Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Departamento / Estado</label>
+              <input class="form-control" id="v-depto" type="text" placeholder="Ej. Cortés">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Estado civil</label>
+              <select class="form-control" id="v-estado-civil">
+                <option value="">— Seleccionar —</option>
+                <option>Soltero/a</option>
+                <option>Casado/a</option>
+                <option>Unión libre</option>
+                <option>Divorciado/a</option>
+                <option>Viudo/a</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label req">Fecha de nacimiento</label>
+              <input class="form-control" id="v-fnac" type="date" oninput="calcularEdad()">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Edad</label>
+              <input class="form-control" id="v-edad" type="number" min="0" max="120" placeholder="Se calcula automáticamente">
+            </div>
+            <div class="form-group"><!-- spacer --></div>
+
+            <div class="form-group full">
+              <label class="form-label req">¿A qué grupo de población pertenece?</label>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-grupo" value="Adulto (18-59 años)" style="accent-color:var(--rosa);width:15px;height:15px;"> Adulto (18-59 años)
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-grupo" value="Adulto mayor (+60 años)" style="accent-color:var(--rosa);width:15px;height:15px;"> Adulto mayor (+60 años)
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-grupo" value="Niña acompañada" style="accent-color:var(--rosa);width:15px;height:15px;"> Niña acompañada
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-grupo" value="Niño acompañado" style="accent-color:var(--rosa);width:15px;height:15px;"> Niño acompañado
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-grupo" value="Adolescente hombre acompañado" style="accent-color:var(--rosa);width:15px;height:15px;"> Adolescente hombre acompañado
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-grupo" value="Adolescente mujer acompañada" style="accent-color:var(--rosa);width:15px;height:15px;"> Adolescente mujer acompañada
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="v-grupo" value="NNA No acompañado" style="accent-color:var(--rosa);width:15px;height:15px;"> NNA No acompañado
+                </label>
+              </div>
+            </div>
+
+          </div>
+
+          <div style="margin-top:28px;display:flex;gap:12px;justify-content:flex-end;">
+            <button type="button" class="btn btn-ghost" onclick="limpiarForm()">Limpiar</button>
+            <button type="button" class="btn btn-rosa" id="btn-guardar" onclick="guardarMigrante()">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7.5l4 4 7-7"/></svg>
+              Guardar registro
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CONFIRMACIÓN ─────────────────── -->
+      <div id="pantalla-confirm">
+        <div class="confirm-card">
+          <div class="confirm-icono">
+            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="18" cy="18" r="16"/>
+              <path d="M10 18l5.5 5.5 10.5-11"/>
+            </svg>
+          </div>
+          <div class="confirm-titulo">Registro guardado</div>
+          <div class="confirm-sub">El migrante fue registrado exitosamente en el sistema.</div>
+          <div class="confirm-datos">
+            <div class="confirm-fila">
+              <span class="confirm-key">Folio</span>
+              <span class="confirm-val confirm-folio" id="cf-folio">—</span>
+            </div>
+            <div class="confirm-fila">
+              <span class="confirm-key">Nombre</span>
+              <span class="confirm-val" id="cf-nombre">—</span>
+            </div>
+            <div class="confirm-fila">
+              <span class="confirm-key">Fecha de atención</span>
+              <span class="confirm-val" id="cf-fingreso">—</span>
+            </div>
+            <div class="confirm-fila">
+              <span class="confirm-key">Registrado por</span>
+              <span class="confirm-val">{{ nombre }}</span>
+            </div>
+          </div>
+          <button class="btn btn-rosa btn-full" onclick="nuevoRegistro()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg>
+            Registrar otro migrante
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function calcularEdad() {
+  const val = document.getElementById('v-fnac').value;
+  const edadEl = document.getElementById('v-edad');
+  if (!val) { edadEl.value = ''; return; }
+  const hoy = new Date();
+  const nac = new Date(val);
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const m = hoy.getMonth() - nac.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+  edadEl.value = edad >= 0 ? edad : '';
+}
+
+function limpiarForm() {
+  ['v-nombre-pila','v-primer-apellido','v-segundo-apellido','v-telefono',
+   'v-pais','v-depto','v-estado-civil','v-fnac','v-edad','v-fecha-atencion'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = el.tagName === 'SELECT' ? '' : '';
+  });
+  document.querySelectorAll('input[name="v-genero"], input[name="v-grupo"]').forEach(r => r.checked = false);
+  document.getElementById('alerta-form').style.display = 'none';
+}
+
+async function guardarMigrante() {
+  const alerta      = document.getElementById('alerta-form');
+  const nombrePila  = document.getElementById('v-nombre-pila').value.trim();
+  const primerAp    = document.getElementById('v-primer-apellido').value.trim();
+  const fnac        = document.getElementById('v-fnac').value;
+  const pais        = document.getElementById('v-pais').value;
+  const genero      = document.querySelector('input[name="v-genero"]:checked')?.value || '';
+  const grupo       = document.querySelector('input[name="v-grupo"]:checked')?.value || '';
+
+  if (!nombrePila || !primerAp || !fnac || !pais || !genero || !grupo) {
+    alerta.textContent = 'Completa todos los campos obligatorios (marcados con *).';
+    alerta.style.display = 'block';
+    alerta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  alerta.style.display = 'none';
+
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+
+  const fd = new FormData();
+  fd.append('nombre_pila',        nombrePila);
+  fd.append('primer_apellido',    primerAp);
+  fd.append('segundo_apellido',   document.getElementById('v-segundo-apellido').value.trim());
+  fd.append('fecha_atencion',     document.getElementById('v-fecha-atencion').value);
+  fd.append('telefono_contacto',  document.getElementById('v-telefono').value.trim());
+  fd.append('genero',             genero);
+  fd.append('pais_origen',        pais);
+  fd.append('departamento_estado', document.getElementById('v-depto').value.trim());
+  fd.append('estado_civil',       document.getElementById('v-estado-civil').value);
+  fd.append('fecha_nacimiento',   fnac);
+  fd.append('grupo_poblacion',    grupo);
+
+  const btnHtml = '<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7.5l4 4 7-7"/></svg> Guardar registro';
+
+  let res;
+  try {
+    res = await fetch('/api/migrantes', { method: 'POST', body: fd });
+  } catch(e) {
+    alerta.textContent = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+    alerta.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = btnHtml;
+    return;
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch(e) {
+    alerta.textContent = `Error del servidor (${res.status}). Recarga la página e intenta de nuevo.`;
+    alerta.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = btnHtml;
+    return;
+  }
+
+  if (!res.ok || data.error) {
+    alerta.textContent = data.error || 'Error al guardar. Intenta de nuevo.';
+    alerta.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = btnHtml;
+    return;
+  }
+
+  const nombreCompleto = [nombrePila, primerAp, document.getElementById('v-segundo-apellido').value.trim()].filter(Boolean).join(' ');
+  mostrarConfirmacion(data.folio, nombreCompleto, document.getElementById('v-fecha-atencion').value);
+}
+
+function mostrarConfirmacion(folio, nombre, fechaAtencion) {
+  document.getElementById('cf-folio').textContent   = folio || '—';
+  document.getElementById('cf-nombre').textContent  = nombre;
+  document.getElementById('cf-fingreso').textContent = fechaAtencion || '—';
+  document.getElementById('pantalla-form').style.display    = 'none';
+  document.getElementById('pantalla-confirm').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function nuevoRegistro() {
+  limpiarForm();
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7.5l4 4 7-7"/></svg> Guardar registro';
+  document.getElementById('pantalla-confirm').style.display = 'none';
+  document.getElementById('pantalla-form').style.display    = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

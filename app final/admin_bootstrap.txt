@@ -1,7 +1,7 @@
 Email:         admin@casamonarca.org
 Password:      admin123
 Serial cert:   33E611F0D22495398515AD4F1830F12E2D2E50F6
-Password .p12: YQ2MRwi9WUXm
+Password .p12: VvmbEDyoCdy3
 
 Pasos:
   1. Importar admin_bootstrap.p12 en Chrome/Firefox
