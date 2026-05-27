@@ -131,155 +131,118 @@ textarea.form-control { resize: vertical; min-height: 72px; }
     </div>
   </aside>
 
-  <div class="main">
-    <div class="topbar">
-      <span class="topbar-titulo">Registro de migrante</span>
-      <span class="topbar-badge">Voluntario</span>
-    </div>
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-titulo">Entrevista de ingreso</span>
+    <span class="topbar-badge">Voluntario</span>
+  </div>
 
-    <div class="contenido">
+  <div class="contenido">
+    <!-- FORMULARIO -->
+    <div id="pantalla-form">
+      <div class="encabezado">
+        <h1>Encuesta de ingreso</h1>
+        <p>Completa los datos del migrante. Los campos con <span style="color:var(--rosa)">*</span> son obligatorios.</p>
+      </div>
 
-      <!-- ── FORMULARIO ─────────────────── -->
-      <div id="pantalla-form">
-        <div class="encabezado">
-          <h1>Nuevo registro</h1>
-          <p>Completa los datos del migrante. Los campos con <span style="color:var(--rosa)">*</span> son obligatorios.</p>
-        </div>
-
-        <div class="card">
-          <div class="alerta error" id="alerta-form"></div>
+      <div class="card">
+        <div class="alerta error" id="alerta-form"></div>
 
           <div class="form-grid">
 
-            <span class="form-section">Datos de atención</span>
-
-            <div class="form-group">
-              <label class="form-label req">Fecha de atención</label>
-              <input class="form-control" id="v-fecha-atencion" type="date">
-            </div>
-            <div class="form-group"><!-- spacer --></div>
-
             <span class="form-section">Datos personales</span>
 
-            <div class="form-group">
-              <label class="form-label req">Nombre de pila <span style="font-weight:400">(sin apellidos)</span></label>
-              <input class="form-control" id="v-nombre-pila" type="text" placeholder="Ej. María">
-            </div>
-            <div class="form-group">
-              <label class="form-label req">Primer apellido</label>
-              <input class="form-control" id="v-primer-apellido" type="text" placeholder="Ej. González">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Segundo apellido <span style="font-weight:400">(opcional)</span></label>
-              <input class="form-control" id="v-segundo-apellido" type="text" placeholder="Ej. Ruiz">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Número telefónico de contacto</label>
-              <input class="form-control" id="v-telefono" type="tel" placeholder="Ej. +504 9812 3456">
-            </div>
-
             <div class="form-group full">
-              <label class="form-label req">Género</label>
-              <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:4px;">
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-genero" value="Hombre" style="accent-color:var(--rosa);width:15px;height:15px;"> Hombre
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-genero" value="Mujer" style="accent-color:var(--rosa);width:15px;height:15px;"> Mujer
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-genero" value="No binario/a" style="accent-color:var(--rosa);width:15px;height:15px;"> No binario/a
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-genero" value="Prefiero no especificar" style="accent-color:var(--rosa);width:15px;height:15px;"> Prefiero no especificar
-                </label>
-              </div>
+              <label class="form-label req">Nombre completo</label>
+              <input class="form-control" id="v-nombre" type="text" placeholder="Ej. María González Ruiz">
             </div>
 
-            <div class="form-group">
-              <label class="form-label req">País de origen</label>
-              <select class="form-control" id="v-pais">
-                <option value="">— Seleccionar —</option>
-                <option>Honduras</option><option>El Salvador</option><option>Guatemala</option>
-                <option>Nicaragua</option><option>Cuba</option><option>Venezuela</option>
-                <option>Haití</option><option>Colombia</option><option>Ecuador</option>
-                <option>Perú</option><option>Bolivia</option><option>México</option>
-                <option>Estados Unidos</option><option>Brasil</option><option>Argentina</option>
-                <option>Chile</option><option>Costa Rica</option><option>Panamá</option>
-                <option>República Dominicana</option><option>Jamaica</option>
-                <option>Trinidad y Tobago</option><option>India</option><option>China</option>
-                <option>Camerún</option><option>Guinea</option><option>Senegal</option>
-                <option>Congo</option><option>Bangladesh</option><option>Nepal</option>
-                <option>Otro</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Departamento / Estado</label>
-              <input class="form-control" id="v-depto" type="text" placeholder="Ej. Cortés">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Estado civil</label>
-              <select class="form-control" id="v-estado-civil">
-                <option value="">— Seleccionar —</option>
-                <option>Soltero/a</option>
-                <option>Casado/a</option>
-                <option>Unión libre</option>
-                <option>Divorciado/a</option>
-                <option>Viudo/a</option>
-              </select>
-            </div>
             <div class="form-group">
               <label class="form-label req">Fecha de nacimiento</label>
-              <input class="form-control" id="v-fnac" type="date" oninput="calcularEdad()">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Edad</label>
-              <input class="form-control" id="v-edad" type="number" min="0" max="120" placeholder="Se calcula automáticamente">
+              <input class="form-control" id="v-fnac" type="date">
             </div>
             <div class="form-group"><!-- spacer --></div>
 
+            <div class="form-group">
+              <label class="form-label req">Nacionalidad</label>
+              <input class="form-control" id="v-nac" type="text" placeholder="Ej. Hondureña">
+            </div>
+            <div class="form-group">
+              <label class="form-label req">País de origen</label>
+              <input class="form-control" id="v-pais" type="text" placeholder="Ej. Honduras">
+            </div>
+
+            <span class="form-section">Documento de identificación</span>
+
+            <div class="form-group">
+              <label class="form-label req">Tipo de documento</label>
+              <select class="form-control" id="v-tipo-doc">
+                <option value="">— Seleccionar —</option>
+                <option value="Pasaporte">Pasaporte</option>
+                <option value="Visa">Visa</option>
+                <option value="INE/Cédula">INE / Cédula</option>
+                <option value="Acta de nacimiento">Acta de nacimiento</option>
+                <option value="Sin documento">Sin documento</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label req">Número de documento</label>
+              <input class="form-control" id="v-num-doc" type="text" placeholder="Ej. A12345678">
+            </div>
+
+            <span class="form-section">Situación migratoria</span>
+
+            <div class="form-group">
+              <label class="form-label req">Estado migratorio</label>
+              <select class="form-control" id="v-estado-mig">
+                <option value="en_transito">En tránsito</option>
+                <option value="solicitante_asilo">Solicitante de asilo</option>
+                <option value="deportado">Deportado</option>
+                <option value="repatriado">Repatriado</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label req">Fecha de ingreso al albergue</label>
+              <input class="form-control" id="v-fingreso" type="date">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Fecha de egreso <span style="font-weight:400">(opcional)</span></label>
+              <input class="form-control" id="v-fegreso" type="date">
+            </div>
+            <div class="form-group"><!-- spacer --></div>
+
+            <span class="form-section">Contacto de emergencia</span>
+
+            <div class="form-group">
+              <label class="form-label req">Nombre del contacto</label>
+              <input class="form-control" id="v-contacto" type="text" placeholder="Ej. Pedro González">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Teléfono del contacto <span style="font-weight:400">(opcional)</span></label>
+              <input class="form-control" id="v-tel" type="tel" placeholder="Ej. +52 81 1234 5678">
+            </div>
+
+            <span class="form-section">Dependientes menores de edad <small style="font-weight:400;color:var(--gris-medio);text-transform:none;letter-spacing:0">(opcional)</small></span>
+
+            <div class="form-group full" id="v-deps-lista"></div>
             <div class="form-group full">
-              <label class="form-label req">¿A qué grupo de población pertenece?</label>
-              <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-grupo" value="Adulto (18-59 años)" style="accent-color:var(--rosa);width:15px;height:15px;"> Adulto (18-59 años)
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-grupo" value="Adulto mayor (+60 años)" style="accent-color:var(--rosa);width:15px;height:15px;"> Adulto mayor (+60 años)
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-grupo" value="Niña acompañada" style="accent-color:var(--rosa);width:15px;height:15px;"> Niña acompañada
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-grupo" value="Niño acompañado" style="accent-color:var(--rosa);width:15px;height:15px;"> Niño acompañado
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-grupo" value="Adolescente hombre acompañado" style="accent-color:var(--rosa);width:15px;height:15px;"> Adolescente hombre acompañado
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-grupo" value="Adolescente mujer acompañada" style="accent-color:var(--rosa);width:15px;height:15px;"> Adolescente mujer acompañada
-                </label>
-                <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
-                  <input type="radio" name="v-grupo" value="NNA No acompañado" style="accent-color:var(--rosa);width:15px;height:15px;"> NNA No acompañado
-                </label>
-              </div>
+              <button type="button" class="btn btn-ghost" style="width:fit-content;font-size:12px;" onclick="agregarDep()">+ Agregar menor dependiente</button>
             </div>
 
           </div>
 
-          <div style="margin-top:28px;display:flex;gap:12px;justify-content:flex-end;">
-            <button type="button" class="btn btn-ghost" onclick="limpiarForm()">Limpiar</button>
-            <button type="button" class="btn btn-rosa" id="btn-guardar" onclick="guardarMigrante()">
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7.5l4 4 7-7"/></svg>
-              Guardar registro
-            </button>
-          </div>
+        <div style="margin-top:28px;display:flex;gap:12px;justify-content:flex-end;">
+          <button type="button" class="btn btn-ghost" onclick="limpiarForm()">Limpiar</button>
+          <button type="button" class="btn btn-rosa" id="btn-guardar" onclick="guardarMigrante()">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7.5l4 4 7-7"/></svg>
+            Guardar registro
+          </button>
         </div>
       </div>
-
+    </div>
       <!-- ── CONFIRMACIÓN ─────────────────── -->
       <div id="pantalla-confirm">
         <div class="confirm-card">
