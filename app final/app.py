@@ -1991,28 +1991,36 @@ def arco_resolver_rect(sid):
 
 
 # Operativo → Coordinador: solicitar cancelación
-@app.route('/api/arco/cancelacion_op/<int:mid>', methods=['POST'])
+@app.route('/api/arco/cancelacion_op', methods=['POST'])
 @verificar_certificado
-def arco_cancelacion_op(mid):
+def arco_cancelacion_op():
     if g.rol != 'op':
         abort(403)
+    mid_raw = request.form.get('migrante_id', '').strip()
+    motivo  = request.form.get('motivo', '').strip() or None
+    if not mid_raw or not mid_raw.isdigit():
+        return jsonify(error='ID de migrante inválido'), 400
+    mid = int(mid_raw)
     db = obtener_db()
-    mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
-    if not mig:
-        return jsonify(error='Migrante no encontrado'), 404
-    pendiente = _exec(db,
-        "SELECT id FROM solicitudes_cancelacion_op WHERE migrante_id=%s AND estado='pendiente'",
-        (mid,)
-    ).fetchone()
-    if pendiente:
-        return jsonify(error='Ya existe una solicitud de cancelación pendiente para este registro'), 400
-    motivo = request.form.get('motivo', '').strip() or None
-    _exec(db,
-        'INSERT INTO solicitudes_cancelacion_op (migrante_id, solicitado_por, motivo)'
-        ' VALUES (%s,%s,%s)',
-        (mid, g.usuario, motivo)
-    )
-    db.commit()
+    try:
+        mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
+        if not mig:
+            return jsonify(error='Migrante no encontrado'), 404
+        pendiente = _exec(db,
+            "SELECT id FROM solicitudes_cancelacion_op WHERE migrante_id=%s AND estado='pendiente'",
+            (mid,)
+        ).fetchone()
+        if pendiente:
+            return jsonify(error='Ya existe una solicitud pendiente para este registro'), 400
+        _exec(db,
+            'INSERT INTO solicitudes_cancelacion_op (migrante_id, solicitado_por, motivo)'
+            ' VALUES (%s,%s,%s)',
+            (mid, g.usuario, motivo)
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        return jsonify(error=f'Error al guardar solicitud: {e}'), 500
     log_evento('arco_cancel_op_solicitada', usuario=g.usuario, rol=g.rol,
                detalle=f'Op solicita cancelación: {mig["nombre"]} · Folio: {mig["folio"]}')
     return jsonify(ok=True)

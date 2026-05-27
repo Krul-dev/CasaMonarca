@@ -1285,13 +1285,22 @@ async function enviarCancel() {
   const fd = new FormData();
   fd.append('motivo', motivo);
   // Op → coordinator; Coord → admin (firmado con EC)
-  const url = ROL === 'op'
-    ? '/api/arco/cancelacion_op/' + arcoMigrante.id
-    : '/api/arco/cancelacion/'    + arcoMigrante.id;
+  let url;
+  if (ROL === 'op') {
+    fd.append('migrante_id', arcoMigrante.id);
+    url = '/api/arco/cancelacion_op';
+  } else {
+    url = '/api/arco/cancelacion/' + arcoMigrante.id;
+  }
   try {
     const res  = await fetch(url, { method: 'POST', body: fd });
-    const data = await res.json();
-    if (!res.ok || data.error) { alerta.textContent = data.error || 'Error'; alerta.style.display = 'block'; return; }
+    let data = {};
+    try { data = await res.json(); } catch(_) {}
+    if (!res.ok || data.error) {
+      alerta.textContent = data.error || `Error del servidor (${res.status})`;
+      alerta.style.display = 'block';
+      return;
+    }
     cerrarArcoCancel();
     if (ROL === 'op') {
       alert('Solicitud de cancelación enviada al coordinador para validación.');
@@ -1299,7 +1308,10 @@ async function enviarCancel() {
     } else {
       alert('Solicitud de cancelación firmada y enviada al administrador.');
     }
-  } catch(e) { alerta.textContent = 'Error de conexión'; alerta.style.display = 'block'; }
+  } catch(e) {
+    alerta.textContent = 'Sin conexión al servidor. Verifica que el servidor esté corriendo.';
+    alerta.style.display = 'block';
+  }
 }
 
 // ── COORDINADOR: solicitudes pendientes ──
