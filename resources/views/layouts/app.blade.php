@@ -63,6 +63,7 @@
                 ? \App\Models\AreaSolicitud::where('area_id', $u->area_id)->where('status','pendiente')->count()
                 : \App\Models\AreaSolicitud::where('status','pendiente')->count();
             $casosMios = ($u->area_id) ? \App\Models\Expediente::where('colaborador_id', $u->id)->whereIn('status',['sin_asignar','en_proceso'])->count() : 0;
+            $rectPendientes = ($rid <= 4) ? \App\Models\SolicitudRectificacion::whereNotIn('status',['aprobada','rechazada'])->count() : 0;
         @endphp
 
         {{-- PANEL --}}
@@ -74,15 +75,10 @@
             ]
         ])
 
-        {{-- USUARIOS (admin + coordinador) --}}
+        {{-- USUARIOS --}}
         @if($rid <= 2)
-        @include('layouts.partials.sidebar-group', [
-            'label' => 'Usuarios',
-            'items' => [
-                ['label' => 'Aprobar accesos', 'route' => 'admin.users.approvals',
-                 'active' => request()->routeIs('admin.users.approvals'),
-                 'badge' => $pendientesAcceso,
-                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>'],
+        @php
+            $usuariosItems = [
                 ['label' => 'Colaboradores', 'route' => 'admin.users.colaboradores',
                  'active' => request()->routeIs('admin.users.colaboradores'),
                  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5M12 11a4 4 0 100-8 4 4 0 000 8z"/>'],
@@ -96,8 +92,18 @@
                  'active' => request()->routeIs('admin.sin-area'),
                  'badge' => $sinAreaCount + $membresiaPendiente,
                  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>'],
-            ]
-        ])
+            ];
+            // Solo admin ve aprobaciones pendientes y lista completa
+            if ($rid === 1) {
+                array_unshift($usuariosItems,
+                    ['label' => 'Aprobar accesos', 'route' => 'admin.users.approvals',
+                     'active' => request()->routeIs('admin.users.approvals'),
+                     'badge' => $pendientesAcceso,
+                     'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>']
+                );
+            }
+        @endphp
+        @include('layouts.partials.sidebar-group', ['label' => 'Usuarios', 'items' => $usuariosItems])
         @endif
 
         {{-- ÁREAS --}}
@@ -138,6 +144,19 @@
             }
         @endphp
         @include('layouts.partials.sidebar-group', ['label' => 'Casos', 'items' => $casosItems])
+        @endif
+
+        {{-- DOCUMENTOS ARCO (todo el staff) --}}
+        @if($rid >= 1 && $rid <= 4)
+        @include('layouts.partials.sidebar-group', [
+            'label' => 'Documentos',
+            'items' => [
+                ['label' => 'Solicitudes ARCO', 'route' => 'rectificaciones.feed',
+                 'active' => request()->routeIs('rectificaciones.*'),
+                 'badge'  => $rectPendientes,
+                 'icon'   => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>'],
+            ]
+        ])
         @endif
 
         {{-- SEGURIDAD (admin only) --}}

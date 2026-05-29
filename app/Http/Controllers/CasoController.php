@@ -353,6 +353,9 @@ class CasoController extends Controller
         $this->verificarCoordinador();
         $this->verificarAccesoArea($expediente->area_id);
 
+        abort_if($documento->firmas()->exists(), 422,
+            'Este documento ya está firmado digitalmente y no puede editarse. La firma garantiza su integridad.');
+
         $request->validate([
             'nombre'    => ['required', 'string', 'max:255'],
             'pem_llave' => ['required', 'string'],

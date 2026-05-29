@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\ActividadLog;
 use App\Models\Area;
 use App\Models\Certificado;
+use App\Models\Documento;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\View\View;
 
 class UserController extends Controller
 {
@@ -185,14 +187,14 @@ class UserController extends Controller
         return back()->with('status', 'Usuario eliminado. Su rastro histórico se ha preservado.');
     }
 
-    public function show(\App\Models\User $user): \Illuminate\View\View
+    public function show(User $user): View
     {
-        Gate::authorize('puede-eliminar');
+        Gate::authorize('puede-actualizar');
 
         $usuario = $user->load(['area', 'role', 'certificados', 'migrantePerfil']);
 
         $documentosIdentidad = $user->role_id === 5
-            ? \App\Models\Documento::where('user_id', $user->id)
+            ? Documento::where('user_id', $user->id)
                 ->where('categoria', 'identidad')
                 ->latest()
                 ->get()
@@ -201,7 +203,7 @@ class UserController extends Controller
         return view('admin.users.show', compact('usuario', 'documentosIdentidad'));
     }
 
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         Gate::authorize('puede-eliminar');
 
@@ -212,9 +214,9 @@ class UserController extends Controller
         return view('admin.users.index', compact('users', 'areas', 'roles'));
     }
 
-    public function colaboradores(): \Illuminate\View\View
+    public function colaboradores(): View
     {
-        Gate::authorize('puede-eliminar');
+        Gate::authorize('puede-actualizar');
 
         $users = User::with(['area', 'role'])
             ->whereIn('role_id', [2, 3, 4])
@@ -232,9 +234,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function migrantes(): \Illuminate\View\View
+    public function migrantes(): View
     {
-        Gate::authorize('puede-eliminar');
+        Gate::authorize('puede-actualizar');
 
         $rolMigrante = Role::where('name', 'Migrante')->first();
 
@@ -252,9 +254,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function voluntarios(): \Illuminate\View\View
+    public function voluntarios(): View
     {
-        Gate::authorize('puede-eliminar');
+        Gate::authorize('puede-actualizar');
 
         $rolVoluntario = Role::where('name', 'Voluntario')->first();
 
@@ -312,7 +314,7 @@ class UserController extends Controller
         return back()->with('status', "Credenciales de {$user->name} actualizadas correctamente.");
     }
 
-    public function pendingApprovals(): \Illuminate\View\View
+    public function pendingApprovals(): View
     {
         Gate::authorize('puede-eliminar');
 

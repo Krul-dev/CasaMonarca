@@ -18,7 +18,11 @@
         <div class="flex items-center gap-2 text-xs text-gray-400">
             <a href="{{ route('dashboard') }}" class="hover:text-indigo-500 transition">Panel</a>
             <span>/</span>
-            <a href="{{ route('admin.users.index') }}" class="hover:text-indigo-500 transition">Usuarios</a>
+            @php
+                $backRoute = $usuario->role_id === 5 ? 'admin.users.migrantes'
+                    : ($usuario->role_id >= 3 ? 'admin.users.colaboradores' : 'admin.users.colaboradores');
+            @endphp
+            <a href="{{ route($backRoute) }}" class="hover:text-indigo-500 transition">Usuarios</a>
             <span>/</span>
             <span class="text-gray-600">{{ $usuario->name }}</span>
         </div>
@@ -60,7 +64,8 @@
                     </div>
                 </div>
 
-                {{-- Acciones rápidas --}}
+                {{-- Acciones rápidas (solo admin) --}}
+                @can('puede-eliminar')
                 <div class="flex flex-col gap-2 shrink-0">
                     @if($usuario->status === 'alta')
                         <form action="{{ route('users.revoke', $usuario->id) }}" method="POST">
@@ -87,7 +92,6 @@
                         </form>
                     @endif
 
-                    @can('puede-eliminar')
                     <form action="{{ route('users.destroy', $usuario->id) }}" method="POST">
                         @csrf
                         @method('DELETE')
@@ -100,12 +104,13 @@
                             Eliminar usuario
                         </button>
                     </form>
-                    @endcan
                 </div>
+                @endcan
             </div>
         </div>
 
-        {{-- Cambio de credenciales --}}
+        {{-- Cambio de credenciales (solo admin) --}}
+        @can('puede-eliminar')
         <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <h3 class="font-semibold text-gray-800 text-sm mb-4">Cambiar credenciales</h3>
             <form action="{{ route('admin.users.updateCredentials', $usuario->id) }}" method="POST"
@@ -147,6 +152,7 @@
                 </div>
             </form>
         </div>
+        @endcan
 
         {{-- Certificados del usuario --}}
         <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -268,6 +274,7 @@
                                 Descargar
                             </a>
 
+                            @can('puede-eliminar')
                             <form method="POST"
                                   action="{{ route('migrante.documentos.destroy', $doc->id) }}"
                                   onsubmit="return confirm('¿Eliminar este documento?')">
@@ -277,6 +284,7 @@
                                     Eliminar
                                 </button>
                             </form>
+                            @endcan
                         </div>
                     </div>
                     @endforeach

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActividadLog;
 use App\Models\Documento;
+use App\Models\SolicitudRectificacion;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,9 +26,15 @@ class DocumentoIdentidadController extends Controller
                                ->latest()
                                ->get();
 
+        // Load active solicitudes keyed by documento_id for status display
+        $solicitudesActivas = SolicitudRectificacion::where('solicitante_id', $user->id)
+            ->whereNotIn('status', ['aprobada', 'rechazada'])
+            ->get()
+            ->keyBy('documento_id');
+
         $etiquetas = Documento::etiquetasIdentidad();
 
-        return view('migrante.documentos.index', compact('documentos', 'etiquetas'));
+        return view('migrante.documentos.index', compact('documentos', 'etiquetas', 'solicitudesActivas'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -71,13 +78,9 @@ class DocumentoIdentidadController extends Controller
 
     public function destroy(Documento $documento): RedirectResponse
     {
-        $user = auth()->user();
-
-        // Migrant can only delete their own; admin can delete any identity doc
-        $esAdmin    = Gate::check('puede-eliminar');
-        $esPropiet  = $documento->user_id === $user->id && $documento->categoria === 'identidad';
-
-        abort_if(! $esAdmin && ! $esPropiet, 403);
+        // Solo admin puede eliminar directamente; migrantes deben usar el flujo ARCO
+        Gate::authorize('puede-eliminar');
+        abort_if($documento->categoria !== 'identidad', 403);
 
         Storage::disk('local')->delete($documento->ruta_storage);
         $documento->delete();
@@ -108,17 +111,4 @@ class DocumentoIdentidadController extends Controller
         );
     }
 
-    // ── Admin: list identity docs for a specific migrant ─────────
-
-    public function porMigrante(User $usuario): View
-    {
-        Gate::authorize('puede-eliminar');
-
-        $documentos = Documento::where('user_id', $usuario->id)
-                               ->deIdentidad()
-                               ->latest()
-                               ->get();
-
-        return view('admin.users.documentos-migrante', compact('usuario', 'documentos'));
-    }
 }

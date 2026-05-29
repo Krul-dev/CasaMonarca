@@ -52,7 +52,7 @@ class DashboardController extends Controller
             ->get();
 
         // Recent activity (last 15 entries)
-        $actividadReciente = \App\Models\ActividadLog::latest()
+        $actividadReciente = ActividadLog::latest()
             ->take(15)
             ->get();
 

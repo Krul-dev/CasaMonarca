@@ -9,6 +9,7 @@ use App\Http\Controllers\DocumentoIdentidadController;
 use App\Http\Controllers\FirmaController;
 use App\Http\Controllers\MigranteSolicitudController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RectificacionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Gate;
@@ -117,6 +118,19 @@ Route::middleware(['auth', 'checkstatus'])->prefix('mi-espacio')->name('migrante
     Route::get('/documentos',                              [DocumentoIdentidadController::class, 'index'])->name('documentos.index');
     Route::post('/documentos',                             [DocumentoIdentidadController::class, 'store'])->name('documentos.store');
     Route::delete('/documentos/{documento}',               [DocumentoIdentidadController::class, 'destroy'])->name('documentos.destroy');
+
+    // Solicitudes de rectificación / cancelación ARCO
+    Route::post('/documentos/{documento}/rectificar',      [RectificacionController::class, 'solicitar'])->name('rectificar');
+});
+
+// Solicitudes ARCO — gestión staff
+Route::middleware(['auth', 'checkstatus'])->group(function () {
+    Route::get('/staff/rectificaciones',                               [RectificacionController::class, 'feed'])->name('rectificaciones.feed');
+    Route::post('/staff/rectificaciones/{solicitud}/tomar',            [RectificacionController::class, 'tomar'])->name('rectificaciones.tomar');
+    Route::post('/staff/rectificaciones/{solicitud}/propuesta',        [RectificacionController::class, 'subirPropuesta'])->name('rectificaciones.propuesta');
+    Route::get('/staff/rectificaciones/{solicitud}/challenge',         [RectificacionController::class, 'challenge'])->name('rectificaciones.challenge');
+    Route::post('/staff/rectificaciones/{solicitud}/aprobar',          [RectificacionController::class, 'aprobar'])->name('rectificaciones.aprobar');
+    Route::post('/staff/rectificaciones/{solicitud}/rechazar',         [RectificacionController::class, 'rechazar'])->name('rectificaciones.rechazar');
 });
 
 // Descarga segura de documentos (staff + migrante propietario)

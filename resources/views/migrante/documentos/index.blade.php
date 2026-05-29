@@ -131,69 +131,169 @@
                 @php
                     $ext = strtolower($doc->tipo);
                     $iconColor = in_array($ext, ['jpg','jpeg','png']) ? 'var(--brand-orange-deep)' : 'var(--brand-red)';
+                    $solicitudActiva = $solicitudesActivas[$doc->id] ?? null;
                 @endphp
-                <div style="display:flex;align-items:center;gap:14px;padding:14px 24px;
-                            border-bottom:1px solid var(--cream-100);">
-                    {{-- Icon --}}
-                    <div style="width:36px;height:36px;border-radius:var(--r-sm);
-                                background:var(--cream-100);display:flex;align-items:center;
-                                justify-content:center;flex-shrink:0;">
-                        <svg style="width:18px;height:18px;color:{{ $iconColor }};"
-                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                        </svg>
-                    </div>
+                <div x-data="{ openRectificar: false, openCancelar: false }"
+                     style="padding:14px 24px;border-bottom:1px solid var(--cream-100);">
 
-                    {{-- Info --}}
-                    <div style="flex:1;min-width:0;">
-                        <p style="font-size:14px;font-weight:600;color:var(--ink-900);
-                                  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                            {{ $doc->nombre }}
-                        </p>
-                        <p style="font-size:12px;color:var(--ink-400);margin-top:2px;">
-                            <span style="font-family:var(--font-display);font-weight:700;
-                                         font-size:10px;letter-spacing:0.1em;text-transform:uppercase;
-                                         color:var(--brand-orange-deep);
-                                         background:var(--brand-orange-soft);
-                                         border:1px solid var(--brand-orange-line);
-                                         padding:2px 8px;border-radius:999px;margin-right:8px;">
-                                {{ $doc->etiqueta }}
-                            </span>
-                            .{{ strtoupper($doc->tipo) }} · {{ $doc->created_at->format('d/m/Y') }}
-                        </p>
-                    </div>
-
-                    {{-- Actions --}}
-                    <div style="display:flex;gap:8px;flex-shrink:0;">
-                        <a href="{{ route('documentos.download', $doc->id) }}"
-                           style="display:inline-flex;align-items:center;gap:6px;
-                                  padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;
-                                  background:var(--cream-100);border:1px solid var(--cream-300);
-                                  color:var(--ink-700);text-decoration:none;transition:background .15s;"
-                           onmouseover="this.style.background='var(--cream-200)'"
-                           onmouseout="this.style.background='var(--cream-100)'">
-                            <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {{-- Main row --}}
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        {{-- Icon --}}
+                        <div style="width:36px;height:36px;border-radius:var(--r-sm);
+                                    background:var(--cream-100);display:flex;align-items:center;
+                                    justify-content:center;flex-shrink:0;">
+                            <svg style="width:18px;height:18px;color:{{ $iconColor }};"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                             </svg>
-                            Descargar
-                        </a>
+                        </div>
 
-                        <form method="POST" action="{{ route('migrante.documentos.destroy', $doc->id) }}"
-                              onsubmit="return confirm('¿Eliminar este documento? No se puede deshacer.')">
-                            @csrf @method('DELETE')
-                            <button type="submit"
-                                    style="display:inline-flex;align-items:center;gap:6px;
-                                           padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;
-                                           background:transparent;border:1px solid oklch(85% 0.10 25);
-                                           color:var(--brand-red);cursor:pointer;transition:background .15s;"
-                                    onmouseover="this.style.background='var(--brand-red-soft)'"
-                                    onmouseout="this.style.background='transparent'">
-                                Eliminar
-                            </button>
+                        {{-- Info --}}
+                        <div style="flex:1;min-width:0;">
+                            <p style="font-size:14px;font-weight:600;color:var(--ink-900);
+                                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                {{ $doc->nombre }}
+                            </p>
+                            <p style="font-size:12px;color:var(--ink-400);margin-top:2px;">
+                                <span style="font-family:var(--font-display);font-weight:700;
+                                             font-size:10px;letter-spacing:0.1em;text-transform:uppercase;
+                                             color:var(--brand-orange-deep);
+                                             background:var(--brand-orange-soft);
+                                             border:1px solid var(--brand-orange-line);
+                                             padding:2px 8px;border-radius:999px;margin-right:8px;">
+                                    {{ $doc->etiqueta }}
+                                </span>
+                                .{{ strtoupper($doc->tipo) }} · {{ $doc->created_at->format('d/m/Y') }}
+                            </p>
+                        </div>
+
+                        {{-- Actions --}}
+                        <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+                            <a href="{{ route('documentos.download', $doc->id) }}"
+                               style="display:inline-flex;align-items:center;gap:6px;
+                                      padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;
+                                      background:var(--cream-100);border:1px solid var(--cream-300);
+                                      color:var(--ink-700);text-decoration:none;transition:background .15s;"
+                               onmouseover="this.style.background='var(--cream-200)'"
+                               onmouseout="this.style.background='var(--cream-100)'">
+                                <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                Descargar
+                            </a>
+
+                            @if($solicitudActiva)
+                                {{-- Solicitud en curso --}}
+                                @php
+                                    $badgeStyle = match($solicitudActiva->status) {
+                                        'pendiente'            => 'background:#fef3c7;color:#92400e;border-color:#fde68a;',
+                                        'en_proceso'           => 'background:#dbeafe;color:#1e40af;border-color:#bfdbfe;',
+                                        'pendiente_aprobacion' => 'background:#f3e8ff;color:#6b21a8;border-color:#e9d5ff;',
+                                        default                => 'background:var(--cream-100);color:var(--ink-500);border-color:var(--cream-300);',
+                                    };
+                                @endphp
+                                <span style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;
+                                             border-radius:999px;font-size:12px;font-weight:600;border:1px solid;
+                                             {{ $badgeStyle }}">
+                                    <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    {{ $solicitudActiva->tipoLabel() }}: {{ $solicitudActiva->statusLabel() }}
+                                </span>
+                            @else
+                                {{-- Corrección --}}
+                                <button @click="openRectificar = !openRectificar; openCancelar = false"
+                                        style="display:inline-flex;align-items:center;gap:6px;
+                                               padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;
+                                               background:transparent;border:1px solid var(--cream-300);
+                                               color:var(--ink-600);cursor:pointer;transition:background .15s;"
+                                        onmouseover="this.style.background='var(--cream-100)'"
+                                        onmouseout="this.style.background='transparent'">
+                                    <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                    Solicitar corrección
+                                </button>
+
+                                {{-- Cancelación --}}
+                                <button @click="openCancelar = !openCancelar; openRectificar = false"
+                                        style="display:inline-flex;align-items:center;gap:6px;
+                                               padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;
+                                               background:transparent;border:1px solid oklch(85% 0.10 25);
+                                               color:var(--brand-red);cursor:pointer;transition:background .15s;"
+                                        onmouseover="this.style.background='var(--brand-red-soft)'"
+                                        onmouseout="this.style.background='transparent'">
+                                    Solicitar eliminación
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Panel: solicitar corrección --}}
+                    <div x-show="openRectificar" style="display:none;margin-top:12px;
+                                background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px;">
+                        <p style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:10px;">
+                            Solicitar corrección de este documento
+                        </p>
+                        <form method="POST" action="{{ route('migrante.rectificar', $doc->id) }}" class="space-y-3">
+                            @csrf
+                            <input type="hidden" name="tipo" value="rectificacion">
+                            <div>
+                                <label style="display:block;font-size:11px;font-weight:700;color:#92400e;margin-bottom:6px;
+                                              text-transform:uppercase;letter-spacing:0.1em;">
+                                    ¿Qué debe corregirse? (opcional)
+                                </label>
+                                <textarea name="descripcion" rows="2" maxlength="1000"
+                                          placeholder="Describe el error o el cambio necesario…"
+                                          style="width:100%;font-size:13px;border:1px solid #fde68a;border-radius:8px;
+                                                 padding:8px 12px;background:white;resize:none;box-sizing:border-box;outline:none;"></textarea>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button type="submit" style="padding:8px 20px;border-radius:999px;font-size:12px;font-weight:700;
+                                                             background:#d97706;color:white;border:none;cursor:pointer;">
+                                    Enviar solicitud
+                                </button>
+                                <button type="button" @click="openRectificar = false"
+                                        style="padding:8px 14px;border-radius:999px;font-size:12px;color:#6b7280;
+                                               background:transparent;border:none;cursor:pointer;">
+                                    Cancelar
+                                </button>
+                            </div>
                         </form>
                     </div>
+
+                    {{-- Panel: solicitar eliminación --}}
+                    <div x-show="openCancelar" style="display:none;margin-top:12px;
+                                background:#fff5f5;border:1px solid #fecaca;border-radius:12px;padding:16px;">
+                        <p style="font-size:12px;font-weight:700;color:#991b1b;margin-bottom:6px;">
+                            Solicitar eliminación de este documento
+                        </p>
+                        <p style="font-size:12px;color:#b91c1c;margin-bottom:10px;">
+                            Un coordinador revisará y aprobará la eliminación con su firma digital.
+                        </p>
+                        <form method="POST" action="{{ route('migrante.rectificar', $doc->id) }}" class="space-y-3">
+                            @csrf
+                            <input type="hidden" name="tipo" value="cancelacion">
+                            <textarea name="descripcion" rows="2" maxlength="1000"
+                                      placeholder="Motivo de la solicitud (opcional)…"
+                                      style="width:100%;font-size:13px;border:1px solid #fecaca;border-radius:8px;
+                                             padding:8px 12px;background:white;resize:none;box-sizing:border-box;outline:none;"></textarea>
+                            <div style="display:flex;gap:8px;">
+                                <button type="submit" style="padding:8px 20px;border-radius:999px;font-size:12px;font-weight:700;
+                                                             background:#dc2626;color:white;border:none;cursor:pointer;">
+                                    Enviar solicitud de eliminación
+                                </button>
+                                <button type="button" @click="openCancelar = false"
+                                        style="padding:8px 14px;border-radius:999px;font-size:12px;color:#6b7280;
+                                               background:transparent;border:none;cursor:pointer;">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
                 </div>
                 @endforeach
             </div>
