@@ -530,10 +530,10 @@ textarea.form-control { resize: vertical; min-height: 72px; }
         <div class="form-group full">
           <label class="form-label required">Género</label>
           <div class="checkboxes">
-            <label class="check-item"><input type="radio" name="mig-genero" value="Hombre"> Hombre</label>
-            <label class="check-item"><input type="radio" name="mig-genero" value="Mujer"> Mujer</label>
-            <label class="check-item"><input type="radio" name="mig-genero" value="No binario/a"> No binario/a</label>
-            <label class="check-item"><input type="radio" name="mig-genero" value="Prefiero no especificar"> Prefiero no especificar</label>
+            <label class="check-item"><input type="radio" name="mig-genero" value="Hombre" onchange="autoSeleccionarGrupoPoblacion()"> Hombre</label>
+            <label class="check-item"><input type="radio" name="mig-genero" value="Mujer" onchange="autoSeleccionarGrupoPoblacion()"> Mujer</label>
+            <label class="check-item"><input type="radio" name="mig-genero" value="No binario/a" onchange="autoSeleccionarGrupoPoblacion()"> No binario/a</label>
+            <label class="check-item"><input type="radio" name="mig-genero" value="Prefiero no especificar" onchange="autoSeleccionarGrupoPoblacion()"> Prefiero no especificar</label>
           </div>
         </div>
 
@@ -572,7 +572,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
         </div>
         <div class="form-group">
           <label class="form-label required">Fecha de nacimiento</label>
-          <input class="form-control" id="mig-fecha-nac" type="date" oninput="calcularEdad('mig-fecha-nac','mig-edad')">
+          <input class="form-control" id="mig-fecha-nac" type="date" oninput="calcularEdad('mig-fecha-nac','mig-edad'); autoSeleccionarGrupoPoblacion()">
         </div>
 
         <div class="form-group">
@@ -874,6 +874,23 @@ function calcularEdad(inputFechaId, inputEdadId) {
   const m = hoy.getMonth() - nac.getMonth();
   if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
   edadEl.value = edad >= 0 ? edad : '';
+}
+
+function autoSeleccionarGrupoPoblacion() {
+  const edad = parseInt(document.getElementById('mig-edad').value);
+  if (isNaN(edad) || edad < 0) return;
+  const genero = document.querySelector('input[name="mig-genero"]:checked')?.value || '';
+  let grupo = '';
+  if (edad >= 60) grupo = 'Adulto mayor (+60 años)';
+  else if (edad >= 18) grupo = 'Adulto (18-59 años)';
+  else if (edad >= 13 && genero === 'Hombre') grupo = 'Adolescente hombre acompañado';
+  else if (edad >= 13 && genero === 'Mujer') grupo = 'Adolescente mujer acompañada';
+  else if (edad < 13 && genero === 'Hombre') grupo = 'Niño acompañado';
+  else if (edad < 13 && genero === 'Mujer') grupo = 'Niña acompañada';
+  if (grupo) {
+    const r = document.querySelector(`input[name="mig-grupo"][value="${grupo}"]`);
+    if (r) r.checked = true;
+  }
 }
 
 // ── REGISTROS ─────────────────────────────────────────────────

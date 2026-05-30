@@ -180,10 +180,10 @@ textarea.form-control { resize: vertical; min-height: 72px; }
             <div class="form-group full">
               <label class="form-label req">Género</label>
               <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px;">
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="v-genero" value="Hombre"> Hombre</label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="v-genero" value="Mujer"> Mujer</label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="v-genero" value="No binario/a"> No binario/a</label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="v-genero" value="Prefiero no especificar"> Prefiero no especificar</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="v-genero" value="Hombre" onchange="autoSeleccionarGrupo()"> Hombre</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="v-genero" value="Mujer" onchange="autoSeleccionarGrupo()"> Mujer</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="v-genero" value="No binario/a" onchange="autoSeleccionarGrupo()"> No binario/a</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="v-genero" value="Prefiero no especificar" onchange="autoSeleccionarGrupo()"> Prefiero no especificar</label>
               </div>
             </div>
 
@@ -298,6 +298,24 @@ function calcularEdad() {
   const m = hoy.getMonth() - nac.getMonth();
   if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
   edadEl.value = edad >= 0 ? edad : '';
+  autoSeleccionarGrupo();
+}
+
+function autoSeleccionarGrupo() {
+  const edad = parseInt(document.getElementById('v-edad').value);
+  if (isNaN(edad) || edad < 0) return;
+  const genero = document.querySelector('input[name="v-genero"]:checked')?.value || '';
+  let grupo = '';
+  if (edad >= 60) grupo = 'Adulto mayor (+60 años)';
+  else if (edad >= 18) grupo = 'Adulto (18-59 años)';
+  else if (edad >= 13 && genero === 'Hombre') grupo = 'Adolescente hombre acompañado';
+  else if (edad >= 13 && genero === 'Mujer') grupo = 'Adolescente mujer acompañada';
+  else if (edad < 13 && genero === 'Hombre') grupo = 'Niño acompañado';
+  else if (edad < 13 && genero === 'Mujer') grupo = 'Niña acompañada';
+  if (grupo) {
+    const r = document.querySelector(`input[name="v-grupo"][value="${grupo}"]`);
+    if (r) r.checked = true;
+  }
 }
 
 function limpiarForm() {
