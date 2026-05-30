@@ -392,7 +392,7 @@ def inicializar_db():
     except Exception as e:
         print(f'[migración solicitudes_arco_rect] {e}')
 
-    # Migración: ampliar ENUM de log para eventos ARCO.
+    # Migración: ampliar ENUM de log para eventos ARCO y registro workflow.
     try:
         cur = con.cursor()
         cur.execute(
@@ -406,7 +406,11 @@ def inicializar_db():
             "     'arco_acceso','arco_rect_solicitada','arco_rect_aprobada',"
             "     'arco_rect_rechazada','arco_cancel_solicitada',"
             "     'arco_cancel_op_solicitada','arco_cancel_coord_firmada',"
-            "     'arco_cancel_coord_rechazada') NOT NULL"
+            "     'arco_cancel_coord_rechazada',"
+            "     'registro_mig_enviado_voluntario','registro_mig_enviado_op_directo',"
+            "     'registro_mig_op_validado','registro_mig_op_rechazado',"
+            "     'registro_mig_coord_aprobado','registro_mig_coord_rechazado',"
+            "     'registro_mig_insertado') NOT NULL"
         )
         con.commit()
         cur.close()
@@ -475,6 +479,80 @@ def inicializar_db():
             cur.close()
     except Exception as e:
         print(f'[migración claves EC coord] {e}')
+
+    # Generar claves EC para operativos existentes sin clave.
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT usuario FROM usuarios WHERE rol='op'"
+            " AND (ec_private_key IS NULL OR ec_private_key='')"
+        )
+        ops_sin_clave = cur.fetchall()
+        cur.close()
+        for row in ops_sin_clave:
+            priv_pem, pub_pem = generar_claves_ec()
+            cur = con.cursor()
+            cur.execute(
+                "UPDATE usuarios SET ec_private_key=%s, ec_public_key=%s WHERE usuario=%s",
+                (priv_pem, pub_pem, row['usuario'])
+            )
+            con.commit()
+            cur.close()
+    except Exception as e:
+        print(f'[migración claves EC op] {e}')
+
+    # Migración: tabla solicitudes_registro_migrante (workflow de aprobación).
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS solicitudes_registro_migrante ("
+            "  id                    INT AUTO_INCREMENT PRIMARY KEY,"
+            "  nombre                VARCHAR(200) NOT NULL,"
+            "  fecha_nacimiento      DATE,"
+            "  pais_origen           VARCHAR(80),"
+            "  fecha_atencion        DATE,"
+            "  genero                VARCHAR(30),"
+            "  departamento_estado   VARCHAR(100),"
+            "  estado_civil          VARCHAR(30),"
+            "  grupo_poblacion       VARCHAR(80),"
+            "  telefono_contacto     VARCHAR(32),"
+            "  estado                ENUM('pendiente_op','pendiente_coord','aprobada','rechazada')"
+            "                        NOT NULL DEFAULT 'pendiente_op',"
+            "  enviado_por           VARCHAR(120) NOT NULL,"
+            "  rol_enviado_por       ENUM('voluntario','op') NOT NULL,"
+            "  op_validador          VARCHAR(120),"
+            "  firma_op              TEXT,"
+            "  op_pubkey             TEXT,"
+            "  mensaje_firmado_op    TEXT,"
+            "  op_validado_en        DATETIME,"
+            "  coord_aprobador       VARCHAR(120),"
+            "  firma_coord           TEXT,"
+            "  coord_pubkey          TEXT,"
+            "  mensaje_firmado_coord TEXT,"
+            "  coord_aprobado_en     DATETIME,"
+            "  rechazado_por         VARCHAR(120),"
+            "  motivo_rechazo        TEXT,"
+            "  rechazado_en          DATETIME,"
+            "  creado                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            "  actualizado           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            "                        ON UPDATE CURRENT_TIMESTAMP,"
+            "  INDEX idx_srm_estado  (estado),"
+            "  INDEX idx_srm_enviado (enviado_por)"
+            ") ENGINE=InnoDB"
+        )
+        con.commit()
+        cur.close()
+    except Exception as e:
+        print(f'[migración solicitudes_registro_migrante] {e}')
+
+    # Migración: columna firmas_aprobacion en migrantes.
+    try:
+        cur = con.cursor()
+        cur.execute("ALTER TABLE migrantes ADD COLUMN firmas_aprobacion TEXT")
+        con.commit()
+        cur.close()
+    except Exception:
+        pass
 
     # Sembrar solo si la tabla está vacía
     cur = con.cursor()
@@ -1611,6 +1689,68 @@ def api_migrantes_crear():
     nombre = ' '.join(partes)
 
     db = obtener_db()
+    import json as _json
+
+    # ── Voluntario: crea ticket pendiente de validación por op ──
+    if g.rol == 'voluntario':
+        try:
+            cur = _exec(db,
+                'INSERT INTO solicitudes_registro_migrante'
+                ' (nombre, fecha_nacimiento, pais_origen, fecha_atencion, genero,'
+                '  departamento_estado, estado_civil, grupo_poblacion, telefono_contacto,'
+                '  estado, enviado_por, rol_enviado_por)'
+                ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                (nombre, fecha_nac, pais_origen, fecha_atencion, genero,
+                 departamento_estado, estado_civil, grupo_poblacion, telefono_contacto,
+                 'pendiente_op', g.usuario, 'voluntario')
+            )
+        except Exception as e:
+            return jsonify(error=f'Error al crear solicitud: {e}'), 500
+        ticket_id = cur.lastrowid
+        db.commit()
+        log_evento('registro_mig_enviado_voluntario', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Ticket #{ticket_id}: {nombre} · País: {pais_origen}')
+        return jsonify(ok=True, pendiente=True, ticket_id=ticket_id)
+
+    # ── Operativo: se auto-firma y crea ticket pendiente de coord ──
+    if g.rol == 'op':
+        ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        try:
+            cur_tmp = _exec(db,
+                'INSERT INTO solicitudes_registro_migrante'
+                ' (nombre, fecha_nacimiento, pais_origen, fecha_atencion, genero,'
+                '  departamento_estado, estado_civil, grupo_poblacion, telefono_contacto,'
+                '  estado, enviado_por, rol_enviado_por)'
+                ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                (nombre, fecha_nac, pais_origen, fecha_atencion, genero,
+                 departamento_estado, estado_civil, grupo_poblacion, telefono_contacto,
+                 'pendiente_coord', g.usuario, 'op')
+            )
+        except Exception as e:
+            return jsonify(error=f'Error al crear solicitud: {e}'), 500
+        ticket_id = cur_tmp.lastrowid
+        db.commit()
+        priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
+        fnac_str = str(fecha_nac) if fecha_nac else ''
+        pais_str = pais_origen or ''
+        mensaje_op = f'REGISTRO_OP|{ticket_id}|{nombre}|{fnac_str}|{pais_str}|{g.usuario}|{g.usuario}|{ahora}'
+        firma_op = firmar_mensaje(priv_pem, mensaje_op)
+        if not verificar_firma(pub_pem, mensaje_op, firma_op):
+            db.rollback()
+            return jsonify(error='Error al generar firma digital'), 500
+        _exec(db,
+            'UPDATE solicitudes_registro_migrante'
+            ' SET op_validador=%s, firma_op=%s, op_pubkey=%s, mensaje_firmado_op=%s, op_validado_en=%s'
+            ' WHERE id=%s',
+            (g.usuario, firma_op, pub_pem, mensaje_op, ahora, ticket_id)
+        )
+        db.commit()
+        log_evento('registro_mig_enviado_op_directo', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Ticket #{ticket_id}: {nombre} · País: {pais_origen}')
+        return jsonify(ok=True, pendiente=True, ticket_id=ticket_id)
+
+    # ── Coord / Admin: inserción directa con firma propia ──
+    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     try:
         cur = _exec(db,
             'INSERT INTO migrantes'
@@ -1630,11 +1770,314 @@ def api_migrantes_crear():
     nuevo_id = cur.lastrowid
     folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
     _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
+
+    priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
+    fnac_str = str(fecha_nac) if fecha_nac else ''
+    pais_str = pais_origen or ''
+    mensaje_directo = f'REGISTRO_DIRECTO|{nuevo_id}|{folio}|{nombre}|{pais_str}|{g.usuario}|{ahora}'
+    firma_directa = firmar_mensaje(priv_pem, mensaje_directo)
+    firmas_json = _json.dumps({
+        g.rol: {
+            'usuario': g.usuario,
+            'mensaje': mensaje_directo,
+            'firma': firma_directa,
+            'pubkey': pub_pem,
+        }
+    })
+    _exec(db, 'UPDATE migrantes SET firmas_aprobacion=%s WHERE id=%s', (firmas_json, nuevo_id))
     db.commit()
 
     log_evento('migrante_registrado', usuario=g.usuario, rol=g.rol,
                detalle=f'Nuevo migrante: {nombre} · País: {pais_origen} · Folio: {folio}')
+    log_evento('registro_mig_insertado', usuario=g.usuario, rol=g.rol,
+               detalle=f'Folio: {folio} · Registro directo por {g.rol}')
     return jsonify(ok=True, id=nuevo_id, folio=folio)
+
+
+# ── WORKFLOW DE APROBACIÓN DE REGISTRO DE MIGRANTES ───────────
+
+@app.route('/api/registro_migrante/pendientes_op', methods=['GET'])
+@verificar_certificado
+def api_registro_pendientes_op():
+    if g.rol != 'op':
+        return jsonify(error=f'Rol incorrecto: {g.rol}'), 403
+    try:
+        db = obtener_db()
+        cur = _exec(db,
+            "SELECT id, nombre, fecha_nacimiento, pais_origen, fecha_atencion,"
+            "       genero, departamento_estado, estado_civil, grupo_poblacion,"
+            "       telefono_contacto, enviado_por, creado"
+            " FROM solicitudes_registro_migrante"
+            " WHERE estado='pendiente_op'"
+            " ORDER BY creado ASC"
+        )
+        filas = cur.fetchall()
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+    resultado = []
+    for f in filas:
+        r = dict(f)
+        for k in ('fecha_nacimiento', 'fecha_atencion', 'creado'):
+            if r.get(k) and hasattr(r[k], 'isoformat'):
+                r[k] = r[k].isoformat()
+        resultado.append(r)
+    return jsonify(resultado)
+
+
+@app.route('/api/registro_migrante/historial_op', methods=['GET'])
+@verificar_certificado
+def api_registro_historial_op():
+    if g.rol != 'op':
+        return jsonify(error=f'Rol incorrecto: {g.rol}'), 403
+    try:
+        limite = int(request.args.get('limite', '10'))
+    except ValueError:
+        limite = 10
+    try:
+        db = obtener_db()
+        sql = (
+            "SELECT id, nombre, pais_origen, fecha_atencion, estado, op_validado_en"
+            " FROM solicitudes_registro_migrante"
+            " WHERE op_validador=%s AND estado IN ('pendiente_coord','aprobada','rechazada')"
+            " ORDER BY op_validado_en DESC"
+        )
+        params = [g.usuario]
+        if limite > 0:
+            sql += " LIMIT %s"
+            params.append(limite)
+        filas = _exec(db, sql, params).fetchall()
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+    resultado = []
+    for f in filas:
+        r = dict(f)
+        for k in ('fecha_atencion', 'op_validado_en'):
+            if r.get(k) and hasattr(r[k], 'isoformat'):
+                r[k] = r[k].isoformat()
+        resultado.append(r)
+    return jsonify(resultado)
+
+
+@app.route('/api/registro_migrante/pendientes_coord', methods=['GET'])
+@verificar_certificado
+def api_registro_pendientes_coord():
+    if g.rol != 'coord':
+        abort(403)
+    db = obtener_db()
+    cur = _exec(db,
+        "SELECT id, nombre, fecha_nacimiento, pais_origen, fecha_atencion,"
+        "       genero, departamento_estado, estado_civil, grupo_poblacion,"
+        "       telefono_contacto, enviado_por, rol_enviado_por,"
+        "       op_validador, firma_op, op_validado_en, creado"
+        " FROM solicitudes_registro_migrante"
+        " WHERE estado='pendiente_coord'"
+        " ORDER BY creado ASC"
+    )
+    filas = cur.fetchall()
+    resultado = []
+    for f in filas:
+        r = dict(f)
+        for k in ('fecha_nacimiento', 'fecha_atencion', 'op_validado_en', 'creado'):
+            if r.get(k) and hasattr(r[k], 'isoformat'):
+                r[k] = r[k].isoformat()
+        r['tiene_firma_op'] = bool(r.get('firma_op'))
+        r.pop('firma_op', None)
+        resultado.append(r)
+    return jsonify(resultado)
+
+
+@app.route('/api/registro_migrante/mis_solicitudes', methods=['GET'])
+@verificar_certificado
+def api_registro_mis_solicitudes():
+    if g.rol not in ('voluntario', 'op'):
+        return jsonify(error=f'Rol incorrecto: {g.rol}'), 403
+    try:
+        db = obtener_db()
+        cur = _exec(db,
+            "SELECT id, nombre, pais_origen, estado, creado,"
+            "       rechazado_por, motivo_rechazo, rechazado_en"
+            " FROM solicitudes_registro_migrante"
+            " WHERE enviado_por=%s"
+            " ORDER BY creado DESC LIMIT 50",
+            (g.usuario,)
+        )
+        filas = cur.fetchall()
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+    resultado = []
+    for f in filas:
+        r = dict(f)
+        for k in ('creado', 'rechazado_en'):
+            if r.get(k) and hasattr(r[k], 'isoformat'):
+                r[k] = r[k].isoformat()
+        resultado.append(r)
+    return jsonify(resultado)
+
+
+@app.route('/api/registro_migrante/<int:sid>/op_validar', methods=['POST'])
+@verificar_certificado
+def api_registro_op_validar(sid):
+    if g.rol != 'op':
+        abort(403)
+    db = obtener_db()
+    cur = _exec(db,
+        "SELECT * FROM solicitudes_registro_migrante WHERE id=%s AND estado='pendiente_op'",
+        (sid,)
+    )
+    ticket = cur.fetchone()
+    if not ticket:
+        return jsonify(error='Solicitud no encontrada o ya procesada'), 404
+
+    accion = request.form.get('accion', '').strip()
+    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+    if accion == 'rechazar':
+        motivo = request.form.get('motivo', '').strip()
+        if not motivo:
+            return jsonify(error='El motivo de rechazo es obligatorio'), 400
+        _exec(db,
+            "UPDATE solicitudes_registro_migrante"
+            " SET estado='rechazada', rechazado_por=%s, motivo_rechazo=%s, rechazado_en=%s"
+            " WHERE id=%s",
+            (g.usuario, motivo, ahora, sid)
+        )
+        db.commit()
+        log_evento('registro_mig_op_rechazado', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Ticket #{sid} rechazado: {motivo}')
+        return jsonify(ok=True)
+
+    if accion == 'validar':
+        priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
+        nombre = ticket['nombre'] or ''
+        fnac_str = str(ticket['fecha_nacimiento']) if ticket['fecha_nacimiento'] else ''
+        pais_str = ticket['pais_origen'] or ''
+        enviado_por = ticket['enviado_por'] or ''
+        mensaje_op = (
+            f'REGISTRO_OP|{sid}|{nombre}|{fnac_str}|{pais_str}'
+            f'|{enviado_por}|{g.usuario}|{ahora}'
+        )
+        firma_op = firmar_mensaje(priv_pem, mensaje_op)
+        if not verificar_firma(pub_pem, mensaje_op, firma_op):
+            return jsonify(error='Error al generar firma digital'), 500
+        _exec(db,
+            "UPDATE solicitudes_registro_migrante"
+            " SET estado='pendiente_coord', op_validador=%s, firma_op=%s,"
+            "     op_pubkey=%s, mensaje_firmado_op=%s, op_validado_en=%s"
+            " WHERE id=%s",
+            (g.usuario, firma_op, pub_pem, mensaje_op, ahora, sid)
+        )
+        db.commit()
+        log_evento('registro_mig_op_validado', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Ticket #{sid} validado → pendiente coord. Enviado por: {enviado_por}')
+        return jsonify(ok=True)
+
+    return jsonify(error='Acción inválida'), 400
+
+
+@app.route('/api/registro_migrante/<int:sid>/coord_resolver', methods=['POST'])
+@verificar_certificado
+def api_registro_coord_resolver(sid):
+    if g.rol != 'coord':
+        abort(403)
+    db = obtener_db()
+    import json as _json
+    cur = _exec(db,
+        "SELECT * FROM solicitudes_registro_migrante WHERE id=%s AND estado='pendiente_coord'",
+        (sid,)
+    )
+    ticket = cur.fetchone()
+    if not ticket:
+        return jsonify(error='Solicitud no encontrada o ya procesada'), 404
+
+    accion = request.form.get('accion', '').strip()
+    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+    if accion == 'rechazar':
+        motivo = request.form.get('motivo', '').strip()
+        if not motivo:
+            return jsonify(error='El motivo de rechazo es obligatorio'), 400
+        _exec(db,
+            "UPDATE solicitudes_registro_migrante"
+            " SET estado='rechazada', rechazado_por=%s, motivo_rechazo=%s, rechazado_en=%s"
+            " WHERE id=%s",
+            (g.usuario, motivo, ahora, sid)
+        )
+        db.commit()
+        log_evento('registro_mig_coord_rechazado', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Ticket #{sid} rechazado por coord: {motivo}')
+        return jsonify(ok=True)
+
+    if accion == 'aprobar':
+        priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
+        nombre = ticket['nombre'] or ''
+        fnac_str = str(ticket['fecha_nacimiento']) if ticket['fecha_nacimiento'] else ''
+        pais_str = ticket['pais_origen'] or ''
+        op_validador = ticket['op_validador'] or ''
+        firma_op_val = ticket['firma_op'] or ''
+        firma_op_ancla = firma_op_val[:16] if firma_op_val else ''
+        mensaje_coord = (
+            f'REGISTRO_COORD|{sid}|{nombre}|{fnac_str}|{pais_str}'
+            f'|{op_validador}|{g.usuario}|{ahora}|{firma_op_ancla}'
+        )
+        firma_coord = firmar_mensaje(priv_pem, mensaje_coord)
+        if not verificar_firma(pub_pem, mensaje_coord, firma_coord):
+            return jsonify(error='Error al generar firma digital'), 500
+
+        try:
+            cur2 = _exec(db,
+                'INSERT INTO migrantes'
+                ' (folio, nombre, fecha_nacimiento, pais_origen,'
+                '  fecha_atencion, genero, departamento_estado, estado_civil,'
+                '  grupo_poblacion, telefono_contacto, registrado_por)'
+                ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                (
+                    'TEMP', ticket['nombre'], ticket['fecha_nacimiento'],
+                    ticket['pais_origen'], ticket['fecha_atencion'],
+                    ticket['genero'], ticket['departamento_estado'],
+                    ticket['estado_civil'], ticket['grupo_poblacion'],
+                    ticket['telefono_contacto'], ticket['enviado_por'],
+                )
+            )
+        except Exception as e:
+            return jsonify(error=f'Error al insertar migrante: {e}'), 500
+
+        nuevo_id = cur2.lastrowid
+        folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
+        _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
+
+        firmas = {}
+        if ticket['firma_op']:
+            firmas['op'] = {
+                'usuario': ticket['op_validador'],
+                'mensaje': ticket['mensaje_firmado_op'],
+                'firma': ticket['firma_op'],
+                'pubkey': ticket['op_pubkey'],
+            }
+        firmas['coord'] = {
+            'usuario': g.usuario,
+            'mensaje': mensaje_coord,
+            'firma': firma_coord,
+            'pubkey': pub_pem,
+        }
+        _exec(db, 'UPDATE migrantes SET firmas_aprobacion=%s WHERE id=%s',
+              (_json.dumps(firmas), nuevo_id))
+
+        _exec(db,
+            "UPDATE solicitudes_registro_migrante"
+            " SET estado='aprobada', coord_aprobador=%s, firma_coord=%s,"
+            "     coord_pubkey=%s, mensaje_firmado_coord=%s, coord_aprobado_en=%s"
+            " WHERE id=%s",
+            (g.usuario, firma_coord, pub_pem, mensaje_coord, ahora, sid)
+        )
+        db.commit()
+
+        log_evento('registro_mig_coord_aprobado', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Ticket #{sid} aprobado. Folio: {folio}')
+        log_evento('registro_mig_insertado', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Folio: {folio} · Aprobado por coord desde ticket #{sid}')
+        return jsonify(ok=True, folio=folio, migrante_id=nuevo_id)
+
+    return jsonify(error='Acción inválida'), 400
 
 
 @app.route('/api/migrantes/<int:mid>', methods=['PUT'])

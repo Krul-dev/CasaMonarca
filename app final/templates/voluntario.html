@@ -84,7 +84,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 .btn-full { width: 100%; justify-content: center; }
 
 /* Pantalla de confirmación */
-#pantalla-confirm { display: none; }
+#pantalla-confirm, #pantalla-confirm-pendiente { display: none; }
 .confirm-card {
   background: var(--blanco); border: 1px solid var(--verde-borde); border-radius: var(--radio-xl);
   padding: 48px 40px; text-align: center; box-shadow: var(--sombra-md); max-width: 520px; margin: 0 auto;
@@ -246,7 +246,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
         </div>
       </div>
     </div>
-      <!-- ── CONFIRMACIÓN ─────────────────── -->
+      <!-- ── CONFIRMACIÓN (registro directo: coord/admin) ─────────────────── -->
       <div id="pantalla-confirm">
         <div class="confirm-card">
           <div class="confirm-icono">
@@ -276,6 +276,42 @@ textarea.form-control { resize: vertical; min-height: 72px; }
             </div>
           </div>
           <button class="btn btn-rosa btn-full" onclick="nuevoRegistro()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg>
+            Registrar otro migrante
+          </button>
+        </div>
+      </div>
+
+      <!-- ── CONFIRMACIÓN PENDIENTE (voluntario) ─────────────────── -->
+      <div id="pantalla-confirm-pendiente">
+        <div class="confirm-card" style="border-color:var(--amarillo-borde);background:var(--amarillo-bg);">
+          <div class="confirm-icono" style="background:var(--amarillo-bg);border-color:var(--amarillo-borde);">
+            <svg viewBox="0 0 36 36" fill="none" stroke="var(--amarillo-texto)" stroke-width="2.2">
+              <circle cx="18" cy="18" r="16"/>
+              <path d="M18 11v7l4 4"/>
+            </svg>
+          </div>
+          <div class="confirm-titulo" style="color:var(--amarillo-texto);">Solicitud enviada</div>
+          <div class="confirm-sub" style="color:var(--amarillo-texto);">Tu registro está pendiente de revisión por el equipo operativo. Recibirás un folio una vez que sea aprobado.</div>
+          <div class="confirm-datos" style="background:rgba(255,255,255,.6);border-color:var(--amarillo-borde);">
+            <div class="confirm-fila">
+              <span class="confirm-key">Nombre</span>
+              <span class="confirm-val" id="cp-nombre">—</span>
+            </div>
+            <div class="confirm-fila">
+              <span class="confirm-key">Fecha de atención</span>
+              <span class="confirm-val" id="cp-fingreso">—</span>
+            </div>
+            <div class="confirm-fila">
+              <span class="confirm-key">Enviado por</span>
+              <span class="confirm-val">{{ nombre }}</span>
+            </div>
+            <div class="confirm-fila">
+              <span class="confirm-key">Estado</span>
+              <span class="confirm-val" style="color:var(--amarillo-texto);font-weight:600;">Pendiente de aprobación</span>
+            </div>
+          </div>
+          <button class="btn btn-full" style="background:var(--amarillo-texto);color:#fff;gap:8px;" onclick="nuevoRegistro()">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg>
             Registrar otro migrante
           </button>
@@ -395,15 +431,30 @@ async function guardarMigrante() {
   }
 
   const nombreCompleto = [nombrePila, primerAp, document.getElementById('v-segundo-apellido').value.trim()].filter(Boolean).join(' ');
-  mostrarConfirmacion(data.folio, nombreCompleto, document.getElementById('v-fecha-atencion').value);
+  const fechaAtencion = document.getElementById('v-fecha-atencion').value;
+  if (data.pendiente) {
+    mostrarConfirmacionPendiente(nombreCompleto, fechaAtencion);
+  } else {
+    mostrarConfirmacion(data.folio, nombreCompleto, fechaAtencion);
+  }
 }
 
 function mostrarConfirmacion(folio, nombre, fechaAtencion) {
   document.getElementById('cf-folio').textContent   = folio || '—';
   document.getElementById('cf-nombre').textContent  = nombre;
   document.getElementById('cf-fingreso').textContent = fechaAtencion || '—';
-  document.getElementById('pantalla-form').style.display    = 'none';
-  document.getElementById('pantalla-confirm').style.display = 'block';
+  document.getElementById('pantalla-form').style.display              = 'none';
+  document.getElementById('pantalla-confirm').style.display           = 'block';
+  document.getElementById('pantalla-confirm-pendiente').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function mostrarConfirmacionPendiente(nombre, fechaAtencion) {
+  document.getElementById('cp-nombre').textContent   = nombre;
+  document.getElementById('cp-fingreso').textContent = fechaAtencion || '—';
+  document.getElementById('pantalla-form').style.display              = 'none';
+  document.getElementById('pantalla-confirm').style.display           = 'none';
+  document.getElementById('pantalla-confirm-pendiente').style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -412,8 +463,9 @@ function nuevoRegistro() {
   const btn = document.getElementById('btn-guardar');
   btn.disabled = false;
   btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7.5l4 4 7-7"/></svg> Guardar registro';
-  document.getElementById('pantalla-confirm').style.display = 'none';
-  document.getElementById('pantalla-form').style.display    = 'block';
+  document.getElementById('pantalla-confirm').style.display           = 'none';
+  document.getElementById('pantalla-confirm-pendiente').style.display = 'none';
+  document.getElementById('pantalla-form').style.display              = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
