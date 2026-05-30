@@ -11,6 +11,8 @@ import pymysql
 import pymysql.cursors
 import glob
 import zipfile
+import openpyxl
+from openpyxl.styles import PatternFill, Font, Alignment
 from functools import wraps
 from datetime import datetime, timedelta
 
@@ -554,6 +556,31 @@ def inicializar_db():
     except Exception:
         pass
 
+    # Migración: tabla historial_eliminaciones (archivo permanente de migrantes eliminados).
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS historial_eliminaciones ("
+            "  id                INT AUTO_INCREMENT PRIMARY KEY,"
+            "  folio             VARCHAR(20),"
+            "  nombre_migrante   VARCHAR(200),"
+            "  fecha_solicitud   DATETIME,"
+            "  solicitado_por    VARCHAR(120),"
+            "  motivo            TEXT,"
+            "  firma_coord       TEXT,"
+            "  coord_pubkey      TEXT,"
+            "  mensaje_firmado   TEXT,"
+            "  aprobado_por      VARCHAR(120),"
+            "  tipo              VARCHAR(20) NOT NULL DEFAULT 'directa',"
+            "  fecha_eliminacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            "  INDEX idx_hist_fecha (fecha_eliminacion)"
+            ") ENGINE=InnoDB"
+        )
+        con.commit()
+        cur.close()
+    except Exception as e:
+        print(f'[migración historial_eliminaciones] {e}')
+
     # Sembrar solo si la tabla está vacía
     cur = con.cursor()
     cur.execute('SELECT COUNT(*) c FROM usuarios')
@@ -582,9 +609,26 @@ def inicializar_db():
     con.close()
 
 # ── HELPERS ───────────────────────────────────────────────────
-def generar_contrasena_temporal(longitud=12):
-    chars = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(chars) for _ in range(longitud))
+def generar_contrasena_temporal(longitud=14):
+    especiales = '!@#$%&*'
+    chars = string.ascii_letters + string.digits + especiales
+    while True:
+        pwd = ''.join(secrets.choice(chars) for _ in range(longitud))
+        if (any(c.isupper() for c in pwd) and
+                any(c.isdigit() for c in pwd) and
+                any(c in especiales for c in pwd)):
+            return pwd
+
+def validar_contrasena(pwd: str):
+    if len(pwd) < 12:
+        return False, 'La contraseña debe tener al menos 12 caracteres.'
+    if not re.search(r'[A-Z]', pwd):
+        return False, 'La contraseña debe contener al menos una letra mayúscula.'
+    if not re.search(r'\d', pwd):
+        return False, 'La contraseña debe contener al menos un número.'
+    if not re.search(r'[^A-Za-z0-9]', pwd):
+        return False, 'La contraseña debe contener al menos un carácter especial.'
+    return True, ''
 
 def sanitizar_nombre(nombre):
     return re.sub(r'[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9 \-]', '', nombre).strip()
@@ -967,20 +1011,26 @@ def cambiar_pwd():
     if request.method == 'POST':
         nueva  = request.form.get('nueva', '')
         confir = request.form.get('confirmacion', '')
-        if len(nueva) < 8:
-            error = 'La contraseña debe tener al menos 8 caracteres.'
+        valida, msg_val = validar_contrasena(nueva)
+        if not valida:
+            error = msg_val
         elif nueva != confir:
             error = 'Las contraseñas no coinciden.'
         else:
             db = obtener_db()
-            _exec(db,
-                'UPDATE usuarios SET password_hash=%s, debe_cambiar_pwd=0'
-                ' WHERE usuario=%s',
-                (generate_password_hash(nueva), g.usuario)
-            )
-            db.commit()
-            log_evento('pwd_cambiada', usuario=g.usuario, rol=g.rol)
-            return redirect(url_panel(g.rol))
+            fila = _exec(db, 'SELECT password_hash FROM usuarios WHERE usuario=%s',
+                         (g.usuario,)).fetchone()
+            if fila and check_password_hash(fila['password_hash'], nueva):
+                error = 'La nueva contraseña no puede ser igual a la contraseña actual.'
+            else:
+                _exec(db,
+                    'UPDATE usuarios SET password_hash=%s, debe_cambiar_pwd=0'
+                    ' WHERE usuario=%s',
+                    (generate_password_hash(nueva), g.usuario)
+                )
+                db.commit()
+                log_evento('pwd_cambiada', usuario=g.usuario, rol=g.rol)
+                return redirect(url_panel(g.rol))
     return render_template('cambiar_pwd.html', error=error, nombre=g.nombre)
 
 @app.route('/logout')
@@ -1069,14 +1119,216 @@ def api_log():
 def api_eliminados():
     if g.rol != 'admin':
         abort(403)
-    db = obtener_db()
-    rows = _exec(db,
-        "SELECT fecha, usuario, detalle FROM log_certificados"
-        " WHERE resultado = 'migrante_eliminado'"
-        "   AND fecha >= NOW() - INTERVAL 30 DAY"
-        " ORDER BY id DESC"
-    ).fetchall()
-    return jsonify([dict(r) for r in rows])
+    fecha_inicio = request.args.get('fecha_inicio', '').strip() or None
+    fecha_fin    = request.args.get('fecha_fin',    '').strip() or None
+    sql    = 'SELECT * FROM historial_eliminaciones WHERE 1=1'
+    params = []
+    if fecha_inicio:
+        sql += ' AND fecha_eliminacion >= %s'; params.append(fecha_inicio)
+    if fecha_fin:
+        sql += ' AND fecha_eliminacion <= %s'; params.append(fecha_fin + ' 23:59:59')
+    sql += ' ORDER BY id DESC LIMIT 500'
+    db   = obtener_db()
+    rows = _exec(db, sql, params).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        for k in ('fecha_solicitud', 'fecha_eliminacion'):
+            if d.get(k) and hasattr(d[k], 'isoformat'):
+                d[k] = d[k].isoformat()
+        result.append(d)
+    return jsonify(result)
+
+
+@app.route('/admin/api/eliminados/<int:hid>/firma')
+@verificar_certificado
+def api_eliminados_firma(hid):
+    if g.rol != 'admin':
+        abort(403)
+    db  = obtener_db()
+    row = _exec(db, 'SELECT * FROM historial_eliminaciones WHERE id=%s', (hid,)).fetchone()
+    if not row:
+        return jsonify(error='Registro no encontrado'), 404
+    r = dict(row)
+    for k in ('fecha_solicitud', 'fecha_eliminacion'):
+        if r.get(k) and hasattr(r[k], 'isoformat'):
+            r[k] = r[k].isoformat()
+    if r.get('firma_coord') and r.get('coord_pubkey') and r.get('mensaje_firmado'):
+        r['firma_valida'] = verificar_firma(r['coord_pubkey'], r['mensaje_firmado'], r['firma_coord'])
+    else:
+        r['firma_valida'] = None
+    return jsonify(r)
+
+
+# ── DESCARGAS EXCEL ───────────────────────────────────────────
+
+def _make_excel(headers, rows):
+    wb  = openpyxl.Workbook()
+    ws  = wb.active
+    hf  = PatternFill("solid", fgColor="E62055")
+    hft = Font(bold=True, color="FFFFFF")
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = hf
+        cell.font = hft
+        cell.alignment = Alignment(horizontal="center")
+    for row_data in rows:
+        ws.append(list(row_data))
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
+@app.route('/admin/descargar/migrantes')
+@verificar_certificado
+def descargar_excel_migrantes():
+    if g.rol not in ('admin', 'coord'):
+        abort(403)
+    fecha_inicio    = request.args.get('fecha_inicio', '').strip() or None
+    fecha_fin       = request.args.get('fecha_fin',    '').strip() or None
+    pais_origen     = request.args.get('pais_origen',  '').strip() or None
+    grupo_poblacion = request.args.get('grupo_poblacion', '').strip() or None
+
+    sql    = ('SELECT folio, nombre, fecha_nacimiento, pais_origen, grupo_poblacion, '
+              'fecha_atencion, genero, departamento_estado, estado_civil, '
+              'telefono_contacto, registrado_por, firmas_aprobacion, creado '
+              'FROM migrantes WHERE 1=1')
+    params = []
+    if fecha_inicio:
+        sql += ' AND fecha_atencion >= %s'; params.append(fecha_inicio)
+    if fecha_fin:
+        sql += ' AND fecha_atencion <= %s'; params.append(fecha_fin)
+    if pais_origen:
+        sql += ' AND pais_origen LIKE %s'; params.append(f'%{pais_origen}%')
+    if grupo_poblacion:
+        sql += ' AND grupo_poblacion LIKE %s'; params.append(f'%{grupo_poblacion}%')
+    sql += ' ORDER BY id DESC'
+
+    db   = obtener_db()
+    rows = _exec(db, sql, params).fetchall()
+
+    def _s(v): return str(v)[:10] if v else ''
+    def _dt(v): return str(v)[:19] if v else ''
+
+    from datetime import date as _date
+    def _edad(fnac):
+        if not fnac:
+            return ''
+        hoy = _date.today()
+        try:
+            if hasattr(fnac, 'year'):
+                d = fnac
+            else:
+                from datetime import datetime
+                d = datetime.strptime(str(fnac)[:10], '%Y-%m-%d').date()
+            return hoy.year - d.year - ((hoy.month, hoy.day) < (d.month, d.day))
+        except Exception:
+            return ''
+
+    def _firmantes(json_str):
+        if not json_str:
+            return '', ''
+        try:
+            firmas = _json.loads(json_str)
+        except Exception:
+            return '', ''
+        op    = (firmas.get('op') or {}).get('usuario', '')
+        coord = (firmas.get('coord') or firmas.get('admin') or {}).get('usuario', '')
+        return op, coord
+
+    headers = ['Folio', 'Nombre', 'Fecha de nacimiento', 'Edad',
+               'País de origen', 'Grupo de población',
+               'Fecha de atención', 'Género', 'Departamento/Estado',
+               'Estado civil', 'Teléfono', 'Registrado por',
+               'Firmado por (operativo)', 'Firmado por (coordinador/admin)',
+               'Fecha de creación']
+    data = []
+    for r in rows:
+        op_firma, coord_firma = _firmantes(r['firmas_aprobacion'])
+        data.append((
+            r['folio'], r['nombre'],
+            _s(r['fecha_nacimiento']), _edad(r['fecha_nacimiento']),
+            r['pais_origen'], r['grupo_poblacion'],
+            _s(r['fecha_atencion']), r['genero'], r['departamento_estado'],
+            r['estado_civil'], r['telefono_contacto'], r['registrado_por'],
+            op_firma, coord_firma,
+            _dt(r['creado']),
+        ))
+    buf = _make_excel(headers, data)
+    return send_file(buf,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True,
+                     download_name='migrantes.xlsx')
+
+
+@app.route('/admin/descargar/eliminados')
+@verificar_certificado
+def descargar_excel_eliminados():
+    if g.rol != 'admin':
+        abort(403)
+    fecha_inicio = request.args.get('fecha_inicio', '').strip() or None
+    fecha_fin    = request.args.get('fecha_fin',    '').strip() or None
+
+    sql    = 'SELECT * FROM historial_eliminaciones WHERE 1=1'
+    params = []
+    if fecha_inicio:
+        sql += ' AND fecha_eliminacion >= %s'; params.append(fecha_inicio)
+    if fecha_fin:
+        sql += ' AND fecha_eliminacion <= %s'; params.append(fecha_fin + ' 23:59:59')
+    sql += ' ORDER BY id DESC'
+
+    db   = obtener_db()
+    rows = _exec(db, sql, params).fetchall()
+
+    def _sv(v): return str(v)[:19] if v else ''
+
+    headers = ['Fecha eliminación', 'Folio', 'Nombre', 'Tipo',
+               'Solicitado por', 'Motivo', 'Firma coordinador', 'Aprobado por']
+    data = [
+        (_sv(r['fecha_eliminacion']), r['folio'] or '', r['nombre_migrante'] or '',
+         r['tipo'] or '', r['solicitado_por'] or '', r['motivo'] or '',
+         'Sí' if r['firma_coord'] else 'No', r['aprobado_por'] or '')
+        for r in rows
+    ]
+    buf = _make_excel(headers, data)
+    return send_file(buf,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True,
+                     download_name='eliminados.xlsx')
+
+
+@app.route('/admin/descargar/log')
+@verificar_certificado
+def descargar_excel_log():
+    if g.rol != 'admin':
+        abort(403)
+    fecha_inicio = request.args.get('fecha_inicio', '').strip() or None
+    fecha_fin    = request.args.get('fecha_fin',    '').strip() or None
+
+    sql    = ('SELECT fecha, usuario, rol, ip_origen, resultado, detalle '
+              'FROM log_certificados WHERE 1=1')
+    params = []
+    if fecha_inicio:
+        sql += ' AND fecha >= %s'; params.append(fecha_inicio)
+    if fecha_fin:
+        sql += ' AND fecha <= %s'; params.append(fecha_fin + ' 23:59:59')
+    sql += ' ORDER BY id DESC'
+
+    db   = obtener_db()
+    rows = _exec(db, sql, params).fetchall()
+
+    headers = ['Fecha', 'Usuario', 'Rol', 'IP origen', 'Resultado', 'Detalle']
+    data = [
+        (str(r['fecha'])[:19] if r['fecha'] else '',
+         r['usuario'], r['rol'], r['ip_origen'], r['resultado'], r['detalle'])
+        for r in rows
+    ]
+    buf = _make_excel(headers, data)
+    return send_file(buf,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True,
+                     download_name='log_auditoria.xlsx')
 
 
 # ── GESTIÓN DE USUARIOS ───────────────────────────────────────
@@ -1188,15 +1440,106 @@ def admin_editar_usuario():
     if rol not in ('admin', 'coord', 'op', 'voluntario'):
         return jsonify(error='Rol no válido'), 400
     db = obtener_db()
-    user = _exec(db, 'SELECT id FROM usuarios WHERE usuario=%s', (usuario,)).fetchone()
+    user = _exec(db, 'SELECT id, rol, serial_cert FROM usuarios WHERE usuario=%s',
+                 (usuario,)).fetchone()
     if not user:
         return jsonify(error='Usuario no encontrado'), 404
-    _exec(db, 'UPDATE usuarios SET nombre=%s, rol=%s WHERE usuario=%s',
-          (nombre, rol, usuario))
+
+    rol_anterior    = user['rol']
+    serial_anterior = user['serial_cert']
+
+    # ── Solo nombre cambia ────────────────────────────────────
+    if rol == rol_anterior:
+        _exec(db, 'UPDATE usuarios SET nombre=%s WHERE usuario=%s', (nombre, usuario))
+        db.commit()
+        log_evento('rol_modificado', usuario=usuario, rol=g.rol,
+                   detalle=f'Nombre editado por {g.usuario}: nombre="{nombre}"')
+        return jsonify(ok=True)
+
+    # ── Revocar certificado anterior si venía de coord/admin ──
+    def _revocar_serial_anterior(serial):
+        if not serial:
+            return
+        cert_row = _exec(db, 'SELECT id FROM certificados WHERE serial=%s AND estado=%s',
+                         (serial, 'vigente')).fetchone()
+        if cert_row:
+            _exec(db, "UPDATE certificados SET estado='revocado' WHERE serial=%s", (serial,))
+            _exec(db,
+                'INSERT IGNORE INTO certificados_revocados'
+                ' (serial, usuario, rol, revocado_por, motivo) VALUES (%s,%s,%s,%s,%s)',
+                (serial, usuario, rol_anterior, g.usuario, f'Cambio de rol a {rol}')
+            )
+            log_evento('cert_revocado_admin', usuario=usuario, rol=rol_anterior,
+                       serial=serial,
+                       detalle=f'Revocado automáticamente al cambiar rol a {rol}')
+
+    # ── Cambio a coordinador: generar P12 ────────────────────
+    if rol == 'coord':
+        pwd_temporal = generar_contrasena_temporal()
+        pwd_p12      = generar_contrasena_temporal()
+        try:
+            p12_bytes, serial, cert = generar_p12_real(usuario, nombre, 'coord', pwd_p12)
+        except Exception as e:
+            return jsonify(error=f'Error al generar certificado: {str(e)}'), 500
+
+        crt_bytes = cert.public_bytes(serialization.Encoding.PEM)
+        nombre_p12 = f"coord_{nombre.lower().replace(' ', '_')}"
+        readme_texto = (
+            f'Instrucciones para instalar certificado de Casa Monarca\n\n'
+            f'1. Ingresa con tu email y contraseña temporal en la pantalla de login.\n\n'
+            f'2. Selecciona el archivo {nombre_p12}.p12 con esta contraseña: {pwd_p12}\n\n'
+            f'⚠️ No copies estos archivos fuera del USB.\n'
+            f'⚠️ La contraseña es personal y solo se muestra aquí.\n'
+        )
+
+        _revocar_serial_anterior(serial_anterior)
+
+        fecha     = datetime.now().strftime('%Y-%m-%d')
+        fecha_exp = (datetime.utcnow() + timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
+        _exec(db,
+            'INSERT INTO certificados'
+            ' (serial, usuario, nombre, rol, fecha_emision, fecha_expiracion, estado, emitido_por)'
+            ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s)',
+            (serial, usuario, nombre, 'coord', fecha, fecha_exp, 'vigente', g.usuario)
+        )
+        _exec(db,
+            'UPDATE usuarios SET nombre=%s, rol=%s, password_hash=%s,'
+            ' debe_cambiar_pwd=1, serial_cert=%s WHERE usuario=%s',
+            (nombre, 'coord', generate_password_hash(pwd_temporal), serial, usuario)
+        )
+        db.commit()
+
+        nombre_seguro = nombre_p12
+        session['pwd_login']        = pwd_temporal
+        session['p12_b64']          = base64.b64encode(p12_bytes).decode('utf-8')
+        session['crt_b64']          = base64.b64encode(crt_bytes).decode('utf-8')
+        session['readme_txt']       = readme_texto
+        session['p12_nombre']       = nombre_seguro
+        session['p12_display']      = nombre
+        session['p12_email']        = usuario
+        session['p12_rol']          = 'coord'
+        session['p12_serial']       = serial
+        session['p12_pwd_mostrada'] = False
+
+        log_evento('cert_emitido', usuario=usuario, rol='coord', serial=serial,
+                   detalle=f'Emitido por cambio de rol desde {g.usuario}')
+        log_evento('rol_modificado', usuario=usuario, rol=g.rol,
+                   detalle=f'Rol cambiado a coord por {g.usuario}; nuevo cert {serial}')
+        return jsonify(ok=True, accion='certificado',
+                       redirect_url=url_for('entregar_certificado'))
+
+    # ── Cambio a op o voluntario ──────────────────────────────
+    pwd_temporal = generar_contrasena_temporal()
+    _revocar_serial_anterior(serial_anterior)
+    _exec(db,
+        'UPDATE usuarios SET nombre=%s, rol=%s, password_hash=%s,'
+        ' debe_cambiar_pwd=1, serial_cert=NULL WHERE usuario=%s',
+        (nombre, rol, generate_password_hash(pwd_temporal), usuario)
+    )
     db.commit()
     log_evento('rol_modificado', usuario=usuario, rol=g.rol,
-               detalle=f'Perfil editado por {g.usuario}: nombre="{nombre}", rol="{rol}"')
-    return jsonify(ok=True)
+               detalle=f'Rol cambiado a {rol} por {g.usuario}; contraseña temporal asignada')
+    return jsonify(ok=True, accion='pwd_temporal', pwd_temporal=pwd_temporal)
 
 
 @app.route('/solicitar_reset_pwd', methods=['POST'])
@@ -1630,6 +1973,24 @@ def debug_columnas():
     rows = _exec(db, 'DESCRIBE migrantes').fetchall()
     return jsonify([dict(r) for r in rows])
 
+def _validar_fecha_rango(fecha_str, nombre_campo):
+    """None si es válida; mensaje de error si no lo es."""
+    if not fecha_str:
+        return None
+    try:
+        from datetime import date as _date
+        d = _date.fromisoformat(str(fecha_str)[:10])
+        hoy = _date.today()
+        if d > hoy:
+            return f'{nombre_campo} no puede ser una fecha futura'
+        limite = _date(hoy.year - 100, hoy.month, hoy.day)
+        if d < limite:
+            return f'{nombre_campo} no puede ser hace más de 100 años'
+    except ValueError:
+        return f'{nombre_campo} tiene un formato inválido'
+    return None
+
+
 # ── REGISTROS DE MIGRANTES ────────────────────────────────────
 @app.route('/api/migrantes')
 @verificar_certificado
@@ -1682,6 +2043,13 @@ def api_migrantes_crear():
     ] if not v]
     if faltantes:
         return jsonify(error=f'Campos obligatorios faltantes: {", ".join(faltantes)}'), 400
+
+    err_fnac = _validar_fecha_rango(fecha_nac, 'Fecha de nacimiento')
+    if err_fnac:
+        return jsonify(error=err_fnac), 400
+    err_fat = _validar_fecha_rango(fecha_atencion, 'Fecha de atención')
+    if err_fat:
+        return jsonify(error=err_fat), 400
 
     partes = [nombre_pila, primer_apellido]
     if segundo_apellido:
@@ -1884,6 +2252,90 @@ def api_registro_pendientes_coord():
         r.pop('firma_op', None)
         resultado.append(r)
     return jsonify(resultado)
+
+
+@app.route('/api/registro_migrante/historial', methods=['GET'])
+@verificar_certificado
+def api_registro_historial():
+    if g.rol not in ('op', 'coord'):
+        return jsonify(error=f'Rol incorrecto: {g.rol}'), 403
+    try:
+        db = obtener_db()
+        if g.rol == 'op':
+            cur = _exec(db,
+                "SELECT id, nombre, pais_origen, fecha_atencion, estado,"
+                "       creado, op_validado_en, coord_aprobado_en,"
+                "       rechazado_por, motivo_rechazo, rechazado_en"
+                " FROM solicitudes_registro_migrante"
+                " WHERE (op_validador=%s AND estado IN ('pendiente_coord','aprobada','rechazada'))"
+                "    OR (rechazado_por=%s AND op_validador IS NULL AND estado='rechazada')"
+                " ORDER BY COALESCE(op_validado_en, rechazado_en) DESC LIMIT 100",
+                (g.usuario, g.usuario)
+            )
+        else:
+            cur = _exec(db,
+                "SELECT id, nombre, pais_origen, fecha_atencion, estado,"
+                "       creado, op_validado_en, coord_aprobado_en,"
+                "       rechazado_por, motivo_rechazo, rechazado_en"
+                " FROM solicitudes_registro_migrante"
+                " WHERE (coord_aprobador=%s AND estado='aprobada')"
+                "    OR (rechazado_por=%s AND op_validador IS NOT NULL AND estado='rechazada')"
+                " ORDER BY COALESCE(coord_aprobado_en, rechazado_en) DESC LIMIT 100",
+                (g.usuario, g.usuario)
+            )
+        filas = cur.fetchall()
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+    resultado = []
+    for f in filas:
+        r = dict(f)
+        for k in ('creado', 'op_validado_en', 'coord_aprobado_en', 'rechazado_en', 'fecha_atencion'):
+            if r.get(k) and hasattr(r[k], 'isoformat'):
+                r[k] = r[k].isoformat()
+        resultado.append(r)
+    return jsonify(resultado)
+
+
+@app.route('/api/registro_migrante/<int:sid>/detalle', methods=['GET'])
+@verificar_certificado
+def api_registro_detalle(sid):
+    if g.rol not in ('op', 'coord'):
+        return jsonify(error=f'Rol incorrecto: {g.rol}'), 403
+    try:
+        db = obtener_db()
+        cur = _exec(db,
+            "SELECT id, nombre, fecha_nacimiento, pais_origen, fecha_atencion,"
+            "       genero, departamento_estado, estado_civil, grupo_poblacion, telefono_contacto,"
+            "       estado, enviado_por, rol_enviado_por, creado,"
+            "       op_validador, op_validado_en, firma_op,"
+            "       coord_aprobador, coord_aprobado_en, firma_coord,"
+            "       rechazado_por, rechazado_en, motivo_rechazo"
+            " FROM solicitudes_registro_migrante WHERE id=%s",
+            (sid,)
+        )
+        ticket = cur.fetchone()
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+    if not ticket:
+        return jsonify(error='Registro no encontrado'), 404
+    r = dict(ticket)
+    # Solo puede verlo quien participó en él (como validador, aprobador o quien rechazó)
+    if g.rol == 'op':
+        if r.get('op_validador') != g.usuario and r.get('rechazado_por') != g.usuario:
+            return jsonify(error='Sin acceso a este registro'), 403
+    if g.rol == 'coord':
+        if r.get('coord_aprobador') != g.usuario and r.get('rechazado_por') != g.usuario:
+            return jsonify(error='Sin acceso a este registro'), 403
+    for k in ('fecha_nacimiento', 'fecha_atencion', 'creado',
+              'op_validado_en', 'coord_aprobado_en', 'rechazado_en'):
+        if r.get(k) and hasattr(r[k], 'isoformat'):
+            r[k] = r[k].isoformat()
+    # Truncar firmas para mostrar solo los primeros 48 caracteres
+    if r.get('firma_op'):
+        r['firma_op'] = r['firma_op'][:48] + '…'
+    if r.get('firma_coord'):
+        r['firma_coord'] = r['firma_coord'][:48] + '…'
+    return jsonify(r)
 
 
 @app.route('/api/registro_migrante/mis_solicitudes', methods=['GET'])
@@ -2109,6 +2561,13 @@ def api_migrantes_editar(mid):
     if faltantes:
         return jsonify(error=f'Campos obligatorios faltantes: {", ".join(faltantes)}'), 400
 
+    err_fnac = _validar_fecha_rango(fecha_nac, 'Fecha de nacimiento')
+    if err_fnac:
+        return jsonify(error=err_fnac), 400
+    err_fat = _validar_fecha_rango(fecha_atencion, 'Fecha de atención')
+    if err_fat:
+        return jsonify(error=err_fat), 400
+
     partes = [nombre_pila, primer_apellido]
     if segundo_apellido:
         partes.append(segundo_apellido)
@@ -2164,6 +2623,11 @@ def api_migrantes_eliminar(mid):
     mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
     if not mig:
         return jsonify(error='Migrante no encontrado'), 404
+    _exec(db,
+        'INSERT INTO historial_eliminaciones (folio, nombre_migrante, aprobado_por, tipo)'
+        ' VALUES (%s,%s,%s,%s)',
+        (mig['folio'], mig['nombre'], g.usuario, 'directa')
+    )
     _exec(db, 'DELETE FROM migrantes WHERE id=%s', (mid,))
     db.commit()
     log_evento('migrante_eliminado', usuario=g.usuario, rol=g.rol,
@@ -2178,8 +2642,8 @@ def api_solicitar_eliminacion(mid):
         abort(403)
 
     db = obtener_db()
-    existe = _exec(db, 'SELECT id FROM migrantes WHERE id=%s', (mid,)).fetchone()
-    if not existe:
+    mig = _exec(db, 'SELECT id, nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
+    if not mig:
         return jsonify(error='Migrante no encontrado'), 404
 
     pendiente = _exec(db,
@@ -2189,24 +2653,80 @@ def api_solicitar_eliminacion(mid):
     if pendiente:
         return jsonify(error='Ya existe una solicitud pendiente para este registro'), 400
 
-    mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s', (mid,)).fetchone()
     motivo = request.form.get('motivo', '').strip() or None
+    ahora  = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+    # Firma EC del coordinador
+    coord_keys = _exec(db,
+        'SELECT ec_private_key, ec_public_key FROM usuarios WHERE usuario=%s',
+        (g.usuario,)
+    ).fetchone()
+    firma_coord = pub_pem = mensaje_firmado = None
+    if coord_keys and coord_keys['ec_private_key']:
+        mensaje_firmado = f"SOLICITUD_ELIMINACION|{mid}|{mig['folio']}|{g.usuario}|{ahora}|{motivo or ''}"
+        firma_coord     = firmar_mensaje(coord_keys['ec_private_key'], mensaje_firmado)
+        pub_pem         = coord_keys['ec_public_key']
+
     _exec(db,
-        'INSERT INTO solicitudes_eliminacion (migrante_id, solicitado_por, motivo)'
-        ' VALUES (%s,%s,%s)',
-        (mid, g.usuario, motivo)
+        'INSERT INTO solicitudes_eliminacion'
+        ' (migrante_id, solicitado_por, motivo, firma_coord, coord_pubkey, mensaje_firmado)'
+        ' VALUES (%s,%s,%s,%s,%s,%s)',
+        (mid, g.usuario, motivo, firma_coord, pub_pem, mensaje_firmado)
     )
     db.commit()
 
     log_evento('migrante_solicitud_eliminacion', usuario=g.usuario, rol=g.rol,
-               detalle=f'Solicitud eliminación: {mig["nombre"] if mig else mid} · Motivo: {motivo or "sin motivo"}')
+               detalle=f'Solicitud eliminación: {mig["nombre"]} · Folio: {mig["folio"]} · Motivo: {motivo or "sin motivo"} · Firmada: {"sí" if firma_coord else "no"}')
     return jsonify(ok=True)
+
+
+@app.route('/api/mis_solicitudes_eliminacion')
+@verificar_certificado
+def api_mis_solicitudes_eliminacion():
+    if g.rol != 'coord':
+        abort(403)
+    db = obtener_db()
+    vivas = _exec(db,
+        'SELECT s.id, m.folio, m.nombre AS nombre_migrante,'
+        '  s.motivo, s.estado, s.fecha_solicitud, s.resuelto_por'
+        ' FROM solicitudes_eliminacion s'
+        ' JOIN migrantes m ON m.id = s.migrante_id'
+        " WHERE s.solicitado_por=%s AND s.estado IN ('pendiente','rechazada')"
+        ' ORDER BY s.fecha_solicitud DESC',
+        (g.usuario,)
+    ).fetchall()
+    aprobadas = _exec(db,
+        'SELECT id, folio, nombre_migrante, motivo, aprobado_por, fecha_eliminacion'
+        ' FROM historial_eliminaciones'
+        " WHERE solicitado_por=%s AND tipo='solicitada'"
+        ' ORDER BY fecha_eliminacion DESC',
+        (g.usuario,)
+    ).fetchall()
+    resultado = []
+    for r in vivas:
+        d = dict(r)
+        if d.get('fecha_solicitud') and hasattr(d['fecha_solicitud'], 'isoformat'):
+            d['fecha_solicitud'] = d['fecha_solicitud'].isoformat()
+        d['tipo_origen'] = 'viva'
+        resultado.append(d)
+    for r in aprobadas:
+        d = dict(r)
+        if d.get('fecha_eliminacion') and hasattr(d['fecha_eliminacion'], 'isoformat'):
+            d['fecha_eliminacion'] = d['fecha_eliminacion'].isoformat()
+        d['estado'] = 'aprobada'
+        d['tipo_origen'] = 'historial'
+        resultado.append(d)
+    resultado.sort(
+        key=lambda x: x.get('fecha_solicitud') or x.get('fecha_eliminacion') or '',
+        reverse=True
+    )
+    return jsonify(resultado)
 
 
 @app.route('/admin/api/solicitudes')
 @verificar_certificado
 def api_solicitudes_lista():
-    if g.rol != 'admin':
+    if g.rol not in ('admin', 'coord'):
         abort(403)
     db = obtener_db()
     rows = _exec(db,
@@ -2218,7 +2738,13 @@ def api_solicitudes_lista():
         " WHERE s.estado='pendiente'"
         ' ORDER BY s.fecha_solicitud ASC'
     ).fetchall()
-    return jsonify([dict(r) for r in rows])
+    result = []
+    for r in rows:
+        d = dict(r)
+        if d.get('fecha_solicitud') and hasattr(d['fecha_solicitud'], 'isoformat'):
+            d['fecha_solicitud'] = d['fecha_solicitud'].isoformat()
+        result.append(d)
+    return jsonify(result)
 
 
 @app.route('/admin/api/solicitudes/<int:sid>/resolver', methods=['POST'])
@@ -2245,11 +2771,23 @@ def api_resolver_solicitud(sid):
     if aprobar:
         mig = _exec(db, 'SELECT nombre, folio FROM migrantes WHERE id=%s',
                     (sol['migrante_id'],)).fetchone()
+        if mig:
+            # Archivar en historial antes de que el CASCADE elimine la solicitud
+            _exec(db,
+                'INSERT INTO historial_eliminaciones'
+                ' (folio, nombre_migrante, fecha_solicitud, solicitado_por, motivo,'
+                '  firma_coord, coord_pubkey, mensaje_firmado, aprobado_por, tipo)'
+                ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                (mig['folio'], mig['nombre'],
+                 sol['fecha_solicitud'], sol['solicitado_por'], sol['motivo'],
+                 sol['firma_coord'], sol['coord_pubkey'], sol['mensaje_firmado'],
+                 g.usuario, 'solicitada')
+            )
         _exec(db, 'DELETE FROM migrantes WHERE id=%s', (sol['migrante_id'],))
         db.commit()
         if mig:
             log_evento('migrante_eliminado', usuario=g.usuario, rol=g.rol,
-                       detalle=f'Eliminación aprobada (sol. #{sid}): {mig["nombre"]} · Folio: {mig["folio"]}')
+                       detalle=f'Eliminación aprobada: {mig["nombre"]} · Folio: {mig["folio"]} · Sol. por: {sol["solicitado_por"]}')
     else:
         db.commit()
     return jsonify(ok=True, accion=nuevo_estado)

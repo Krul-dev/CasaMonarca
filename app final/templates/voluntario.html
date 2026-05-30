@@ -324,6 +324,25 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 </div>
 
 <script>
+function _validarRangoFecha(valor, nombre) {
+  if (!valor) return null;
+  const d   = new Date(valor + 'T00:00:00');
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  if (d > hoy) return `${nombre} no puede ser una fecha futura.`;
+  const hace100 = new Date(hoy); hace100.setFullYear(hoy.getFullYear() - 100);
+  if (d < hace100) return `${nombre} no puede ser hace más de 100 años.`;
+  return null;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const hoy     = new Date().toISOString().slice(0, 10);
+  const hace100 = new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().slice(0, 10);
+  ['v-fecha-atencion','v-fnac'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.max = hoy; el.min = hace100; }
+  });
+});
+
 function calcularEdad() {
   const val = document.getElementById('v-fnac').value;
   const edadEl = document.getElementById('v-edad');
@@ -379,6 +398,13 @@ async function guardarMigrante() {
     alerta.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
+
+  const errFnac = _validarRangoFecha(fnac, 'Fecha de nacimiento');
+  if (errFnac) { alerta.textContent = errFnac; alerta.style.display = 'block'; alerta.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  const fechaAt = document.getElementById('v-fecha-atencion').value;
+  const errFat  = _validarRangoFecha(fechaAt, 'Fecha de atención');
+  if (errFat)  { alerta.textContent = errFat;  alerta.style.display = 'block'; alerta.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+
   alerta.style.display = 'none';
 
   const btn = document.getElementById('btn-guardar');
@@ -389,7 +415,7 @@ async function guardarMigrante() {
   fd.append('nombre_pila',        nombrePila);
   fd.append('primer_apellido',    primerAp);
   fd.append('segundo_apellido',   document.getElementById('v-segundo-apellido').value.trim());
-  fd.append('fecha_atencion',     document.getElementById('v-fecha-atencion').value);
+  fd.append('fecha_atencion',     fechaAt);
   fd.append('telefono_contacto',  document.getElementById('v-telefono').value.trim());
   fd.append('genero',             genero);
   fd.append('pais_origen',        pais);
