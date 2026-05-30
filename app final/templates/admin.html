@@ -864,42 +864,39 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
         Inicio
       </button>
 
-      <span class="nav-label">Voluntarios</span>
+      <span class="nav-label">Colaboradores</span>
       <button class="nav-item" onclick="irA('nuevo')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/><line x1="13" y1="2" x2="13" y2="6"/><line x1="11" y1="4" x2="15" y2="4"/></svg>
-        Nuevo voluntario
+        Alta Colaborador
       </button>
       <button class="nav-item" onclick="irA('lista')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h7"/><circle cx="13" cy="12" r="2.5"/></svg>
-        Certificados emitidos
+        Certificados Emitidos
+      </button>
+      <button class="nav-item" onclick="irA('usuarios')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.8 2.2-5 5-5s5 2.2 5 5"/><circle cx="12.5" cy="5" r="2"/><path d="M14 11c.3.9.5 1.9.5 3"/></svg>
+        Gestión de Colaboradores
+        <span id="badge-sol-pwd" style="display:none;margin-left:auto;background:var(--rosa);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;"></span>
       </button>
 
       <span class="nav-label">Migrantes</span>
       <button class="nav-item" onclick="irA('registros')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M2 6h12M2 9h8M2 12h5"/><circle cx="13" cy="11" r="2.5"/><path d="M13 9.5V11l.8.8"/></svg>
-        Registros
+        Base de Datos Migrantes
       </button>
-
       <button class="nav-item" onclick="irA('eliminados')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 13 6"/><path d="M14 6l-1 8H3L2 6"/><path d="M6 6V4a1 1 0 011-1h2a1 1 0 011 1v2"/></svg>
-        Eliminados
+        Registros Eliminados
+      </button>
+      <button class="nav-item" id="admin-nav-arco" onclick="irA('arco')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L3 4v4c0 3 2.5 5.5 5 6 2.5-.5 5-3 5-6V4L8 2z"/></svg>
+        Derechos Arco
       </button>
 
       <span class="nav-label">Sistema</span>
-      <button class="nav-item" onclick="irA('usuarios')">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.8 2.2-5 5-5s5 2.2 5 5"/><circle cx="12.5" cy="5" r="2"/><path d="M14 11c.3.9.5 1.9.5 3"/></svg>
-        Gestión de usuarios
-        <span id="badge-sol-pwd" style="display:none;margin-left:auto;background:var(--rosa);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;"></span>
-      </button>
       <button class="nav-item" onclick="irA('log')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M4 6h8M4 9h8M4 12h5"/></svg>
-        Auditoría
-      </button>
-
-      <span class="nav-label">Privacidad</span>
-      <button class="nav-item" id="admin-nav-arco" onclick="irA('arco')">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L3 4v4c0 3 2.5 5.5 5 6 2.5-.5 5-3 5-6V4L8 2z"/></svg>
-        Derechos ARCO
+        Log de Auditoría
       </button>
     </nav>
 
@@ -935,7 +932,7 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
           </div>
           <button class="btn btn-primario" onclick="irA('nuevo')">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
-            Nuevo voluntario
+            Nuevo Colaborador
           </button>
         </div>
 
@@ -1008,45 +1005,44 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
             </div>
           </div>
 
-          <div class="sat-titulo">Nuevo voluntario</div>
-          <div class="sat-subtitulo">Genera un certificado .p12 para un nuevo voluntario de Casa Monarca</div>
-
+          <div class="sat-titulo">Nuevo Colaborador</div>
+         
           <div class="sat-card">
             <div class="sat-card-header">Datos personales</div>
 
             <div class="grid-2" style="margin-bottom:14px;">
               <div class="campo">
                 <label for="inp-nombre">Nombre completo *</label>
-                <input type="text" id="inp-nombre" placeholder="Santiago Dueñas">
+                <input type="text" id="inp-nombre" placeholder="Nombre y Apellido">
                 <span class="ayuda">Tal como aparecerá en el certificado</span>
               </div>
 
               <div class="campo">
                 <label for="inp-fecha">Fecha de nacimiento</label>
-                <input type="text" id="inp-fecha" placeholder="12/03/2005">
+                <input type="text" id="inp-fecha" placeholder="dd/mm/aaaa">
               </div>
             </div>
 
             <div class="grid-3" style="margin-bottom:14px;">
               <div class="campo">
                 <label for="inp-edad">Edad</label>
-                <input type="text" id="inp-edad" placeholder="20">
+                <input type="text" id="inp-edad" placeholder="00">
               </div>
 
               <div class="campo">
                 <label for="inp-curp">CURP</label>
-                <input type="text" id="inp-curp" placeholder="GAPL950201MDFRCN01">
+                <input type="text" id="inp-curp" placeholder="CURP">
               </div>
 
               <div class="campo">
                 <label for="inp-telefono">Teléfono</label>
-                <input type="text" id="inp-telefono" placeholder="81 1234 5678">
+                <input type="text" id="inp-telefono" placeholder="Número">
               </div>
             </div>
 
             <div class="campo" style="margin-bottom:16px;">
               <label for="inp-correo">Correo electrónico*</label>
-              <input type="email" id="inp-correo" placeholder="voluntario@casamonarca.org">
+              <input type="email" id="inp-correo" placeholder="usuario@casamonarca.org">
             </div>
 
             <div class="campo">
@@ -1071,14 +1067,13 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
                     <option value="voluntario">Voluntario</option>
                     <option value="op">Operador (op)</option>
                     <option value="coord">Coordinador (coord)</option>
-                    <option value="admin">Administrador (admin)</option>
                   </select>
                 </div>
               </div>
 
               <div class="campo">
-                <label for="inp-area">Área / Departamento</label>
-                <input type="text" id="inp-area" placeholder="Ej. Atención directa">
+                <label for="inp-area">Área</label>
+                <input type="text" id="inp-area" placeholder="Área">
               </div>
             </div>
 
@@ -1161,7 +1156,7 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
         <div class="encabezado">
           <div class="encabezado-texto">
             <h1>Certificados emitidos</h1>
-            <p>Historial completo de certificados del sistema</p>
+            <p>Certificados de Coordinadores</p>
           </div>
           <button class="btn btn-primario" onclick="irA('nuevo')">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
@@ -1192,8 +1187,8 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
       <div class="vista" id="vista-usuarios">
         <div class="encabezado">
           <div class="encabezado-texto">
-            <h1>Gestión de usuarios</h1>
-            <p>Usuarios activos del sistema · reset de contraseña y activación de cuentas</p>
+            <h1>Gestión de Colaboradores</h1>
+            <p>Usuarios activos del sistema</p>
           </div>
           <button class="btn btn-ghost" onclick="cargarUsuarios()">Recargar</button>
         </div>
@@ -1254,6 +1249,7 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
           <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">Editar perfil de usuario</h3>
           <p style="font-size:12px;color:var(--gris-medio);margin-bottom:20px;" id="edit-usr-email-label"></p>
           <input type="hidden" id="edit-usr-email">
+          <input type="hidden" id="edit-usr-rol-original">
           <div style="display:flex;flex-direction:column;gap:14px;">
             <div>
               <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Nombre completo</label>
@@ -1262,14 +1258,14 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Rol</label>
-              <select id="edit-usr-rol"
+              <select id="edit-usr-rol" onchange="actualizarAvisoRol()"
                 style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;background:#fff;">
-                <option value="admin">Admin</option>
                 <option value="coord">Coordinador</option>
                 <option value="op">Operativo</option>
                 <option value="voluntario">Voluntario</option>
               </select>
             </div>
+            <div id="edit-usr-aviso-rol" style="display:none;background:#faf6ea;border-left:3px solid #d8ba64;border-radius:6px;padding:9px 12px;font-size:12px;color:#8a6710;line-height:1.5;"></div>
             <div id="edit-usr-alerta" style="display:none;color:var(--rojo-texto);font-size:12px;"></div>
           </div>
           <div class="modal-acciones" style="margin-top:20px;">
@@ -1283,12 +1279,26 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
       <div class="vista" id="vista-eliminados">
         <div class="encabezado">
           <div class="encabezado-texto">
-            <h1>Registros eliminados</h1>
-            <p>Registros eliminados en los últimos 30 días</p>
+            <h1>Registros de migrantes eliminados</h1>
+            <p>Historial de los últimos 30 días</p>
           </div>
           <button class="btn btn-ghost" onclick="cargarEliminados()">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 7a6 6 0 0111-3.5M13 7A6 6 0 012 10.5"/><path d="M11 1v3.5H7.5M3 13V9.5H6.5"/></svg>
             Recargar
+          </button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin-bottom:20px;padding:14px 16px;background:var(--blanco);border:1px solid var(--gris-linea);border-radius:var(--radio-md);">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Fecha desde</label>
+            <input type="date" id="elim-fecha-inicio" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Hasta</label>
+            <input type="date" id="elim-fecha-fin" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;">
+          </div>
+          <button class="btn btn-ghost" onclick="descargarExcelEliminados()" style="margin-top:auto;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1v8M4 6l3 3 3-3M1 10v1a2 2 0 002 2h8a2 2 0 002-2v-1"/></svg>
+            Descargar Excel
           </button>
         </div>
         <div class="card" style="padding:0;overflow:hidden;">
@@ -1296,18 +1306,31 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
             <table class="tabla">
               <thead>
                 <tr>
-                  <th>Fecha</th>
+                  <th>Fecha eliminación</th>
                   <th>Folio</th>
                   <th>Nombre</th>
-                  <th>Documento</th>
-                  <th>Tipo de eliminación</th>
-                  <th>Eliminado por</th>
+                  <th>Solicitado por</th>
+                  <th>Motivo</th>
+                  <th>Tipo</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody id="tbody-eliminados">
-                <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gris-medio)">Cargando...</td></tr>
+                <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gris-medio)">Cargando...</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── MODAL: FIRMA ELIMINACIÓN ──────── -->
+      <div class="modal-overlay" id="modal-firma-elim">
+        <div class="modal" style="max-width:560px;width:90%;">
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">Flujo de eliminación</h3>
+          <p style="font-size:12px;color:var(--gris-medio);margin-bottom:20px;" id="firma-elim-subtitle"></p>
+          <div id="firma-elim-contenido"></div>
+          <div class="modal-acciones" style="margin-top:20px;">
+            <button class="btn btn-ghost" onclick="document.getElementById('modal-firma-elim').classList.remove('visible')">Cerrar</button>
           </div>
         </div>
       </div>
@@ -1324,6 +1347,20 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
             Recargar
           </button>
         </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin-bottom:20px;padding:14px 16px;background:var(--blanco);border:1px solid var(--gris-linea);border-radius:var(--radio-md);">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Fecha desde</label>
+            <input type="date" id="log-fecha-inicio" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Hasta</label>
+            <input type="date" id="log-fecha-fin" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;">
+          </div>
+          <button class="btn btn-ghost" onclick="descargarExcelLog()" style="margin-top:auto;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1v8M4 6l3 3 3-3M1 10v1a2 2 0 002 2h8a2 2 0 002-2v-1"/></svg>
+            Descargar Excel
+          </button>
+        </div>
         <div class="card" style="padding: 12px 16px;">
           <div class="log-linea" style="font-weight:700; color:var(--gris-medio); text-transform:uppercase; font-size:10px; letter-spacing:.08em;">
             <span>Fecha</span><span>Usuario</span><span>Rol</span><span>Evento</span><span>Detalle</span>
@@ -1338,12 +1375,34 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
       <div class="vista" id="vista-registros">
         <div class="encabezado">
           <div class="encabezado-texto">
-            <h1>Registros de migrantes</h1>
+            <h1>Base de Datos Migrantes</h1>
             <p>Información de personas atendidas por Casa Monarca</p>
           </div>
           <button class="btn btn-primario" onclick="adminAbrirMig()">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M8 2v12M2 8h12"/></svg>
             Nuevo registro
+          </button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin-bottom:20px;padding:14px 16px;background:var(--blanco);border:1px solid var(--gris-linea);border-radius:var(--radio-md);">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Fecha de atención desde</label>
+            <input type="date" id="mig-fecha-inicio" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Hasta</label>
+            <input type="date" id="mig-fecha-fin" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">País de origen</label>
+            <input type="text" id="mig-pais" placeholder="Ej: Honduras" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;min-width:140px;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Grupo de atención</label>
+            <input type="text" id="mig-grupo" placeholder="Ej: solicitante" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;min-width:160px;">
+          </div>
+          <button class="btn btn-ghost" onclick="descargarExcelMigrantes()" style="margin-top:auto;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1v8M4 6l3 3 3-3M1 10v1a2 2 0 002 2h8a2 2 0 002-2v-1"/></svg>
+            Descargar Excel
           </button>
         </div>
 
@@ -1389,7 +1448,7 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
       <div class="vista" id="vista-arco">
         <div class="encabezado">
           <div class="encabezado-texto">
-            <h1>Derechos ARCO</h1>
+            <h1>Solicitudes ARCO</h1>
             <p>Acceso, Rectificación, Cancelación y Oposición de datos personales</p>
           </div>
         </div>
@@ -1631,14 +1690,14 @@ let generoSeleccionado = 'Masculino';
 
 const topbarTitulos = {
   inicio:    ['Inicio', 'Admin'],
-  nuevo:     ['Nuevo voluntario', 'Admin'],
+  nuevo:     ['Alta Colaborador', 'Admin'],
   entrega:   ['Entrega de certificado', 'Admin'],
   lista:     ['Certificados emitidos', 'Admin'],
-  registros: ['Registros de migrantes', 'Admin'],
-  eliminados:['Migrantes eliminados', 'Admin'],
-  usuarios:  ['Gestión de usuarios', 'Admin'],
-  log:       ['Auditoría', 'Admin'],
-  arco:      ['Derechos ARCO', 'Admin'],
+  registros: ['Base de Datos Migrantes', 'Admin'],
+  eliminados:['Registros de migrantes eliminados', 'Admin'],
+  usuarios:  ['Gestión de Colaboradores', 'Admin'],
+  log:       ['Log de Auditoría', 'Admin'],
+  arco:      ['Solicitudes ARCO', 'Admin'],
 };
 
 function irA(vista) {
@@ -1650,7 +1709,7 @@ function irA(vista) {
   document.getElementById('topbar-titulo').textContent = t[0];
   document.getElementById('topbar-badge').textContent = t[1];
 
-  const map = { inicio: 0, nuevo: 1, lista: 2, registros: 3, eliminados: 4, usuarios: 5, log: 6, arco: 7 };
+  const map = { inicio: 0, nuevo: 1, lista: 2, usuarios: 3, registros: 4, eliminados: 5, arco: 6, log: 7 };
   if (map[vista] !== undefined) {
     document.querySelectorAll('.nav-item')[map[vista]]?.classList.add('activo');
   }
@@ -1663,6 +1722,25 @@ function irA(vista) {
   if (vista === 'registros')  adminCargarMigrantes();
   if (vista === 'arco')       cargarArcoAdmin();
 }
+
+function _validarRangoFecha(valor, nombre) {
+  if (!valor) return null;
+  const d   = new Date(valor + 'T00:00:00');
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  if (d > hoy) return `${nombre} no puede ser una fecha futura.`;
+  const hace100 = new Date(hoy); hace100.setFullYear(hoy.getFullYear() - 100);
+  if (d < hace100) return `${nombre} no puede ser hace más de 100 años.`;
+  return null;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const hoy     = new Date().toISOString().slice(0, 10);
+  const hace100 = new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().slice(0, 10);
+  ['admin-mig-fatencion','admin-mig-fnac'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.max = hoy; el.min = hace100; }
+  });
+});
 
 function calcularEdadAdmin() {
   const v = document.getElementById('admin-mig-fnac')?.value;
@@ -1952,12 +2030,31 @@ async function eliminarUsuario(email, nombre) {
   }
 }
 
+function actualizarAvisoRol() {
+  const rolOriginal = document.getElementById('edit-usr-rol-original').value;
+  const rolNuevo    = document.getElementById('edit-usr-rol').value;
+  const aviso       = document.getElementById('edit-usr-aviso-rol');
+  if (rolNuevo === rolOriginal) {
+    aviso.style.display = 'none';
+    return;
+  }
+  const mensajes = {
+    coord:      'Al cambiar a Coordinador se generará un nuevo certificado .p12 y contraseña temporal. Serás redirigido a la pantalla de entrega.',
+    op:         'Al cambiar a Operativo se generará una contraseña temporal y el usuario deberá cambiarla en su próximo acceso.',
+    voluntario: 'Al cambiar a Voluntario se generará una contraseña temporal y el usuario deberá cambiarla en su próximo acceso.',
+  };
+  aviso.textContent = mensajes[rolNuevo] || '';
+  aviso.style.display = 'block';
+}
+
 function abrirEditarUsuario(u) {
   document.getElementById('edit-usr-email').value = u.usuario;
   document.getElementById('edit-usr-email-label').textContent = u.usuario;
   document.getElementById('edit-usr-nombre').value = u.nombre || '';
   document.getElementById('edit-usr-rol').value = u.rol || 'op';
+  document.getElementById('edit-usr-rol-original').value = u.rol || 'op';
   document.getElementById('edit-usr-alerta').style.display = 'none';
+  document.getElementById('edit-usr-aviso-rol').style.display = 'none';
   document.getElementById('modal-editar-usuario').classList.add('visible');
 }
 
@@ -1979,9 +2076,18 @@ async function guardarEditarUsuario() {
     const res  = await fetch('/admin/api/usuarios/editar', { method: 'POST', body: fd });
     const data = await res.json();
     if (!res.ok || data.error) { alerta.textContent = data.error || `Error (${res.status})`; alerta.style.display = 'block'; return; }
-    cerrarEditarUsuario();
-    cargarUsuarios();
-    toast('Perfil actualizado correctamente');
+    if (data.accion === 'certificado') {
+      cerrarEditarUsuario();
+      window.location.href = data.redirect_url;
+    } else if (data.accion === 'pwd_temporal') {
+      cerrarEditarUsuario();
+      cargarUsuarios();
+      mostrarPwdTemp(data.pwd_temporal);
+    } else {
+      cerrarEditarUsuario();
+      cargarUsuarios();
+      toast('Perfil actualizado correctamente');
+    }
   } catch(e) {
     alerta.textContent = 'Error de conexión';
     alerta.style.display = 'block';
@@ -2012,35 +2118,87 @@ async function resolverReset(sid, accion) {
 
 async function cargarEliminados() {
   const tbody = document.getElementById('tbody-eliminados');
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gris-medio)">Cargando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gris-medio)">Cargando...</td></tr>';
   try {
-    const res  = await fetch('/admin/api/eliminados');
+    const fi = document.getElementById('elim-fecha-inicio').value;
+    const ff = document.getElementById('elim-fecha-fin').value;
+    const p  = new URLSearchParams();
+    if (fi) p.set('fecha_inicio', fi);
+    if (ff) p.set('fecha_fin', ff);
+    const res  = await fetch('/admin/api/eliminados?' + p.toString());
     const data = await res.json();
     if (!data.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gris-medio)">Sin eliminaciones en los últimos 30 días</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gris-medio)">Sin registros de eliminaciones</td></tr>';
       return;
     }
     tbody.innerHTML = data.map(r => {
-      const partes   = (r.detalle || '').split(' · ');
-      const tipoElim = partes[0] || '—';
-      const nombre   = partes[1] || '—';
-      const docParte = partes[2] || '—';
-      const folio    = (partes[3] || '').replace('Folio: ', '') || '—';
-      const esAprobada = tipoElim.includes('aprobada');
-      const tipoHtml = esAprobada
+      const tipoHtml = r.tipo === 'solicitada'
         ? `<span class="badge badge-solicitante_asilo">Aprobada por admin</span>`
         : `<span class="badge badge-deportado">Directa (admin)</span>`;
+      const motivoCorto = r.motivo ? r.motivo.slice(0, 60) + (r.motivo.length > 60 ? '…' : '') : '—';
+      const btnFirma = r.tipo === 'solicitada'
+        ? `<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="verFirmaEliminacion(${r.id})">Ver firmas</button>`
+        : `<span style="font-size:11px;color:var(--gris-medio);">Sin solicitud</span>`;
       return `<tr>
-        <td style="font-size:12px;white-space:nowrap;">${(r.fecha||'').slice(0,19)}</td>
-        <td style="font-family:var(--mono);font-size:11px;color:var(--gris-medio);">${folio}</td>
-        <td class="nombre-celda">${nombre}</td>
-        <td style="font-size:12px;">${docParte}</td>
+        <td style="font-size:12px;white-space:nowrap;">${(r.fecha_eliminacion||'').slice(0,19)}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--gris-medio);">${r.folio||'—'}</td>
+        <td class="nombre-celda">${r.nombre_migrante||'—'}</td>
+        <td style="font-size:12px;">${r.solicitado_por||'—'}</td>
+        <td style="font-size:12px;color:var(--gris-oscuro);font-style:${r.motivo?'normal':'italic'};">${motivoCorto}</td>
         <td>${tipoHtml}</td>
-        <td style="font-size:12px;">${r.usuario||'—'}</td>
+        <td>${btnFirma}</td>
       </tr>`;
     }).join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--rojo-texto)">Error al cargar</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--rojo-texto)">Error al cargar</td></tr>';
+  }
+}
+
+async function verFirmaEliminacion(hid) {
+  const modal    = document.getElementById('modal-firma-elim');
+  const subtitle = document.getElementById('firma-elim-subtitle');
+  const cont     = document.getElementById('firma-elim-contenido');
+  cont.innerHTML = '<p style="text-align:center;padding:20px;color:var(--gris-medio)">Cargando...</p>';
+  modal.classList.add('visible');
+  try {
+    const res  = await fetch(`/admin/api/eliminados/${hid}/firma`);
+    const r    = await res.json();
+    subtitle.textContent = `${r.folio || '—'} · ${r.nombre_migrante || '—'}`;
+
+    const filaInfo = (label, valor, mono) =>
+      `<tr><td style="font-size:12px;font-weight:600;color:var(--gris-oscuro);padding:7px 12px;width:180px;">${label}</td>
+       <td style="font-size:12px;padding:7px 12px;${mono ? 'font-family:var(--mono);word-break:break-all;' : ''}">${valor || '—'}</td></tr>`;
+
+    const validezHtml = r.firma_valida === true
+      ? `<span style="color:var(--verde-texto);font-weight:600;">&#10003; Firma verificada — válida</span>`
+      : r.firma_valida === false
+        ? `<span style="color:var(--rojo-texto);font-weight:600;">&#9888; Firma inválida o alterada</span>`
+        : `<span style="color:var(--gris-medio);">Sin firma digital</span>`;
+
+    cont.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;border:1px solid var(--gris-linea);border-radius:var(--radio-md);overflow:hidden;">
+        <tbody>
+          <tr style="background:var(--gris-claro);">
+            <td colspan="2" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;color:var(--gris-medio);">Solicitud de eliminación</td>
+          </tr>
+          ${filaInfo('Solicitado por', r.solicitado_por)}
+          ${filaInfo('Fecha solicitud', (r.fecha_solicitud||'').slice(0,19))}
+          ${filaInfo('Motivo', r.motivo)}
+          <tr style="background:var(--gris-claro);">
+            <td colspan="2" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;color:var(--gris-medio);">Aprobación</td>
+          </tr>
+          ${filaInfo('Aprobado por', r.aprobado_por)}
+          ${filaInfo('Fecha eliminación', (r.fecha_eliminacion||'').slice(0,19))}
+          <tr style="background:var(--gris-claro);">
+            <td colspan="2" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;color:var(--gris-medio);">Firma digital del coordinador</td>
+          </tr>
+          <tr><td colspan="2" style="padding:8px 12px;">${validezHtml}</td></tr>
+          ${r.mensaje_firmado ? filaInfo('Mensaje firmado', r.mensaje_firmado, true) : ''}
+          ${r.firma_coord ? filaInfo('Firma (EC)', r.firma_coord.slice(0,64) + '…', true) : ''}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);padding:16px;">Error al cargar detalles.</p>';
   }
 }
 
@@ -2181,6 +2339,37 @@ async function generarCertificado() {
 
 function descargarP12() {
   window.location.href = '/admin/descargar_p12';
+}
+
+function descargarExcelMigrantes() {
+  const p = new URLSearchParams();
+  const fi = document.getElementById('mig-fecha-inicio').value;
+  const ff = document.getElementById('mig-fecha-fin').value;
+  const pa = document.getElementById('mig-pais').value.trim();
+  const gr = document.getElementById('mig-grupo').value.trim();
+  if (fi) p.set('fecha_inicio', fi);
+  if (ff) p.set('fecha_fin', ff);
+  if (pa) p.set('pais_origen', pa);
+  if (gr) p.set('grupo_poblacion', gr);
+  window.open('/admin/descargar/migrantes?' + p.toString(), '_blank');
+}
+
+function descargarExcelEliminados() {
+  const p = new URLSearchParams();
+  const fi = document.getElementById('elim-fecha-inicio').value;
+  const ff = document.getElementById('elim-fecha-fin').value;
+  if (fi) p.set('fecha_inicio', fi);
+  if (ff) p.set('fecha_fin', ff);
+  window.open('/admin/descargar/eliminados?' + p.toString(), '_blank');
+}
+
+function descargarExcelLog() {
+  const p = new URLSearchParams();
+  const fi = document.getElementById('log-fecha-inicio').value;
+  const ff = document.getElementById('log-fecha-fin').value;
+  if (fi) p.set('fecha_inicio', fi);
+  if (ff) p.set('fecha_fin', ff);
+  window.open('/admin/descargar/log?' + p.toString(), '_blank');
 }
 
 function pedirRevocacion(id, nombre) {
@@ -2391,13 +2580,20 @@ async function adminGuardarMig() {
     alerta.style.display = 'block';
     return;
   }
+
+  const errFnac = _validarRangoFecha(fnac, 'Fecha de nacimiento');
+  if (errFnac) { alerta.textContent = errFnac; alerta.style.display = 'block'; return; }
+  const fechaAt = document.getElementById('admin-mig-fatencion').value;
+  const errFat  = _validarRangoFecha(fechaAt, 'Fecha de atención');
+  if (errFat)  { alerta.textContent = errFat;  alerta.style.display = 'block'; return; }
+
   alerta.style.display = 'none';
 
   const fd = new FormData();
   fd.append('nombre_pila',         nombrePila);
   fd.append('primer_apellido',     primerAp);
   fd.append('segundo_apellido',    segundoAp);
-  fd.append('fecha_atencion',      document.getElementById('admin-mig-fatencion').value);
+  fd.append('fecha_atencion',      fechaAt);
   fd.append('telefono_contacto',   document.getElementById('admin-mig-telefono').value.trim());
   fd.append('genero',              genero);
   fd.append('pais_origen',         pais);

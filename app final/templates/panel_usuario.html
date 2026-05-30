@@ -255,6 +255,12 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 .badge-pendiente  { background: var(--amarillo-bg); color: var(--amarillo-texto); border-color: var(--amarillo-borde); }
 .badge-aprobada   { background: var(--verde-bg);    color: var(--verde-texto);    border-color: var(--verde-borde); }
 .badge-rechazada  { background: var(--rojo-bg);     color: var(--rojo-texto);     border-color: var(--rojo-borde); }
+.sol-card { background: var(--amarillo-bg); border: 1px solid var(--amarillo-borde); border-radius: var(--radio-lg); padding: 14px 18px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.sol-info { flex: 1; min-width: 0; }
+.sol-nombre { font-weight: 600; font-size: 13px; color: var(--negro); }
+.sol-meta { font-size: 11px; color: var(--amarillo-texto); margin-top: 2px; }
+.sol-motivo { font-size: 12px; color: var(--gris-oscuro); margin-top: 4px; font-style: italic; }
+.sol-acciones { display: flex; gap: 8px; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -279,12 +285,19 @@ textarea.form-control { resize: vertical; min-height: 72px; }
       <span class="nav-label">Módulos</span>
       <button class="nav-item" id="nav-registros" onclick="irA('registros')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M2 6h12M2 9h8M2 12h5"/><circle cx="13" cy="11" r="2.5"/><path d="M13 9.5V11l.8.8"/></svg>
-        Registros
+        Base de Datos Migrantes
       </button>
       {% if rol in ('coord', 'op') %}
       <button class="nav-item" id="nav-arco" onclick="irA('arco')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5L2 4v4c0 3.3 2.6 5.7 6 6.5 3.4-.8 6-3.2 6-6.5V4L8 1.5z"/><path d="M5.5 8l1.8 1.8 3.2-3.2"/></svg>
         Derechos ARCO
+      </button>
+      {% endif %}
+      {% if rol in ('op', 'coord') %}
+      <button class="nav-item" id="nav-aprobaciones" onclick="irA('aprobaciones')" style="position:relative;">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h5"/><path d="M11 10l1.5 1.5 2.5-2.5"/></svg>
+        Aprobaciones Pendientes
+        <span id="badge-aprobaciones-text" style="margin-left:auto;background:var(--rosa);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;display:none;"></span>
       </button>
       {% endif %}
     </nav>
@@ -321,7 +334,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
           </div>
         </div>
 
-        <div class="metricas">
+        <div class="metricas" {% if rol in ('op', 'coord') %}style="grid-template-columns:repeat(3,1fr);"{% endif %}>
           <div class="metrica">
             <div class="metrica-valor rosa">{{ rol_legible }}</div>
             <div class="metrica-label">Tu rol en el sistema</div>
@@ -330,6 +343,12 @@ textarea.form-control { resize: vertical; min-height: 72px; }
             <div class="metrica-valor" id="cnt-migrantes">—</div>
             <div class="metrica-label">Migrantes registrados</div>
           </div>
+          {% if rol in ('op', 'coord') %}
+          <div class="metrica" style="cursor:pointer;" onclick="irA('aprobaciones')">
+            <div class="metrica-valor" id="cnt-pendientes-op">—</div>
+            <div class="metrica-label">Aprobaciones pendientes</div>
+          </div>
+          {% endif %}
         </div>
 
         <div class="card">
@@ -362,6 +381,31 @@ textarea.form-control { resize: vertical; min-height: 72px; }
           </div>
         </div>
 
+        {% if rol == 'op' %}
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <p class="card-titulo" style="margin-bottom:0;">Últimas validaciones</p>
+            <button class="btn btn-ghost btn-sm" onclick="abrirHistorialOp()">Ver historial completo</button>
+          </div>
+          <p class="card-subtitulo">Los 10 registros más recientes que validaste</p>
+          <div id="op-ultimas-validaciones">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-titulo">Buscar migrante</p>
+          <p class="card-subtitulo">Busca por nombre o folio — haz clic en un resultado para ver sus datos</p>
+          <input type="text" id="inicio-buscar-input"
+                 placeholder="Ej. María González o MIG-202505-0001"
+                 oninput="buscarMigranteInicio(this.value)"
+                 style="width:100%;max-width:480px;padding:9px 12px;border:1.5px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);outline:none;margin-bottom:16px;">
+          <div id="inicio-buscar-resultados">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Ingresa al menos 2 caracteres para buscar</p>
+          </div>
+        </div>
+        {% endif %}
+
         <div class="card">
           <p class="card-titulo">Tu información</p>
           <p class="card-subtitulo">Datos asociados a tu cuenta</p>
@@ -386,7 +430,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
       <div class="vista" id="vista-registros">
         <div class="encabezado">
           <div class="encabezado-texto">
-            <h1>Registros de migrantes</h1>
+            <h1>Base de Datos Migrantes</h1>
             <p>Información de personas atendidas por Casa Monarca</p>
           </div>
           {% if rol in ('coord', 'op') %}
@@ -395,6 +439,42 @@ textarea.form-control { resize: vertical; min-height: 72px; }
             Nuevo registro
           </button>
           {% endif %}
+        </div>
+
+        <!-- Filtros y descarga Excel -->
+        <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin-bottom:20px;padding:14px 16px;background:var(--blanco);border:1px solid var(--gris-linea);border-radius:var(--radio-md);">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Fecha de atención desde</label>
+            <input type="date" id="coord-mig-fecha-inicio" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Hasta</label>
+            <input type="date" id="coord-mig-fecha-fin" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">País de origen</label>
+            <input type="text" id="coord-mig-pais" placeholder="Ej: Honduras" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;min-width:140px;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;">Grupo de atención</label>
+            <input type="text" id="coord-mig-grupo" placeholder="Ej: solicitante" style="padding:7px 10px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);color:var(--negro);outline:none;min-width:160px;">
+          </div>
+          <button class="btn btn-ghost" onclick="coordDescargarExcel()" style="margin-top:auto;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 1v8M4 6l3 3 3-3M1 10v1a2 2 0 002 2h8a2 2 0 002-2v-1"/></svg>
+            Descargar Excel
+          </button>
+        </div>
+
+        <!-- Mis solicitudes de eliminación pendientes (coord) -->
+        <div id="coord-sol-seccion" style="display:none;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <p style="font-size:13px;font-weight:600;color:var(--amarillo-texto);">
+              Mis solicitudes de eliminación pendientes
+              <span id="coord-sol-count-badge" style="background:var(--amarillo-borde);color:var(--negro);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:8px;"></span>
+              <span style="font-size:11px;font-weight:400;color:var(--gris-medio);margin-left:6px;">— En espera de aprobación del administrador</span>
+            </p>
+          </div>
+          <div id="coord-lista-solicitudes"></div>
         </div>
 
         <div class="card" style="padding:0;overflow:hidden;">
@@ -475,6 +555,52 @@ textarea.form-control { resize: vertical; min-height: 72px; }
           <p class="card-titulo">Mis solicitudes de cancelación</p>
           <p class="card-subtitulo">Estado de las solicitudes de eliminación enviadas al coordinador</p>
           <div id="arco-mis-cancelaciones">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- ── VISTA: APROBACIONES (op y coord) ─── -->
+      {% if rol in ('op', 'coord') %}
+      <div class="vista" id="vista-aprobaciones">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <h1>Aprobaciones Pendientes</h1>
+            {% if rol == 'op' %}
+            <p>Registros enviados por voluntarios que requieren tu validación y firma digital</p>
+            {% else %}
+            <p>Solicitudes ya firmadas por operativos — al confirmar, tu firma finaliza el registro</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-titulo">Pendientes de tu acción</p>
+          {% if rol == 'op' %}
+          <p class="card-subtitulo">Revisa los datos del migrante antes de validar</p>
+          {% else %}
+          <p class="card-subtitulo">Cada ticket incluye la firma digital del operativo que lo validó previamente</p>
+          {% endif %}
+          <div id="aprobaciones-pendientes-lista">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-titulo">Aprobaciones Realizadas</p>
+          <p class="card-subtitulo">Registros que has procesado</p>
+          <div id="aprobaciones-historial" style="max-height:380px;overflow-y:auto;">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+          </div>
+        </div>
+
+        {% if rol == 'coord' %}
+        <div class="card">
+          <p class="card-titulo">Mis solicitudes de eliminación de registros</p>
+          <p class="card-subtitulo">Solicitudes que has enviado al administrador</p>
+          <div id="coord-mis-elim-lista">
             <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
           </div>
         </div>
@@ -832,6 +958,114 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 </div>
 {% endif %}
 
+<!-- Modal: revisar ticket de voluntario (solo op) -->
+{% if rol == 'op' %}
+<div class="overlay" id="overlay-revisar-ticket-op">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Revisar solicitud de registro</span>
+      <button class="modal-cerrar" onclick="cerrarRevisarTicketOp()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="ticket-op-info"></div>
+      <div class="alerta" style="background:var(--amarillo-bg);border-color:var(--amarillo-borde);color:var(--amarillo-texto);margin-top:8px;display:block;font-size:12.5px;">
+        <strong>Firma digital:</strong> Al validar, firmarás este ticket con tu clave ECDSA y la solicitud se escalará al coordinador para confirmación final.
+      </div>
+      <div class="alerta error" id="alerta-ticket-op" style="display:none;"></div>
+      <div id="ticket-op-rechazo" style="display:none;">
+        <div class="form-group" style="margin-top:12px;">
+          <label class="form-label required">Motivo del rechazo</label>
+          <textarea class="form-control" id="ticket-op-motivo" placeholder="Explica por qué no procede este registro…" style="min-height:64px;"></textarea>
+        </div>
+      </div>
+      <div class="form-acciones" style="margin-top:16px;">
+        <button class="btn btn-ghost" onclick="cerrarRevisarTicketOp()">Cancelar</button>
+        <button class="btn btn-danger" id="btn-ticket-op-rechazar" onclick="toggleTicketOpRechazo()">Rechazar</button>
+        <button class="btn btn-danger" id="btn-ticket-op-confirmar-rechazo" style="display:none;" onclick="resolverTicketOp('rechazar')">Confirmar rechazo</button>
+        <button class="btn btn-primary" id="btn-ticket-op-validar" onclick="resolverTicketOp('validar')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 7l4 4 6-6"/></svg>
+          Validar y firmar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal: historial completo de validaciones (solo op) -->
+{% if rol == 'op' %}
+<div class="overlay" id="overlay-historial-op">
+  <div class="modal" style="max-width:780px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Historial completo de validaciones</span>
+      <button class="modal-cerrar" onclick="cerrarHistorialOp()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="historial-op-contenido">
+        <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+      </div>
+      <div class="form-acciones" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gris-linea);">
+        <button class="btn btn-ghost" onclick="cerrarHistorialOp()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal: confirmar registro pendiente (solo coord) -->
+{% if rol == 'coord' %}
+<div class="overlay" id="overlay-confirmar-registro-coord">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Confirmar registro de migrante</span>
+      <button class="modal-cerrar" onclick="cerrarConfirmarRegistroCoord()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="registro-coord-info"></div>
+      <div class="alerta" style="background:var(--amarillo-bg);border-color:var(--amarillo-borde);color:var(--amarillo-texto);margin-top:8px;display:block;font-size:12.5px;">
+        <strong>Firma digital:</strong> Al confirmar, firmarás con tu clave ECDSA. El migrante se insertará en la base de datos con la cadena de firmas completa.
+      </div>
+      <div class="alerta error" id="alerta-registro-coord" style="display:none;"></div>
+      <div id="registro-coord-rechazo" style="display:none;">
+        <div class="form-group" style="margin-top:12px;">
+          <label class="form-label required">Motivo del rechazo</label>
+          <textarea class="form-control" id="registro-coord-motivo" placeholder="Explica por qué no procede este registro…" style="min-height:64px;"></textarea>
+        </div>
+      </div>
+      <div class="form-acciones" style="margin-top:16px;">
+        <button class="btn btn-ghost" onclick="cerrarConfirmarRegistroCoord()">Cancelar</button>
+        <button class="btn btn-danger" id="btn-coord-rechazar" onclick="toggleCoordRechazo()">Rechazar</button>
+        <button class="btn btn-danger" id="btn-coord-confirmar-rechazo" style="display:none;" onclick="resolverRegistroCoord('rechazar')">Confirmar rechazo</button>
+        <button class="btn btn-primary" id="btn-coord-aprobar" onclick="resolverRegistroCoord('aprobar')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 7l4 4 6-6"/></svg>
+          Confirmar e insertar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal: detalle de aprobación realizada (op y coord) -->
+{% if rol in ('op', 'coord') %}
+<div class="overlay" id="overlay-detalle-aprobacion">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Detalle del registro</span>
+      <button class="modal-cerrar" onclick="cerrarDetalleAprobacion()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="detalle-aprobacion-contenido">
+        <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+      </div>
+      <div class="form-acciones" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gris-linea);">
+        <button class="btn btn-ghost" onclick="cerrarDetalleAprobacion()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <script>
 const ROL = '{{ rol }}';
 const PUEDE_CREAR  = ['coord','op'].includes(ROL);
@@ -842,9 +1076,10 @@ let migranteEditandoId = null;
 let solicitudMigranteId = null;
 
 const topbarTitulos = {
-  inicio:    'Inicio',
-  registros: 'Registros de migrantes',
-  arco:      'Derechos ARCO',
+  inicio:       'Inicio',
+  registros:    'Base de Datos Migrantes',
+  arco:         'Derechos ARCO',
+  aprobaciones: 'Aprobaciones Pendientes',
 };
 
 function irA(vista) {
@@ -857,12 +1092,32 @@ function irA(vista) {
   if (navEl) navEl.classList.add('activo');
   if (vista === 'registros') cargarMigrantes();
   if (vista === 'arco') cargarArco();
+  if (vista === 'aprobaciones') cargarAprobacionesPorRol();
 }
 
 function irAYNuevo() {
   irA('registros');
   setTimeout(abrirFormulario, 80);
 }
+
+function _validarRangoFecha(valor, nombre) {
+  if (!valor) return null;
+  const d   = new Date(valor + 'T00:00:00');
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  if (d > hoy) return `${nombre} no puede ser una fecha futura.`;
+  const hace100 = new Date(hoy); hace100.setFullYear(hoy.getFullYear() - 100);
+  if (d < hace100) return `${nombre} no puede ser hace más de 100 años.`;
+  return null;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const hoy     = new Date().toISOString().slice(0, 10);
+  const hace100 = new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().slice(0, 10);
+  ['mig-fecha-atencion','mig-fecha-nac','rect-fecha-atencion','rect-fecha-nac'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.max = hoy; el.min = hace100; }
+  });
+});
 
 function calcularEdad(inputFechaId, inputEdadId) {
   const val = document.getElementById(inputFechaId).value;
@@ -900,13 +1155,103 @@ async function cargarMigrantes() {
   const tbody = document.getElementById('tbody-migrantes');
   tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gris-medio)">Cargando...</td></tr>';
   try {
-    const res = await fetch('/api/migrantes');
-    listaMigrantes = await res.json();
+    const promesas = [fetch('/api/migrantes')];
+    if (ROL === 'coord') promesas.push(fetch('/admin/api/solicitudes'));
+    const [resMig, resSol] = await Promise.all(promesas);
+    listaMigrantes = await resMig.json();
+
+    if (ROL === 'coord' && resSol) {
+      const sols = (await resSol.json()).filter(s => s.solicitado_por === '{{ usuario }}');
+      const solSec = document.getElementById('coord-sol-seccion');
+      if (sols.length) {
+        solSec.style.display = 'block';
+        document.getElementById('coord-sol-count-badge').textContent = sols.length;
+        document.getElementById('coord-lista-solicitudes').innerHTML = sols.map(s => `
+          <div class="sol-card">
+            <div class="sol-info">
+              <div class="sol-nombre">${s.migrante_nombre} <span style="font-weight:400;font-size:11px;color:var(--gris-medio)">${s.folio}</span></div>
+              <div class="sol-meta">Enviada el ${(s.fecha_solicitud || '').slice(0,10)} · Pendiente de aprobación del administrador</div>
+              ${s.motivo ? `<div class="sol-motivo">"${s.motivo}"</div>` : ''}
+            </div>
+            <div class="sol-acciones">
+              <span class="badge badge-pendiente" style="font-size:11px;">Pendiente</span>
+            </div>
+          </div>`).join('');
+      } else {
+        solSec.style.display = 'none';
+      }
+    }
+
     const q = document.getElementById('buscar-migrante')?.value || '';
     filtrarMigrantes(q);
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--rojo-texto)">Error al cargar registros</td></tr>`;
   }
+}
+
+async function coordResolverSol(solId, aprobar) {
+  const fd = new FormData(); fd.append('aprobar', aprobar ? '1' : '0');
+  try {
+    const res  = await fetch(`/admin/api/solicitudes/${solId}/resolver`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) { alert(data.error || 'Error al resolver'); return; }
+    cargarMigrantes();
+  } catch(e) { alert('Error de conexión'); }
+}
+
+async function cargarMisEliminaciones() {
+  const cont = document.getElementById('coord-mis-elim-lista');
+  if (!cont) return;
+  cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>';
+  try {
+    const res  = await fetch('/api/mis_solicitudes_eliminacion');
+    if (!res.ok) { cont.innerHTML = '<p style="color:var(--rojo-texto);font-size:13px;text-align:center;padding:16px;">Error al cargar.</p>'; return; }
+    const lista = await res.json();
+    if (!lista.length) {
+      cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">No has enviado solicitudes de eliminación.</p>';
+      return;
+    }
+    const badgeClase = { pendiente: 'badge-pendiente', aprobada: 'badge-aprobada', rechazada: 'badge-rechazada' };
+    const badgeLabel = { pendiente: 'Pendiente', aprobada: 'Aprobada', rechazada: 'Rechazada' };
+    cont.innerHTML = `
+      <div style="overflow-x:auto;">
+      <table class="tabla" style="font-size:12px;">
+        <thead><tr>
+          <th>Folio</th><th>Migrante</th><th>Fecha envío</th><th>Motivo</th><th>Estado</th><th>Resuelto por</th>
+        </tr></thead>
+        <tbody>
+          ${lista.map(r => {
+            const fecha = (r.fecha_solicitud || r.fecha_eliminacion || '').slice(0, 10);
+            const resueltoPor = r.resuelto_por || r.aprobado_por || '—';
+            const motivoCorto = r.motivo ? r.motivo.slice(0, 60) + (r.motivo.length > 60 ? '…' : '') : '—';
+            return `<tr>
+              <td style="font-family:var(--mono);font-size:11px;">${r.folio || '—'}</td>
+              <td>${r.nombre_migrante || '—'}</td>
+              <td style="white-space:nowrap;">${fecha}</td>
+              <td style="font-style:${r.motivo ? 'normal' : 'italic'};color:var(--gris-oscuro);">${motivoCorto}</td>
+              <td><span class="badge ${badgeClase[r.estado] || ''}">${badgeLabel[r.estado] || r.estado}</span></td>
+              <td>${resueltoPor}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);font-size:13px;text-align:center;padding:16px;">Error de conexión.</p>';
+  }
+}
+
+function coordDescargarExcel() {
+  const p = new URLSearchParams();
+  const fi = document.getElementById('coord-mig-fecha-inicio').value;
+  const ff = document.getElementById('coord-mig-fecha-fin').value;
+  const pa = document.getElementById('coord-mig-pais').value.trim();
+  const gr = document.getElementById('coord-mig-grupo').value.trim();
+  if (fi) p.set('fecha_inicio', fi);
+  if (ff) p.set('fecha_fin', ff);
+  if (pa) p.set('pais_origen', pa);
+  if (gr) p.set('grupo_poblacion', gr);
+  window.open('/admin/descargar/migrantes?' + p.toString(), '_blank');
 }
 
 function filtrarMigrantes(q) {
@@ -996,13 +1341,20 @@ async function guardarMigrante() {
     alerta.style.display = 'block';
     return;
   }
+
+  const errFnac = _validarRangoFecha(fechaNac, 'Fecha de nacimiento');
+  if (errFnac) { alerta.textContent = errFnac; alerta.style.display = 'block'; return; }
+  const fechaAt = document.getElementById('mig-fecha-atencion').value;
+  const errFat  = _validarRangoFecha(fechaAt, 'Fecha de atención');
+  if (errFat)  { alerta.textContent = errFat;  alerta.style.display = 'block'; return; }
+
   alerta.style.display = 'none';
 
   const fd = new FormData();
   fd.append('nombre_pila',        nombrePila);
   fd.append('primer_apellido',    primerAp);
   fd.append('segundo_apellido',   document.getElementById('mig-segundo-apellido').value.trim());
-  fd.append('fecha_atencion',     document.getElementById('mig-fecha-atencion').value);
+  fd.append('fecha_atencion',     fechaAt);
   fd.append('telefono_contacto',  document.getElementById('mig-telefono').value.trim());
   fd.append('genero',             genero);
   fd.append('pais_origen',        pais);
@@ -1067,7 +1419,9 @@ async function enviarSolicitud() {
       return;
     }
     cerrarSolicitud();
-    alert('Solicitud enviada al administrador.');
+    cargarMigrantes();
+    cargarMisEliminaciones();
+    toast('Solicitud enviada. El administrador debe aprobarla.');
   } catch(e) {
     alerta.textContent = 'Error de conexión.';
     alerta.style.display = 'block';
@@ -1256,6 +1610,11 @@ async function enviarRect() {
   if (cmp(nuevos.fecha_nacimiento,    orig.fecha_nacimiento))    cambios.fecha_nacimiento    = nuevos.fecha_nacimiento;
   if (cmp(nuevos.genero,              orig.genero))              cambios.genero              = nuevos.genero;
   if (cmp(nuevos.grupo_poblacion,     orig.grupo_poblacion))     cambios.grupo_poblacion     = nuevos.grupo_poblacion;
+  const errRFnac = _validarRangoFecha(nuevos.fecha_nacimiento, 'Fecha de nacimiento');
+  if (errRFnac) { alerta.textContent = errRFnac; alerta.style.display = 'block'; return; }
+  const errRFat = _validarRangoFecha(nuevos.fecha_atencion, 'Fecha de atención');
+  if (errRFat) { alerta.textContent = errRFat; alerta.style.display = 'block'; return; }
+
   if (!Object.keys(cambios).length) {
     alerta.textContent = 'No se detectaron cambios respecto a los datos actuales.';
     alerta.style.display = 'block';
@@ -1554,7 +1913,7 @@ async function cargarMisSolicitudesCancel() {
 
 // Cerrar overlays ARCO al hacer click fuera
 ['overlay-arco-acceso','overlay-arco-rect','overlay-arco-cancel','overlay-arco-resolver',
- 'overlay-arco-resolver-cancel'].forEach(id => {
+ 'overlay-arco-resolver-cancel','overlay-historial-op','overlay-detalle-aprobacion'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('abierto'); });
 });
@@ -1567,6 +1926,514 @@ async function init() {
     document.getElementById('cnt-migrantes').textContent = Array.isArray(lista) ? lista.length : 0;
   } catch(e) {
     document.getElementById('cnt-migrantes').textContent = '—';
+  }
+  if (ROL === 'op') {
+    cargarPendientesCount();
+    cargarUltimasValidaciones();
+  }
+  if (ROL === 'coord') {
+    cargarPendientesCount();
+  }
+}
+
+// ── DASHBOARD OP / COORD ─────────────────────────────────────
+async function cargarPendientesCount() {
+  const el = document.getElementById('cnt-pendientes-op');
+  if (!el) return;
+  const url = ROL === 'op'
+    ? '/api/registro_migrante/pendientes_op'
+    : '/api/registro_migrante/pendientes_coord';
+  try {
+    const res = await fetch(url);
+    if (!res.ok) { el.textContent = '—'; return; }
+    const data = await res.json();
+    el.textContent = Array.isArray(data) ? data.length : '—';
+  } catch(e) {
+    el.textContent = '—';
+  }
+}
+
+async function cargarUltimasValidaciones() {
+  const cont = document.getElementById('op-ultimas-validaciones');
+  if (!cont) return;
+  try {
+    const res = await fetch('/api/registro_migrante/historial_op?limite=10');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      cont.innerHTML = `<p style="color:var(--rojo-texto);text-align:center;padding:16px;">${err.error || 'Error al cargar validaciones'}</p>`;
+      return;
+    }
+    const data = await res.json();
+    if (!data.length) {
+      cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Sin validaciones registradas</p>';
+      return;
+    }
+    const badgeColor = { pendiente_coord: 'var(--amarillo-texto)', aprobada: 'var(--verde-texto)', rechazada: 'var(--rojo-texto)' };
+    const badgeBg    = { pendiente_coord: 'var(--amarillo-bg)',    aprobada: 'var(--verde-bg)',    rechazada: 'var(--rojo-bg)' };
+    const estadoLabel = { pendiente_coord: 'Pendiente coord', aprobada: 'Aprobado', rechazada: 'Rechazado' };
+    cont.innerHTML = `<div class="tabla-wrap"><table class="tabla"><thead><tr>
+      <th>Nombre</th><th>País</th><th>F. Atención</th><th>Estado</th><th>Validado</th>
+    </tr></thead><tbody>${data.map(r => {
+      const col = badgeColor[r.estado] || 'var(--gris-medio)';
+      const bg  = badgeBg[r.estado]   || 'var(--gris-claro)';
+      const lbl = estadoLabel[r.estado] || r.estado;
+      return `<tr>
+        <td class="nombre-celda">${r.nombre || '—'}</td>
+        <td>${r.pais_origen || '—'}</td>
+        <td style="font-size:12px;">${(r.fecha_atencion || '—').slice(0,10)}</td>
+        <td><span style="background:${bg};color:${col};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">${lbl}</span></td>
+        <td style="font-size:12px;">${(r.op_validado_en || '—').slice(0,16)}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error al cargar validaciones</p>';
+  }
+}
+
+async function abrirHistorialOp() {
+  const cont = document.getElementById('historial-op-contenido');
+  if (cont) cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>';
+  document.getElementById('overlay-historial-op').classList.add('abierto');
+  try {
+    const res = await fetch('/api/registro_migrante/historial_op?limite=0');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if (cont) cont.innerHTML = `<p style="color:var(--rojo-texto);text-align:center;padding:16px;">${err.error || 'Error al cargar historial'}</p>`;
+      return;
+    }
+    const data = await res.json();
+    if (!data.length) {
+      if (cont) cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Sin registros en el historial</p>';
+      return;
+    }
+    const badgeColor = { pendiente_coord: 'var(--amarillo-texto)', aprobada: 'var(--verde-texto)', rechazada: 'var(--rojo-texto)' };
+    const badgeBg    = { pendiente_coord: 'var(--amarillo-bg)',    aprobada: 'var(--verde-bg)',    rechazada: 'var(--rojo-bg)' };
+    const estadoLabel = { pendiente_coord: 'Pendiente coord', aprobada: 'Aprobado', rechazada: 'Rechazado' };
+    if (cont) cont.innerHTML = `<div class="tabla-wrap"><table class="tabla"><thead><tr>
+      <th>Nombre</th><th>País</th><th>F. Atención</th><th>Estado</th><th>Validado el</th>
+    </tr></thead><tbody>${data.map(r => {
+      const col = badgeColor[r.estado] || 'var(--gris-medio)';
+      const bg  = badgeBg[r.estado]   || 'var(--gris-claro)';
+      const lbl = estadoLabel[r.estado] || r.estado;
+      return `<tr>
+        <td class="nombre-celda">${r.nombre || '—'}</td>
+        <td>${r.pais_origen || '—'}</td>
+        <td style="font-size:12px;">${(r.fecha_atencion || '—').slice(0,10)}</td>
+        <td><span style="background:${bg};color:${col};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">${lbl}</span></td>
+        <td style="font-size:12px;">${(r.op_validado_en || '—').slice(0,16)}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+  } catch(e) {
+    if (cont) cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error al cargar historial</p>';
+  }
+}
+
+function cerrarHistorialOp() {
+  document.getElementById('overlay-historial-op').classList.remove('abierto');
+}
+
+let _buscarMigranteInicioTimer = null;
+async function buscarMigranteInicio(q) {
+  const cont = document.getElementById('inicio-buscar-resultados');
+  if (!cont) return;
+  if (q.trim().length < 2) {
+    cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Ingresa al menos 2 caracteres para buscar</p>';
+    return;
+  }
+  clearTimeout(_buscarMigranteInicioTimer);
+  _buscarMigranteInicioTimer = setTimeout(async () => {
+    cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Buscando...</p>';
+    try {
+      const res = await fetch('/api/arco/buscar?q=' + encodeURIComponent(q));
+      if (!res.ok) { cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:20px 0;">Error al buscar</p>'; return; }
+      const data = await res.json();
+      if (!data.length) {
+        cont.innerHTML = `<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Sin resultados para "${q}"</p>`;
+        return;
+      }
+      cont.innerHTML = `<div class="tabla-wrap"><table class="tabla">
+        <thead><tr><th>Folio</th><th>Nombre</th><th>País</th><th>F. Atención</th><th></th></tr></thead>
+        <tbody>${data.map(m => `<tr>
+          <td style="font-family:var(--mono);font-size:11px;">${m.folio}</td>
+          <td class="nombre-celda">${m.nombre}</td>
+          <td>${m.pais_origen || '—'}</td>
+          <td style="font-size:12px;">${m.fecha_atencion || '—'}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="verAcceso(${m.id})">Ver datos</button></td>
+        </tr>`).join('')}</tbody></table></div>`;
+    } catch(e) {
+      cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:20px 0;">Error al buscar</p>';
+    }
+  }, 280);
+}
+
+// ── APROBACIONES UNIFICADAS (op y coord) ────────────────────
+let ticketOpActualId = null;
+let ticketCoordActualId = null;
+
+async function cargarAprobacionesPorRol() {
+  const pendientesDiv = document.getElementById('aprobaciones-pendientes-lista');
+  const historialDiv  = document.getElementById('aprobaciones-historial');
+  if (pendientesDiv) pendientesDiv.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>';
+  if (historialDiv)  historialDiv.innerHTML  = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>';
+
+  const urlPendientes = ROL === 'op'
+    ? '/api/registro_migrante/pendientes_op'
+    : '/api/registro_migrante/pendientes_coord';
+
+  try {
+    const [resPend, resHist] = await Promise.all([
+      fetch(urlPendientes),
+      fetch('/api/registro_migrante/historial'),
+    ]);
+
+    const pendientes = resPend.ok ? await resPend.json() : [];
+    const historial  = resHist.ok ? await resHist.json() : [];
+
+    // Badge y métrica
+    const badge = document.getElementById('badge-aprobaciones-text');
+    if (badge) {
+      if (pendientes.length > 0) { badge.textContent = pendientes.length; badge.style.display = ''; }
+      else { badge.style.display = 'none'; }
+    }
+    const cntEl = document.getElementById('cnt-pendientes-op');
+    if (cntEl) cntEl.textContent = pendientes.length;
+
+    // Lista de pendientes
+    if (pendientesDiv) {
+      if (!pendientes.length) {
+        pendientesDiv.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Sin solicitudes pendientes</p>';
+      } else if (ROL === 'op') {
+        pendientesDiv.innerHTML = `<table class="tabla"><thead><tr>
+          <th>Nombre</th><th>Enviado por</th><th>País</th><th>F. Atención</th><th>Enviado</th><th></th>
+        </tr></thead><tbody>` +
+        pendientes.map(t => `<tr>
+          <td>${t.nombre||'—'}</td>
+          <td><span style="font-family:var(--mono);font-size:12px;">${t.enviado_por}</span></td>
+          <td>${t.pais_origen||'—'}</td>
+          <td>${(t.fecha_atencion||'').slice(0,10)}</td>
+          <td>${(t.creado||'').slice(0,10)}</td>
+          <td><button class="btn btn-sm btn-primary" onclick="abrirRevisarTicketOp(${t.id}, ${JSON.stringify(t).replace(/"/g,'&quot;')})">Revisar</button></td>
+        </tr>`).join('') + '</tbody></table>';
+      } else {
+        pendientesDiv.innerHTML = `<table class="tabla"><thead><tr>
+          <th>Nombre</th><th>País</th><th>Enviado por</th><th>Op. validador</th><th>Firma op</th><th>F. Envío</th><th></th>
+        </tr></thead><tbody>` +
+        pendientes.map(t => `<tr>
+          <td>${t.nombre||'—'}</td>
+          <td>${t.pais_origen||'—'}</td>
+          <td><span style="font-family:var(--mono);font-size:12px;">${t.enviado_por}</span></td>
+          <td>${t.op_validador||'<em style="color:var(--gris-medio);">—</em>'}</td>
+          <td style="text-align:center;">${t.tiene_firma_op
+            ? '<span style="color:var(--verde-texto);font-weight:600;">&#10003; presente</span>'
+            : '<span style="color:var(--gris-medio);">—</span>'}</td>
+          <td>${(t.creado||'').slice(0,10)}</td>
+          <td><button class="btn btn-sm btn-primary" onclick="abrirConfirmarRegistroCoord(${t.id}, ${JSON.stringify(t).replace(/"/g,'&quot;')})">Revisar</button></td>
+        </tr>`).join('') + '</tbody></table>';
+      }
+    }
+
+    // Historial scrolleable
+    if (historialDiv) {
+      if (!historial.length) {
+        historialDiv.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Sin aprobaciones registradas aún</p>';
+      } else {
+        const badgeColor = { pendiente_coord: 'var(--amarillo-texto)', aprobada: 'var(--verde-texto)', rechazada: 'var(--rojo-texto)' };
+        const badgeBg    = { pendiente_coord: 'var(--amarillo-bg)',   aprobada: 'var(--verde-bg)',   rechazada: 'var(--rojo-bg)' };
+        const labelMap   = { pendiente_coord: 'Pendiente coordinador', aprobada: 'Aprobado', rechazada: 'Rechazado' };
+        historialDiv.innerHTML = `<table class="tabla"><thead><tr>
+          <th>Nombre</th><th>País</th><th>F. Atención</th><th>Estado</th><th>Procesado</th><th></th>
+        </tr></thead><tbody>` +
+        historial.map(h => {
+          const col   = badgeColor[h.estado] || 'var(--gris-medio)';
+          const bg    = badgeBg[h.estado]    || 'var(--gris-claro)';
+          const label = labelMap[h.estado]   || h.estado;
+          const fecha = ROL === 'op'
+            ? (h.op_validado_en || h.rechazado_en || '').slice(0,10)
+            : (h.coord_aprobado_en || h.rechazado_en || '').slice(0,10);
+          return `<tr style="cursor:pointer;" onclick="abrirDetalleAprobacion(${h.id})">
+            <td>${h.nombre||'—'}</td>
+            <td>${h.pais_origen||'—'}</td>
+            <td>${(h.fecha_atencion||'').slice(0,10)}</td>
+            <td><span style="background:${bg};color:${col};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">${label}</span></td>
+            <td>${fecha||'—'}</td>
+            <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirDetalleAprobacion(${h.id})">Ver detalle</button></td>
+          </tr>`;
+        }).join('') + '</tbody></table>';
+      }
+    }
+  } catch(e) {
+    if (pendientesDiv) pendientesDiv.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error al cargar</p>';
+  }
+  if (ROL === 'coord') cargarMisEliminaciones();
+}
+
+// ── DETALLE DE APROBACIÓN ────────────────────────────────────
+async function abrirDetalleAprobacion(sid) {
+  const overlay = document.getElementById('overlay-detalle-aprobacion');
+  const cont    = document.getElementById('detalle-aprobacion-contenido');
+  if (!overlay || !cont) return;
+  cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>';
+  overlay.style.display = 'flex';
+  try {
+    const res = await fetch(`/api/registro_migrante/${sid}/detalle`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      cont.innerHTML = `<p style="color:var(--rojo-texto);text-align:center;padding:16px;">${err.error||'Error al cargar el detalle'}</p>`;
+      return;
+    }
+    const d = await res.json();
+    const rolLegible = { voluntario: 'Voluntario', op: 'Operativo', coord: 'Coordinador' };
+    const estadoBg  = { aprobada: 'var(--verde-bg)',   rechazada: 'var(--rojo-bg)' };
+    const estadoCol = { aprobada: 'var(--verde-texto)', rechazada: 'var(--rojo-texto)' };
+    const estadoLabel = d.estado === 'aprobada' ? 'Aprobado' : 'Rechazado';
+
+    let rechazoHtml = '';
+    if (d.estado === 'rechazada') {
+      rechazoHtml = `
+        <div style="background:var(--rojo-bg);border:1px solid var(--rojo-borde,#f5c6cb);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;">
+          <strong style="color:var(--rojo-texto);">Rechazado por:</strong>
+          <span style="font-family:var(--mono);">${d.rechazado_por||'—'}</span>
+          &nbsp;·&nbsp; ${(d.rechazado_en||'').slice(0,16)}<br>
+          <strong style="color:var(--rojo-texto);">Motivo:</strong> ${d.motivo_rechazo||'—'}
+        </div>`;
+    }
+
+    const firmaOpHtml = d.op_validador
+      ? `<tr>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);white-space:nowrap;">
+            <span style="display:inline-block;background:var(--amarillo-bg);color:var(--amarillo-texto);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">Paso 2</span>
+          </td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">Validación OP</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-family:var(--mono);font-size:12px;">${d.op_validador}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">${(d.op_validado_en||'').slice(0,16)}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-family:var(--mono);font-size:11px;color:var(--gris-medio);">${d.firma_op||'—'}</td>
+        </tr>`
+      : '';
+
+    const firmaCoordHtml = d.coord_aprobador
+      ? `<tr>
+          <td style="padding:8px 12px;white-space:nowrap;">
+            <span style="display:inline-block;background:var(--verde-bg);color:var(--verde-texto);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">Paso 3</span>
+          </td>
+          <td style="padding:8px 12px;">Aprobación Coord</td>
+          <td style="padding:8px 12px;font-family:var(--mono);font-size:12px;">${d.coord_aprobador}</td>
+          <td style="padding:8px 12px;">${(d.coord_aprobado_en||'').slice(0,16)}</td>
+          <td style="padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--gris-medio);">${d.firma_coord||'—'}</td>
+        </tr>`
+      : '';
+
+    cont.innerHTML = `
+      ${rechazoHtml}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <span style="font-size:15px;font-weight:700;">${d.nombre||'—'}</span>
+        <span style="background:${estadoBg[d.estado]||'var(--gris-claro)'};color:${estadoCol[d.estado]||'var(--gris-medio)'};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">${estadoLabel}</span>
+      </div>
+
+      <p style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-medio);margin:0 0 8px;">Datos del migrante</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:13px;margin-bottom:16px;">
+        <div><span style="color:var(--gris-medio);">País de origen</span><br>${d.pais_origen||'—'}</div>
+        <div><span style="color:var(--gris-medio);">Fecha de nacimiento</span><br>${(d.fecha_nacimiento||'').slice(0,10)||'—'}</div>
+        <div><span style="color:var(--gris-medio);">Género</span><br>${d.genero||'—'}</div>
+        <div><span style="color:var(--gris-medio);">Estado civil</span><br>${d.estado_civil||'—'}</div>
+        <div><span style="color:var(--gris-medio);">Departamento / Estado</span><br>${d.departamento_estado||'—'}</div>
+        <div><span style="color:var(--gris-medio);">Grupo de población</span><br>${d.grupo_poblacion||'—'}</div>
+        <div><span style="color:var(--gris-medio);">Teléfono de contacto</span><br>${d.telefono_contacto||'—'}</div>
+        <div><span style="color:var(--gris-medio);">Fecha de atención</span><br>${(d.fecha_atencion||'').slice(0,10)||'—'}</div>
+      </div>
+
+      <p style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-medio);margin:0 0 8px;">Cadena de firmas</p>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--gris-claro);border-radius:8px;overflow:hidden;">
+          <thead>
+            <tr style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gris-medio);">
+              <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Paso</th>
+              <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Acción</th>
+              <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Responsable</th>
+              <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Fecha</th>
+              <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Firma (extracto)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);white-space:nowrap;">
+                <span style="display:inline-block;background:#e8eaf6;color:#3949ab;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">Paso 1</span>
+              </td>
+              <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">Creación</td>
+              <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-family:var(--mono);font-size:12px;">${d.enviado_por} <em style="color:var(--gris-medio);">(${rolLegible[d.rol_enviado_por]||d.rol_enviado_por})</em></td>
+              <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">${(d.creado||'').slice(0,16)}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);color:var(--gris-medio);">—</td>
+            </tr>
+            ${firmaOpHtml}
+            ${firmaCoordHtml}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error al cargar el detalle</p>';
+  }
+}
+
+function cerrarDetalleAprobacion() {
+  const overlay = document.getElementById('overlay-detalle-aprobacion');
+  if (overlay) overlay.style.display = 'none';
+}
+
+// ── REVISAR TICKET OP ────────────────────────────────────────
+function abrirRevisarTicketOp(sid, datos) {
+  ticketOpActualId = sid;
+  const info = document.getElementById('ticket-op-info');
+  if (info) info.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px;margin-bottom:8px;">
+      <div><span style="color:var(--gris-medio);">Nombre</span><br><strong>${datos.nombre||'—'}</strong></div>
+      <div><span style="color:var(--gris-medio);">País de origen</span><br><strong>${datos.pais_origen||'—'}</strong></div>
+      <div><span style="color:var(--gris-medio);">Fecha de nacimiento</span><br>${datos.fecha_nacimiento||'—'}</div>
+      <div><span style="color:var(--gris-medio);">Género</span><br>${datos.genero||'—'}</div>
+      <div><span style="color:var(--gris-medio);">Grupo de población</span><br>${datos.grupo_poblacion||'—'}</div>
+      <div><span style="color:var(--gris-medio);">Fecha de atención</span><br>${datos.fecha_atencion||'—'}</div>
+    </div>
+    <div style="background:var(--gris-claro);border-radius:6px;padding:8px 12px;font-size:12.5px;margin-bottom:4px;">
+      <strong>Enviado por:</strong> <span style="font-family:var(--mono);">${datos.enviado_por}</span>
+      &nbsp;·&nbsp; <span style="color:var(--gris-medio);">${(datos.creado||'').slice(0,16)}</span>
+    </div>`;
+  const alerta = document.getElementById('alerta-ticket-op');
+  if (alerta) { alerta.style.display = 'none'; alerta.textContent = ''; }
+  const rechazoDiv = document.getElementById('ticket-op-rechazo');
+  if (rechazoDiv) rechazoDiv.style.display = 'none';
+  const btnRec = document.getElementById('btn-ticket-op-rechazar');
+  const btnConf = document.getElementById('btn-ticket-op-confirmar-rechazo');
+  if (btnRec)  btnRec.style.display = '';
+  if (btnConf) btnConf.style.display = 'none';
+  document.getElementById('overlay-revisar-ticket-op').style.display = 'flex';
+}
+
+function cerrarRevisarTicketOp() {
+  document.getElementById('overlay-revisar-ticket-op').style.display = 'none';
+  ticketOpActualId = null;
+}
+
+function toggleTicketOpRechazo() {
+  const div = document.getElementById('ticket-op-rechazo');
+  const btnRec  = document.getElementById('btn-ticket-op-rechazar');
+  const btnConf = document.getElementById('btn-ticket-op-confirmar-rechazo');
+  const btnVal  = document.getElementById('btn-ticket-op-validar');
+  div.style.display = 'block';
+  btnRec.style.display  = 'none';
+  btnConf.style.display = '';
+  if (btnVal) btnVal.style.display = 'none';
+}
+
+async function resolverTicketOp(accion) {
+  if (!ticketOpActualId) return;
+  const alerta = document.getElementById('alerta-ticket-op');
+  const fd = new FormData();
+  fd.append('accion', accion);
+  if (accion === 'rechazar') {
+    const motivo = document.getElementById('ticket-op-motivo').value.trim();
+    if (!motivo) { alerta.textContent = 'El motivo es obligatorio.'; alerta.style.display = 'block'; return; }
+    fd.append('motivo', motivo);
+  }
+  const btn = accion === 'validar'
+    ? document.getElementById('btn-ticket-op-validar')
+    : document.getElementById('btn-ticket-op-confirmar-rechazo');
+  if (btn) { btn.disabled = true; btn.textContent = accion === 'validar' ? 'Firmando…' : 'Rechazando…'; }
+  try {
+    const res = await fetch(`/api/registro_migrante/${ticketOpActualId}/op_validar`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      alerta.textContent = data.error || 'Error al procesar la solicitud.';
+      alerta.style.display = 'block';
+      if (btn) { btn.disabled = false; btn.textContent = accion === 'validar' ? 'Validar y firmar' : 'Confirmar rechazo'; }
+      return;
+    }
+    cerrarRevisarTicketOp();
+    cargarAprobacionesPorRol();
+  } catch(e) {
+    alerta.textContent = 'No se pudo conectar con el servidor.';
+    alerta.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.textContent = accion === 'validar' ? 'Validar y firmar' : 'Confirmar rechazo'; }
+  }
+}
+
+// ── CONFIRMAR REGISTRO COORD ─────────────────────────────────
+function abrirConfirmarRegistroCoord(sid, datos) {
+  ticketCoordActualId = sid;
+  const info = document.getElementById('registro-coord-info');
+  if (info) info.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px;margin-bottom:8px;">
+      <div><span style="color:var(--gris-medio);">Nombre</span><br><strong>${datos.nombre||'—'}</strong></div>
+      <div><span style="color:var(--gris-medio);">País de origen</span><br><strong>${datos.pais_origen||'—'}</strong></div>
+      <div><span style="color:var(--gris-medio);">Fecha de nacimiento</span><br>${datos.fecha_nacimiento||'—'}</div>
+      <div><span style="color:var(--gris-medio);">Género</span><br>${datos.genero||'—'}</div>
+      <div><span style="color:var(--gris-medio);">Grupo de población</span><br>${datos.grupo_poblacion||'—'}</div>
+      <div><span style="color:var(--gris-medio);">Fecha de atención</span><br>${datos.fecha_atencion||'—'}</div>
+    </div>
+    <div style="background:var(--gris-claro);border-radius:6px;padding:8px 12px;font-size:12.5px;margin-bottom:4px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+      <div><strong>Enviado por:</strong> <span style="font-family:var(--mono);">${datos.enviado_por}</span> <em style="color:var(--gris-medio);">(${datos.rol_enviado_por||''})</em></div>
+      <div><strong>Op. validador:</strong> ${datos.op_validador
+        ? `<span style="font-family:var(--mono);">${datos.op_validador}</span> <span style="color:var(--verde-texto);font-weight:600;">&#10003; firmado</span>`
+        : '<em style="color:var(--gris-medio);">N/A</em>'}</div>
+    </div>`;
+  const alerta = document.getElementById('alerta-registro-coord');
+  if (alerta) { alerta.style.display = 'none'; alerta.textContent = ''; }
+  const rechazoDiv = document.getElementById('registro-coord-rechazo');
+  if (rechazoDiv) rechazoDiv.style.display = 'none';
+  const btnRec  = document.getElementById('btn-coord-rechazar');
+  const btnConf = document.getElementById('btn-coord-confirmar-rechazo');
+  const btnApr  = document.getElementById('btn-coord-aprobar');
+  if (btnRec)  btnRec.style.display  = '';
+  if (btnConf) btnConf.style.display = 'none';
+  if (btnApr)  btnApr.style.display  = '';
+  document.getElementById('overlay-confirmar-registro-coord').style.display = 'flex';
+}
+
+function cerrarConfirmarRegistroCoord() {
+  document.getElementById('overlay-confirmar-registro-coord').style.display = 'none';
+  ticketCoordActualId = null;
+}
+
+function toggleCoordRechazo() {
+  const div = document.getElementById('registro-coord-rechazo');
+  const btnRec  = document.getElementById('btn-coord-rechazar');
+  const btnConf = document.getElementById('btn-coord-confirmar-rechazo');
+  const btnApr  = document.getElementById('btn-coord-aprobar');
+  div.style.display = 'block';
+  btnRec.style.display  = 'none';
+  btnConf.style.display = '';
+  if (btnApr) btnApr.style.display = 'none';
+}
+
+async function resolverRegistroCoord(accion) {
+  if (!ticketCoordActualId) return;
+  const alerta = document.getElementById('alerta-registro-coord');
+  const fd = new FormData();
+  fd.append('accion', accion);
+  if (accion === 'rechazar') {
+    const motivo = document.getElementById('registro-coord-motivo').value.trim();
+    if (!motivo) { alerta.textContent = 'El motivo es obligatorio.'; alerta.style.display = 'block'; return; }
+    fd.append('motivo', motivo);
+  }
+  const btn = accion === 'aprobar'
+    ? document.getElementById('btn-coord-aprobar')
+    : document.getElementById('btn-coord-confirmar-rechazo');
+  if (btn) { btn.disabled = true; btn.textContent = accion === 'aprobar' ? 'Firmando e insertando…' : 'Rechazando…'; }
+  try {
+    const res = await fetch(`/api/registro_migrante/${ticketCoordActualId}/coord_resolver`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      alerta.textContent = data.error || 'Error al procesar la solicitud.';
+      alerta.style.display = 'block';
+      if (btn) { btn.disabled = false; btn.textContent = accion === 'aprobar' ? 'Confirmar e insertar' : 'Confirmar rechazo'; }
+      return;
+    }
+    cerrarConfirmarRegistroCoord();
+    cargarAprobacionesPorRol();
+    if (accion === 'aprobar' && data.folio) {
+      alert(`Migrante registrado exitosamente.\nFolio asignado: ${data.folio}`);
+    }
+  } catch(e) {
+    alerta.textContent = 'No se pudo conectar con el servidor.';
+    alerta.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.textContent = accion === 'aprobar' ? 'Confirmar e insertar' : 'Confirmar rechazo'; }
   }
 }
 

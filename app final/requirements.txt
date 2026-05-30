@@ -1,0 +1,5 @@
+Flask
+Flask-Session
+pymysql
+cryptography
+openpyxl
