@@ -1673,12 +1673,30 @@ function calcularEdadAdmin() {
   let edad = hoy.getFullYear() - nac.getFullYear();
   if (hoy.getMonth() < nac.getMonth() || (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate())) edad--;
   el.value = edad >= 0 ? edad : '';
+  autoSeleccionarGrupoAdmin();
 }
 
 function seleccionarGenero(btn, valor) {
   generoSeleccionado = valor;
   document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('activo'));
   btn.classList.add('activo');
+  autoSeleccionarGrupoAdmin();
+}
+
+function autoSeleccionarGrupoAdmin() {
+  const edad = parseInt(document.getElementById('admin-mig-edad')?.value);
+  if (isNaN(edad) || edad < 0) return;
+  let grupo = '';
+  if (edad >= 60) grupo = 'Adulto mayor (+60 años)';
+  else if (edad >= 18) grupo = 'Adulto (18-59 años)';
+  else if (edad >= 13 && generoSeleccionado === 'Masculino') grupo = 'Adolescente hombre acompañado';
+  else if (edad >= 13 && generoSeleccionado === 'Femenino') grupo = 'Adolescente mujer acompañada';
+  else if (edad < 13 && generoSeleccionado === 'Masculino') grupo = 'Niño acompañado';
+  else if (edad < 13 && generoSeleccionado === 'Femenino') grupo = 'Niña acompañada';
+  if (grupo) {
+    const r = document.querySelector(`input[name="admin-mig-grupo"][value="${grupo}"]`);
+    if (r) r.checked = true;
+  }
 }
 
 function mostrarError(msg) {
