@@ -1,11 +1,11 @@
-Coordinador:
+coordinador
 mapaula.recinos@gmail.com
 coord123
 
-Voluntario:
+voluntario
 voluntario@casamoncarca.org
 voluntario123
 
-Operativo:
+operativo
 operativo@casamonarca.org
-Popurri1803$
+operativo123
