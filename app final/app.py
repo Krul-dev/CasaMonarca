@@ -412,7 +412,7 @@ def inicializar_db():
             "     'registro_mig_enviado_voluntario','registro_mig_enviado_op_directo',"
             "     'registro_mig_op_validado','registro_mig_op_rechazado',"
             "     'registro_mig_coord_aprobado','registro_mig_coord_rechazado',"
-            "     'registro_mig_insertado') NOT NULL"
+            "     'registro_mig_admin_aprobado','registro_mig_insertado') NOT NULL"
         )
         con.commit()
         cur.close()
@@ -556,6 +556,22 @@ def inicializar_db():
     except Exception:
         pass
 
+    # Migración: columnas de override admin en solicitudes_registro_migrante.
+    for col_def in (
+        'admin_aprobador      VARCHAR(100)',
+        'admin_aprobado_en    DATETIME',
+        'firma_admin          TEXT',
+        'admin_pubkey         TEXT',
+        'mensaje_firmado_admin TEXT',
+    ):
+        try:
+            cur = con.cursor()
+            cur.execute(f'ALTER TABLE solicitudes_registro_migrante ADD COLUMN {col_def}')
+            con.commit()
+            cur.close()
+        except Exception:
+            pass
+
     # Migración: tabla historial_eliminaciones (archivo permanente de migrantes eliminados).
     try:
         cur = con.cursor()
@@ -572,6 +588,7 @@ def inicializar_db():
             "  mensaje_firmado   TEXT,"
             "  aprobado_por      VARCHAR(120),"
             "  tipo              VARCHAR(20) NOT NULL DEFAULT 'directa',"
+            "  es_arco           TINYINT(1) NOT NULL DEFAULT 0,"
             "  fecha_eliminacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
             "  INDEX idx_hist_fecha (fecha_eliminacion)"
             ") ENGINE=InnoDB"
@@ -580,6 +597,31 @@ def inicializar_db():
         cur.close()
     except Exception as e:
         print(f'[migración historial_eliminaciones] {e}')
+
+    # Migración: columna es_arco en solicitudes_eliminacion e historial_eliminaciones.
+    for tabla in ('solicitudes_eliminacion', 'historial_eliminaciones'):
+        try:
+            cur = con.cursor()
+            cur.execute(
+                f"ALTER TABLE {tabla} ADD COLUMN es_arco TINYINT(1) NOT NULL DEFAULT 0"
+            )
+            con.commit()
+            cur.close()
+        except Exception:
+            pass
+
+    # Migración: columnas de bloqueo por intentos fallidos.
+    for col_def in (
+        'intentos_fallidos INT NOT NULL DEFAULT 0',
+        'bloqueado TINYINT(1) NOT NULL DEFAULT 0',
+    ):
+        try:
+            cur = con.cursor()
+            cur.execute(f"ALTER TABLE usuarios ADD COLUMN {col_def}")
+            con.commit()
+            cur.close()
+        except Exception:
+            pass
 
     # Sembrar solo si la tabla está vacía
     cur = con.cursor()
@@ -738,7 +780,7 @@ def generar_p12_real(email, nombre, rol, password):
         .public_key(private_key.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(datetime.utcnow() - timedelta(minutes=1))
-        .not_valid_after(datetime.utcnow() + timedelta(days=365))
+        .not_valid_after(datetime.utcnow() + timedelta(days=30))
         .add_extension(
             x509.BasicConstraints(ca=False, path_length=None),
             critical=True
@@ -800,7 +842,7 @@ def log_evento(resultado, usuario=None, rol=None, serial=None, detalle=None):
 def refrescar_expirados():
     """Marca como 'expirado' todo cert cuya fecha ya pasó."""
     db = obtener_db()
-    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     _exec(db,
         "UPDATE certificados SET estado='expirado'"
         " WHERE estado='vigente' AND fecha_expiracion IS NOT NULL"
@@ -877,8 +919,24 @@ def login():
         'SELECT * FROM usuarios WHERE usuario=%s', (email,)
     ).fetchone()
 
+    # Verificar cuenta bloqueada
+    if usuario and usuario.get('bloqueado', 0):
+        log_evento('acceso_denegado', usuario=email,
+                   detalle='Intento de acceso a cuenta bloqueada')
+        return render_template('login.html',
+                               error='Cuenta bloqueada por múltiples intentos fallidos. Contacta al administrador.')
+
     # Verificar credenciales
     if not usuario or not check_password_hash(usuario['password_hash'], password):
+        if usuario:
+            try:
+                _exec(db,
+                    'UPDATE usuarios SET intentos_fallidos = COALESCE(intentos_fallidos, 0) + 1,'
+                    ' bloqueado = CASE WHEN COALESCE(intentos_fallidos, 0) + 1 >= 10 THEN 1 ELSE COALESCE(bloqueado, 0) END'
+                    ' WHERE usuario=%s', (email,))
+                db.commit()
+            except Exception:
+                pass
         log_evento('login_fallido', usuario=email,
                    detalle='Credenciales incorrectas')
         return render_template('login.html',
@@ -890,6 +948,13 @@ def login():
                    detalle='Intento de acceso a cuenta inactiva')
         return render_template('login.html',
                                error='Tu cuenta está inactiva. Contacta al administrador.')
+
+    # Resetear contador de intentos en login exitoso (antes de continuar)
+    try:
+        _exec(db, 'UPDATE usuarios SET intentos_fallidos=0, bloqueado=0 WHERE usuario=%s', (email,))
+        db.commit()
+    except Exception:
+        pass
 
     # Si el rol es admin o coord, redirigir a login_usb
     if usuario['rol'] in ('admin', 'coord'):
@@ -919,9 +984,6 @@ def login():
                    serial=cert['serial'])
         return render_template('login.html',
                                error='Tu certificado expiró. Solicita uno nuevo.')
-
-    # 🔴 Validación mTLS desactivada
-    # Ya no se compara contra g.cert_email
 
     # Login exitoso - Crear sesión
     session.clear()
@@ -1063,6 +1125,89 @@ def api_metricas():
     return jsonify(total=total, activos=vigentes, vigentes=vigentes,
                    revocados=revocados, expirados=expirados)
 
+# ── API: ESTADÍSTICAS PANTALLA DE INICIO ─────────────────────
+@app.route('/admin/api/inicio_stats')
+@verificar_certificado
+def api_inicio_stats():
+    if g.rol != 'admin':
+        abort(403)
+    db = obtener_db()
+
+    # ── Colaboradores ─────────────────────────────────────────
+    roles_rows = _exec(db,
+        "SELECT rol, COUNT(*) c FROM usuarios WHERE activo=1 GROUP BY rol"
+    ).fetchall()
+    roles = {r['rol']: r['c'] for r in roles_rows}
+    colab = {
+        'total':       sum(roles.values()),
+        'coordinadores': roles.get('coord', 0),
+        'operativos':  roles.get('op', 0),
+        'voluntarios': roles.get('voluntario', 0),
+    }
+
+    # ── Operaciones pendientes ────────────────────────────────
+    altas = _exec(db,
+        "SELECT COUNT(*) c FROM solicitudes_registro_migrante"
+        " WHERE estado IN ('pendiente_op','pendiente_coord')"
+    ).fetchone()['c']
+    rect = _exec(db,
+        "SELECT COUNT(*) c FROM solicitudes_arco_rect WHERE estado='pendiente'"
+    ).fetchone()['c']
+    elim = _exec(db,
+        "SELECT COUNT(*) c FROM solicitudes_eliminacion WHERE estado='pendiente' AND es_arco=0"
+    ).fetchone()['c']
+    arco = _exec(db,
+        "SELECT COUNT(*) c FROM solicitudes_eliminacion WHERE estado='pendiente' AND es_arco=1"
+    ).fetchone()['c']
+    pendientes = {
+        'altas_migrantes':    altas,
+        'rectificaciones':    rect,
+        'eliminacion':        elim,
+        'procesos_arco':      arco,
+    }
+
+    # ── Migrantes ─────────────────────────────────────────────
+    total_mig = _exec(db, 'SELECT COUNT(*) c FROM migrantes').fetchone()['c']
+
+    paises_rows = _exec(db,
+        'SELECT pais_origen, COUNT(*) c FROM migrantes'
+        ' WHERE pais_origen IS NOT NULL AND pais_origen != ""'
+        ' GROUP BY pais_origen ORDER BY c DESC LIMIT 3'
+    ).fetchall()
+    top_paises = [{'pais': r['pais_origen'], 'cnt': r['c']} for r in paises_rows]
+
+    genero_rows = _exec(db,
+        "SELECT genero, COUNT(*) c,"
+        "  ROUND(AVG(TIMESTAMPDIFF(YEAR, fecha_nacimiento, CURDATE())), 1) AS edad_media"
+        " FROM migrantes WHERE genero IS NOT NULL AND fecha_nacimiento IS NOT NULL"
+        " GROUP BY genero"
+    ).fetchall()
+    generos = {}
+    for r in genero_rows:
+        generos[r['genero']] = {'cnt': r['c'], 'edad_media': float(r['edad_media']) if r['edad_media'] else None}
+
+    ninos_row = _exec(db,
+        "SELECT COUNT(*) c,"
+        "  ROUND(AVG(TIMESTAMPDIFF(YEAR, fecha_nacimiento, CURDATE())), 1) AS edad_media"
+        " FROM migrantes"
+        " WHERE fecha_nacimiento IS NOT NULL"
+        "   AND TIMESTAMPDIFF(YEAR, fecha_nacimiento, CURDATE()) < 18"
+    ).fetchone()
+    ninos = {
+        'cnt': ninos_row['c'] if ninos_row else 0,
+        'edad_media': float(ninos_row['edad_media']) if ninos_row and ninos_row['edad_media'] else None,
+    }
+
+    migrantes = {
+        'total':      total_mig,
+        'top_paises': top_paises,
+        'generos':    generos,
+        'ninos':      ninos,
+    }
+
+    return jsonify(colaboradores=colab, pendientes=pendientes, migrantes=migrantes)
+
+
 # ── API: LISTA DE CERTIFICADOS ────────────────────────────────
 @app.route('/admin/api/certificados')
 @verificar_certificado
@@ -1073,12 +1218,25 @@ def api_certificados():
     refrescar_expirados()
     db = obtener_db()
     rows = _exec(db,
-        'SELECT id, serial, usuario, rol, fecha_emision, estado'
+        'SELECT id, serial, usuario, rol, fecha_emision, fecha_expiracion, estado'
         ' FROM certificados ORDER BY id DESC'
     ).fetchall()
 
     certificados_ui = []
+    ahora = datetime.now()
     for c in rows:
+        dias = None
+        fe = c['fecha_expiracion']
+        if fe:
+            if hasattr(fe, 'replace'):
+                fe_dt = fe
+            else:
+                try:
+                    fe_dt = datetime.strptime(str(fe)[:19], '%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    fe_dt = None
+            if fe_dt:
+                dias = (fe_dt - ahora).days
         certificados_ui.append({
             'id': c['id'],
             'nombre': c['usuario'],
@@ -1087,8 +1245,10 @@ def api_certificados():
             'serial': c['serial'],
             'fecha': c['fecha_emision'],
             'fecha_emision': c['fecha_emision'],
+            'fecha_expiracion': str(c['fecha_expiracion'])[:10] if c['fecha_expiracion'] else None,
             'estado': c['estado'],
             'activo': c['estado'] == 'vigente',
+            'dias_para_vencer': dias,
         })
 
     return jsonify(certificados_ui)
@@ -1105,9 +1265,18 @@ def api_log():
             'SELECT fecha, usuario, rol, ip_origen, resultado, detalle'
             ' FROM log_certificados ORDER BY id DESC LIMIT 50'
         ).fetchall()
-        
-        # Devolver exactamente como está en la BD
-        return jsonify([dict(r) for r in rows])
+        ARCO_RESULTADOS = {
+            'arco_acceso', 'arco_rect_solicitada', 'arco_rect_aprobada',
+            'arco_rect_rechazada', 'arco_cancel_solicitada',
+            'arco_cancel_op_solicitada', 'arco_cancel_coord_firmada',
+            'arco_cancel_coord_rechazada',
+        }
+        result = []
+        for r in rows:
+            d = dict(r)
+            d['es_arco'] = d.get('resultado', '') in ARCO_RESULTADOS
+            result.append(d)
+        return jsonify(result)
     
         
     except Exception as e:
@@ -1183,12 +1352,15 @@ def _make_excel(headers, rows):
 @app.route('/admin/descargar/migrantes')
 @verificar_certificado
 def descargar_excel_migrantes():
-    if g.rol not in ('admin', 'coord'):
+    if g.rol not in ('admin', 'coord', 'op'):
         abort(403)
     fecha_inicio    = request.args.get('fecha_inicio', '').strip() or None
     fecha_fin       = request.args.get('fecha_fin',    '').strip() or None
     pais_origen     = request.args.get('pais_origen',  '').strip() or None
     grupo_poblacion = request.args.get('grupo_poblacion', '').strip() or None
+    if fecha_inicio and not fecha_fin:
+        from datetime import date as _date_hoy
+        fecha_fin = _date_hoy.today().strftime('%Y-%m-%d')
 
     sql    = ('SELECT folio, nombre, fecha_nacimiento, pais_origen, grupo_poblacion, '
               'fecha_atencion, genero, departamento_estado, estado_civil, '
@@ -1208,6 +1380,7 @@ def descargar_excel_migrantes():
     db   = obtener_db()
     rows = _exec(db, sql, params).fetchall()
 
+    import json as _json
     def _s(v): return str(v)[:10] if v else ''
     def _dt(v): return str(v)[:19] if v else ''
 
@@ -1260,6 +1433,66 @@ def descargar_excel_migrantes():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      as_attachment=True,
                      download_name='migrantes.xlsx')
+
+
+@app.route('/admin/descargar/migrante/<int:mid>')
+@verificar_certificado
+def descargar_excel_migrante_individual(mid):
+    if g.rol not in ('admin', 'coord', 'op'):
+        abort(403)
+    db = obtener_db()
+    import json as _json
+    r = _exec(db,
+        'SELECT folio, nombre, fecha_nacimiento, pais_origen, grupo_poblacion,'
+        ' fecha_atencion, genero, departamento_estado, estado_civil,'
+        ' telefono_contacto, registrado_por, firmas_aprobacion, creado'
+        ' FROM migrantes WHERE id=%s', (mid,)
+    ).fetchone()
+    if not r:
+        abort(404)
+    def _s(v): return str(v)[:10] if v else ''
+    def _dt(v): return str(v)[:19] if v else ''
+    from datetime import date as _date
+    def _edad(fnac):
+        if not fnac:
+            return ''
+        hoy = _date.today()
+        try:
+            d = fnac if hasattr(fnac, 'year') else _date.fromisoformat(str(fnac)[:10])
+            return hoy.year - d.year - ((hoy.month, hoy.day) < (d.month, d.day))
+        except Exception:
+            return ''
+    def _firmantes(json_str):
+        if not json_str:
+            return '', ''
+        try:
+            firmas = _json.loads(json_str)
+        except Exception:
+            return '', ''
+        return (firmas.get('op') or {}).get('usuario', ''), \
+               (firmas.get('coord') or firmas.get('admin') or {}).get('usuario', '')
+    op_firma, coord_firma = _firmantes(r['firmas_aprobacion'])
+    headers = ['Folio', 'Nombre', 'Fecha de nacimiento', 'Edad',
+               'País de origen', 'Grupo de población',
+               'Fecha de atención', 'Género', 'Departamento/Estado',
+               'Estado civil', 'Teléfono', 'Registrado por',
+               'Firmado por (operativo)', 'Firmado por (coordinador/admin)',
+               'Fecha de creación']
+    data = [(
+        r['folio'], r['nombre'],
+        _s(r['fecha_nacimiento']), _edad(r['fecha_nacimiento']),
+        r['pais_origen'], r['grupo_poblacion'],
+        _s(r['fecha_atencion']), r['genero'], r['departamento_estado'],
+        r['estado_civil'], r['telefono_contacto'], r['registrado_por'],
+        op_firma, coord_firma,
+        _dt(r['creado']),
+    )]
+    buf = _make_excel(headers, data)
+    folio_safe = (r['folio'] or 'migrante').replace('/', '-')
+    return send_file(buf,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True,
+                     download_name=f'{folio_safe}.xlsx')
 
 
 @app.route('/admin/descargar/eliminados')
@@ -1340,7 +1573,10 @@ def admin_api_usuarios():
         abort(403)
     db = obtener_db()
     rows = _exec(db,
-        'SELECT usuario, nombre, rol, activo, debe_cambiar_pwd, creado'
+        'SELECT usuario, nombre, rol, activo, debe_cambiar_pwd, creado,'
+        ' telefono, curp, fecha_nacimiento, genero, area, observaciones,'
+        ' COALESCE(bloqueado, 0) AS bloqueado,'
+        ' COALESCE(intentos_fallidos, 0) AS intentos_fallidos'
         ' FROM usuarios ORDER BY rol, nombre'
     ).fetchall()
     result = []
@@ -1348,6 +1584,8 @@ def admin_api_usuarios():
         d = dict(r)
         if d.get('creado') and hasattr(d['creado'], 'isoformat'):
             d['creado'] = d['creado'].isoformat()
+        if d.get('fecha_nacimiento') and hasattr(d['fecha_nacimiento'], 'isoformat'):
+            d['fecha_nacimiento'] = d['fecha_nacimiento'].isoformat()[:10]
         result.append(d)
     return jsonify(result)
 
@@ -1427,14 +1665,43 @@ def admin_eliminar_usuario():
     return jsonify(ok=True)
 
 
+@app.route('/admin/api/usuarios/desbloquear', methods=['POST'])
+@verificar_certificado
+def admin_desbloquear_usuario():
+    if g.rol != 'admin':
+        abort(403)
+    usuario = request.form.get('usuario', '').strip()
+    if not usuario:
+        return jsonify(error='Usuario requerido'), 400
+    db = obtener_db()
+    user = _exec(db, 'SELECT nombre FROM usuarios WHERE usuario=%s', (usuario,)).fetchone()
+    if not user:
+        return jsonify(error='Usuario no encontrado'), 404
+    try:
+        _exec(db, 'UPDATE usuarios SET bloqueado=0, intentos_fallidos=0 WHERE usuario=%s', (usuario,))
+        db.commit()
+    except Exception:
+        _exec(db, 'UPDATE usuarios SET activo=1 WHERE usuario=%s', (usuario,))
+        db.commit()
+    log_evento('acceso_denegado', usuario=usuario, rol=g.rol,
+               detalle=f'Cuenta desbloqueada por {g.usuario}')
+    return jsonify(ok=True)
+
+
 @app.route('/admin/api/usuarios/editar', methods=['POST'])
 @verificar_certificado
 def admin_editar_usuario():
     if g.rol != 'admin':
         abort(403)
-    usuario = request.form.get('usuario', '').strip()
-    nombre  = request.form.get('nombre', '').strip()
-    rol     = request.form.get('rol', '').strip()
+    usuario     = request.form.get('usuario', '').strip()
+    nombre      = request.form.get('nombre', '').strip()
+    rol         = request.form.get('rol', '').strip()
+    telefono    = request.form.get('telefono', '').strip() or None
+    curp        = request.form.get('curp', '').strip() or None
+    fecha_nac   = request.form.get('fecha_nacimiento', '').strip() or None
+    genero      = request.form.get('genero', '').strip() or None
+    area        = request.form.get('area', '').strip() or None
+    observ      = request.form.get('observaciones', '').strip() or None
     if not usuario or not nombre or not rol:
         return jsonify(error='Datos incompletos'), 400
     if rol not in ('admin', 'coord', 'op', 'voluntario'):
@@ -1448,12 +1715,17 @@ def admin_editar_usuario():
     rol_anterior    = user['rol']
     serial_anterior = user['serial_cert']
 
-    # ── Solo nombre cambia ────────────────────────────────────
+    # ── Solo datos personales / mismo rol ────────────────────
     if rol == rol_anterior:
-        _exec(db, 'UPDATE usuarios SET nombre=%s WHERE usuario=%s', (nombre, usuario))
+        _exec(db,
+            'UPDATE usuarios SET nombre=%s, telefono=%s, curp=%s,'
+            ' fecha_nacimiento=%s, genero=%s, area=%s, observaciones=%s'
+            ' WHERE usuario=%s',
+            (nombre, telefono, curp, fecha_nac, genero, area, observ, usuario)
+        )
         db.commit()
         log_evento('rol_modificado', usuario=usuario, rol=g.rol,
-                   detalle=f'Nombre editado por {g.usuario}: nombre="{nombre}"')
+                   detalle=f'Perfil editado por {g.usuario}: nombre="{nombre}"')
         return jsonify(ok=True)
 
     # ── Revocar certificado anterior si venía de coord/admin ──
@@ -1495,7 +1767,7 @@ def admin_editar_usuario():
         _revocar_serial_anterior(serial_anterior)
 
         fecha     = datetime.now().strftime('%Y-%m-%d')
-        fecha_exp = (datetime.utcnow() + timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
+        fecha_exp = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
         _exec(db,
             'INSERT INTO certificados'
             ' (serial, usuario, nombre, rol, fecha_emision, fecha_expiracion, estado, emitido_por)'
@@ -1711,7 +1983,7 @@ def nuevo_voluntario():
 """
 
     fecha = datetime.now().strftime('%Y-%m-%d')
-    fecha_exp = (datetime.utcnow() + timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
+    fecha_exp = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
 
     _exec(db,
         'INSERT INTO certificados'
@@ -1791,7 +2063,8 @@ def entregar_certificado():
         rol=rol,
         rol_legible=badge_rol(rol),
         serial=serial,
-        pwd_login=pwd_login
+        pwd_login=pwd_login,
+        correo=session.get('p12_email', '')
     )
 
 # ── DESCARGA REAL DEL .P12 ────────────────────────────────────
@@ -1889,6 +2162,80 @@ def eliminar_certificado(cert_id):
                serial=cert['serial'], detalle=f'Certificado eliminado por {g.usuario}')
     return jsonify(ok=True)
 
+# ── RENOVAR CERTIFICADO ───────────────────────────────────────
+@app.route('/admin/certificados/<int:cert_id>/renovar', methods=['POST'])
+@verificar_certificado
+def renovar_certificado(cert_id):
+    if g.rol != 'admin':
+        abort(403)
+    db = obtener_db()
+    cert = _exec(db, 'SELECT * FROM certificados WHERE id=%s', (cert_id,)).fetchone()
+    if not cert:
+        return jsonify(error='Certificado no encontrado'), 404
+    if cert['estado'] == 'revocado':
+        return jsonify(error='El certificado ya está revocado'), 400
+
+    email  = cert['usuario']
+    nombre = cert['nombre'] or cert['usuario']
+    rol    = cert['rol']
+
+    pwd_temporal = generar_contrasena_temporal()
+    pwd_p12      = generar_contrasena_temporal()
+    try:
+        p12_bytes, serial, cert_obj = generar_p12_real(email, nombre, rol, pwd_p12)
+    except Exception as e:
+        return jsonify(error=f'Error al generar certificado: {e}'), 500
+
+    crt_bytes = cert_obj.public_bytes(serialization.Encoding.PEM)
+    nombre_p12 = f"{rol}_{nombre.lower().replace(' ', '_')}"
+    readme_texto = (
+        f'Instrucciones para instalar certificado de Casa Monarca\n\n'
+        f'1. Ingresa con tu email y contraseña temporal en la pantalla de login.\n\n'
+        f'2. Selecciona el archivo {nombre_p12}.p12 con esta contraseña: {pwd_p12}\n\n'
+        f'⚠️ No copies estos archivos fuera del USB.\n'
+        f'⚠️ La contraseña es personal y solo se muestra aquí.\n'
+    )
+
+    # Revocar cert anterior
+    _exec(db, "UPDATE certificados SET estado='revocado' WHERE id=%s", (cert_id,))
+    _exec(db,
+        'INSERT IGNORE INTO certificados_revocados'
+        ' (serial, usuario, rol, revocado_por, motivo) VALUES (%s,%s,%s,%s,%s)',
+        (cert['serial'], email, rol, g.usuario, 'Renovación de certificado')
+    )
+
+    fecha     = datetime.now().strftime('%Y-%m-%d')
+    fecha_exp = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    _exec(db,
+        'INSERT INTO certificados'
+        ' (serial, usuario, nombre, rol, fecha_emision, fecha_expiracion, estado, emitido_por)'
+        ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s)',
+        (serial, email, nombre, rol, fecha, fecha_exp, 'vigente', g.usuario)
+    )
+    _exec(db,
+        'UPDATE usuarios SET password_hash=%s, debe_cambiar_pwd=1, activo=1, serial_cert=%s WHERE usuario=%s',
+        (generate_password_hash(pwd_temporal), serial, email)
+    )
+    db.commit()
+
+    log_evento('cert_emitido', usuario=email, rol=rol, serial=serial,
+               detalle=f'Renovado por {g.usuario}')
+
+    nombre_seguro = f"{rol}_{nombre.lower().replace(' ', '_')}"
+    session['pwd_login'] = pwd_temporal
+    session['p12_b64']   = base64.b64encode(p12_bytes).decode('utf-8')
+    session['crt_b64']   = base64.b64encode(crt_bytes).decode('utf-8')
+    session['readme_txt'] = readme_texto
+    session['p12_nombre'] = nombre_seguro
+    session['p12_display'] = nombre
+    session['p12_email']   = email
+    session['p12_rol']     = rol
+    session['p12_serial']  = serial
+    session['p12_pwd_mostrada'] = False
+
+    return jsonify(ok=True, redirect_url=url_for('entregar_certificado'))
+
+
 # ── PANEL DE COORDINADORES Y OPERADORES ───────────────────────
 @app.route('/panel')
 @verificar_certificado
@@ -1962,6 +2309,24 @@ def panel_api_mi_certificado():
         'fecha_expiracion': cert['fecha_expiracion'] or '',
         'estado': cert['estado'],
     })
+
+# ── PERFIL PROPIO DEL USUARIO ─────────────────────────────────
+@app.route('/panel/api/mi_perfil')
+@verificar_certificado
+def panel_api_mi_perfil():
+    db = obtener_db()
+    u = _exec(db,
+        'SELECT nombre, usuario, rol, telefono, curp, fecha_nacimiento,'
+        '       genero, area FROM usuarios WHERE usuario=%s',
+        (g.usuario,)
+    ).fetchone()
+    if not u:
+        return jsonify(error='Usuario no encontrado'), 404
+    d = dict(u)
+    if d.get('fecha_nacimiento') and hasattr(d['fecha_nacimiento'], 'isoformat'):
+        d['fecha_nacimiento'] = d['fecha_nacimiento'].isoformat()[:10]
+    return jsonify(d)
+
 
 # ── DIAGNÓSTICO DB ────────────────────────────────────────────
 @app.route('/api/debug/columnas_migrantes')
@@ -2082,7 +2447,7 @@ def api_migrantes_crear():
 
     # ── Operativo: se auto-firma y crea ticket pendiente de coord ──
     if g.rol == 'op':
-        ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         try:
             cur_tmp = _exec(db,
                 'INSERT INTO solicitudes_registro_migrante'
@@ -2118,7 +2483,7 @@ def api_migrantes_crear():
         return jsonify(ok=True, pendiente=True, ticket_id=ticket_id)
 
     # ── Coord / Admin: inserción directa con firma propia ──
-    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     try:
         cur = _exec(db,
             'INSERT INTO migrantes'
@@ -2174,7 +2539,7 @@ def api_registro_pendientes_op():
         cur = _exec(db,
             "SELECT id, nombre, fecha_nacimiento, pais_origen, fecha_atencion,"
             "       genero, departamento_estado, estado_civil, grupo_poblacion,"
-            "       telefono_contacto, enviado_por, creado"
+            "       telefono_contacto, enviado_por, rol_enviado_por, creado"
             " FROM solicitudes_registro_migrante"
             " WHERE estado='pendiente_op'"
             " ORDER BY creado ASC"
@@ -2299,7 +2664,7 @@ def api_registro_historial():
 @app.route('/api/registro_migrante/<int:sid>/detalle', methods=['GET'])
 @verificar_certificado
 def api_registro_detalle(sid):
-    if g.rol not in ('op', 'coord'):
+    if g.rol not in ('op', 'coord', 'admin'):
         return jsonify(error=f'Rol incorrecto: {g.rol}'), 403
     try:
         db = obtener_db()
@@ -2320,6 +2685,7 @@ def api_registro_detalle(sid):
         return jsonify(error='Registro no encontrado'), 404
     r = dict(ticket)
     # Solo puede verlo quien participó en él (como validador, aprobador o quien rechazó)
+    # El admin puede ver cualquier registro
     if g.rol == 'op':
         if r.get('op_validador') != g.usuario and r.get('rechazado_por') != g.usuario:
             return jsonify(error='Sin acceso a este registro'), 403
@@ -2336,6 +2702,89 @@ def api_registro_detalle(sid):
     if r.get('firma_coord'):
         r['firma_coord'] = r['firma_coord'][:48] + '…'
     return jsonify(r)
+
+
+@app.route('/admin/api/actividad_detalle/eliminacion/<int:sid>')
+@verificar_certificado
+def admin_actividad_detalle_eliminacion(sid):
+    if g.rol != 'admin':
+        abort(403)
+    db = obtener_db()
+    sol = _exec(db,
+        'SELECT s.*, m.folio, m.nombre AS nombre_migrante'
+        ' FROM solicitudes_eliminacion s'
+        ' LEFT JOIN migrantes m ON m.id = s.migrante_id'
+        ' WHERE s.id=%s', (sid,)
+    ).fetchone()
+    if not sol:
+        return jsonify(error='Solicitud no encontrada'), 404
+    r = dict(sol)
+    # Si el migrante ya fue eliminado, buscarlo en historial
+    if not r.get('nombre_migrante'):
+        hist = _exec(db,
+            'SELECT folio, nombre_migrante FROM historial_eliminaciones'
+            ' WHERE id=(SELECT MIN(id) FROM historial_eliminaciones WHERE solicitado_por=%s)',
+            (r.get('solicitado_por'),)
+        ).fetchone()
+        if hist:
+            r['folio'] = hist['folio']
+            r['nombre_migrante'] = hist['nombre_migrante']
+    for k in ('fecha_solicitud', 'fecha_resolucion'):
+        if r.get(k) and hasattr(r[k], 'isoformat'):
+            r[k] = r[k].isoformat()
+    # Verificar firma si existe
+    if r.get('firma_coord') and r.get('coord_pubkey') and r.get('mensaje_firmado'):
+        r['firma_valida'] = verificar_firma(r['coord_pubkey'], r['mensaje_firmado'], r['firma_coord'])
+        r['firma_coord_corta'] = r['firma_coord'][:48] + '…'
+    else:
+        r['firma_valida'] = None
+        r['firma_coord_corta'] = None
+    r.pop('firma_coord', None)
+    r.pop('coord_pubkey', None)
+    return jsonify(r)
+
+
+@app.route('/admin/api/actividad_detalle/arco/<string:tipo>/<int:sid>')
+@verificar_certificado
+def admin_actividad_detalle_arco(tipo, sid):
+    if g.rol != 'admin':
+        abort(403)
+    import json as _json
+    db = obtener_db()
+    if tipo == 'rect':
+        row = _exec(db,
+            'SELECT r.*, m.folio, m.nombre AS migrante_nombre'
+            ' FROM solicitudes_arco_rect r'
+            ' JOIN migrantes m ON m.id=r.migrante_id'
+            ' WHERE r.id=%s', (sid,)
+        ).fetchone()
+        if not row:
+            return jsonify(error='Solicitud no encontrada'), 404
+        d = dict(row)
+        try:
+            d['cambios'] = _json.loads(d.get('cambios_json') or '{}')
+        except Exception:
+            d['cambios'] = {}
+        for k in ('fecha_solicitud', 'resuelto_en'):
+            if d.get(k) and hasattr(d[k], 'isoformat'):
+                d[k] = d[k].isoformat()
+        return jsonify(d)
+    elif tipo == 'cancelacion':
+        row = _exec(db,
+            'SELECT s.*, m.folio, m.nombre AS migrante_nombre'
+            ' FROM solicitudes_cancelacion_op s'
+            ' JOIN migrantes m ON m.id=s.migrante_id'
+            ' WHERE s.id=%s', (sid,)
+        ).fetchone()
+        if not row:
+            return jsonify(error='Solicitud no encontrada'), 404
+        d = dict(row)
+        for k in ('fecha_solicitud', 'resuelto_en'):
+            if d.get(k) and hasattr(d[k], 'isoformat'):
+                d[k] = d[k].isoformat()
+        return jsonify(d)
+    else:
+        return jsonify(error='Tipo de solicitud inválido'), 400
 
 
 @app.route('/api/registro_migrante/mis_solicitudes', methods=['GET'])
@@ -2381,7 +2830,7 @@ def api_registro_op_validar(sid):
         return jsonify(error='Solicitud no encontrada o ya procesada'), 404
 
     accion = request.form.get('accion', '').strip()
-    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     if accion == 'rechazar':
         motivo = request.form.get('motivo', '').strip()
@@ -2442,7 +2891,7 @@ def api_registro_coord_resolver(sid):
         return jsonify(error='Solicitud no encontrada o ya procesada'), 404
 
     accion = request.form.get('accion', '').strip()
-    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     if accion == 'rechazar':
         motivo = request.form.get('motivo', '').strip()
@@ -2530,6 +2979,434 @@ def api_registro_coord_resolver(sid):
         return jsonify(ok=True, folio=folio, migrante_id=nuevo_id)
 
     return jsonify(error='Acción inválida'), 400
+
+
+# ── ADMIN: OVERRIDE APROBACIÓN (firma supervisora sobre cualquier pendiente) ──
+
+@app.route('/admin/api/registro_migrante/<int:sid>/admin_resolver', methods=['POST'])
+@verificar_certificado
+def api_registro_admin_resolver(sid):
+    if g.rol != 'admin':
+        abort(403)
+    import json as _json
+    db = obtener_db()
+    cur = _exec(db,
+        "SELECT * FROM solicitudes_registro_migrante"
+        " WHERE id=%s AND estado IN ('pendiente_op','pendiente_coord')",
+        (sid,)
+    )
+    ticket = cur.fetchone()
+    if not ticket:
+        return jsonify(error='Solicitud no encontrada o ya procesada'), 404
+
+    data = request.get_json(silent=True) or {}
+    accion = (data.get('accion') or request.form.get('accion', '')).strip()
+    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    if accion == 'rechazar':
+        motivo = (data.get('motivo') or request.form.get('motivo', '')).strip()
+        if not motivo:
+            return jsonify(error='El motivo de rechazo es obligatorio'), 400
+        _exec(db,
+            "UPDATE solicitudes_registro_migrante"
+            " SET estado='rechazada', rechazado_por=%s, motivo_rechazo=%s, rechazado_en=%s"
+            " WHERE id=%s",
+            (g.usuario, motivo, ahora, sid)
+        )
+        db.commit()
+        log_evento('registro_mig_coord_rechazado', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Ticket #{sid} rechazado por admin (override): {motivo}')
+        return jsonify(ok=True)
+
+    if accion == 'aprobar':
+        priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
+        nombre    = ticket['nombre'] or ''
+        fnac_str  = str(ticket['fecha_nacimiento']) if ticket['fecha_nacimiento'] else ''
+        pais_str  = ticket['pais_origen'] or ''
+        op_val    = ticket['op_validador'] or ''
+        firma_op_ancla = (ticket['firma_op'] or '')[:16]
+        mensaje_admin = (
+            f'REGISTRO_ADMIN|{sid}|{nombre}|{fnac_str}|{pais_str}'
+            f'|{op_val}|{g.usuario}|{ahora}|{firma_op_ancla}'
+        )
+        firma_admin = firmar_mensaje(priv_pem, mensaje_admin)
+        if not verificar_firma(pub_pem, mensaje_admin, firma_admin):
+            return jsonify(error='Error al generar firma digital'), 500
+
+        try:
+            cur2 = _exec(db,
+                'INSERT INTO migrantes'
+                ' (folio, nombre, fecha_nacimiento, pais_origen,'
+                '  fecha_atencion, genero, departamento_estado, estado_civil,'
+                '  grupo_poblacion, telefono_contacto, registrado_por)'
+                ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                (
+                    'TEMP', ticket['nombre'], ticket['fecha_nacimiento'],
+                    ticket['pais_origen'], ticket['fecha_atencion'],
+                    ticket['genero'], ticket['departamento_estado'],
+                    ticket['estado_civil'], ticket['grupo_poblacion'],
+                    ticket['telefono_contacto'], ticket['enviado_por'],
+                )
+            )
+        except Exception as e:
+            return jsonify(error=f'Error al insertar migrante: {e}'), 500
+
+        nuevo_id = cur2.lastrowid
+        folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
+        _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
+
+        firmas = {}
+        if ticket['firma_op']:
+            firmas['op'] = {
+                'usuario': ticket['op_validador'],
+                'mensaje': ticket['mensaje_firmado_op'],
+                'firma':   ticket['firma_op'],
+                'pubkey':  ticket['op_pubkey'],
+            }
+        firmas['admin'] = {
+            'usuario': g.usuario,
+            'mensaje': mensaje_admin,
+            'firma':   firma_admin,
+            'pubkey':  pub_pem,
+        }
+        _exec(db, 'UPDATE migrantes SET firmas_aprobacion=%s WHERE id=%s',
+              (_json.dumps(firmas), nuevo_id))
+
+        _exec(db,
+            "UPDATE solicitudes_registro_migrante"
+            " SET estado='aprobada', admin_aprobador=%s, firma_admin=%s,"
+            "     admin_pubkey=%s, mensaje_firmado_admin=%s, admin_aprobado_en=%s"
+            " WHERE id=%s",
+            (g.usuario, firma_admin, pub_pem, mensaje_admin, ahora, sid)
+        )
+        db.commit()
+
+        log_evento('registro_mig_admin_aprobado', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Ticket #{sid} aprobado por admin (override). Folio: {folio}')
+        log_evento('registro_mig_insertado', usuario=g.usuario, rol=g.rol,
+                   detalle=f'Folio: {folio} · Aprobado por admin (override) desde ticket #{sid}')
+        return jsonify(ok=True, folio=folio, migrante_id=nuevo_id)
+
+    return jsonify(error='Acción inválida'), 400
+
+
+# ── BULK RESOLVER (coord y admin) ─────────────────────────────
+
+@app.route('/api/registro_migrante/bulk_coord_resolver', methods=['POST'])
+@verificar_certificado
+def api_bulk_coord_resolver():
+    if g.rol not in ('coord', 'admin'):
+        abort(403)
+    import json as _json
+    data = request.get_json(silent=True) or {}
+    ids_raw = data.get('ids') or request.form.get('ids_json', '[]')
+    if isinstance(ids_raw, str):
+        try:
+            ids = _json.loads(ids_raw)
+        except Exception:
+            return jsonify(error='ids_json inválido'), 400
+    else:
+        ids = ids_raw
+    accion = (data.get('accion') or request.form.get('accion', '')).strip()
+    motivo = (data.get('motivo') or request.form.get('motivo', '')).strip()
+    if accion not in ('aprobar', 'rechazar'):
+        return jsonify(error='Acción inválida'), 400
+    if accion == 'rechazar' and not motivo:
+        return jsonify(error='El motivo es obligatorio para rechazar'), 400
+    if not ids:
+        return jsonify(error='Sin IDs'), 400
+
+    db = obtener_db()
+    priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
+    procesados, errores = 0, []
+
+    for sid in ids:
+        try:
+            estado_requerido = 'pendiente_coord' if g.rol == 'coord' else "pendiente_coord"
+            ticket = _exec(db,
+                f"SELECT * FROM solicitudes_registro_migrante WHERE id=%s AND estado='{estado_requerido}'",
+                (sid,)
+            ).fetchone()
+            if not ticket:
+                errores.append(f'#{sid}: no encontrado o ya procesado')
+                continue
+            ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if accion == 'rechazar':
+                _exec(db,
+                    "UPDATE solicitudes_registro_migrante"
+                    " SET estado='rechazada', rechazado_por=%s, motivo_rechazo=%s, rechazado_en=%s"
+                    " WHERE id=%s",
+                    (g.usuario, motivo, ahora, sid)
+                )
+                log_evento('registro_mig_coord_rechazado', usuario=g.usuario, rol=g.rol,
+                           detalle=f'[Bulk] Ticket #{sid} rechazado: {motivo}')
+                procesados += 1
+            else:
+                nombre = ticket['nombre'] or ''
+                fnac_str = str(ticket['fecha_nacimiento']) if ticket['fecha_nacimiento'] else ''
+                pais_str = ticket['pais_origen'] or ''
+                op_validador = ticket['op_validador'] or ''
+                firma_op_val = ticket['firma_op'] or ''
+                firma_op_ancla = firma_op_val[:16] if firma_op_val else ''
+                mensaje_coord = (
+                    f'REGISTRO_COORD|{sid}|{nombre}|{fnac_str}|{pais_str}'
+                    f'|{op_validador}|{g.usuario}|{ahora}|{firma_op_ancla}'
+                )
+                firma_coord = firmar_mensaje(priv_pem, mensaje_coord)
+                cur2 = _exec(db,
+                    'INSERT INTO migrantes'
+                    ' (folio, nombre, fecha_nacimiento, pais_origen,'
+                    '  fecha_atencion, genero, departamento_estado, estado_civil,'
+                    '  grupo_poblacion, telefono_contacto, registrado_por)'
+                    ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                    ('TEMP', ticket['nombre'], ticket['fecha_nacimiento'],
+                     ticket['pais_origen'], ticket['fecha_atencion'],
+                     ticket['genero'], ticket['departamento_estado'],
+                     ticket['estado_civil'], ticket['grupo_poblacion'],
+                     ticket['telefono_contacto'], ticket['enviado_por'])
+                )
+                nuevo_id = cur2.lastrowid
+                folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
+                _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
+                firmas = {}
+                if ticket['firma_op']:
+                    firmas['op'] = {'usuario': ticket['op_validador'],
+                                    'mensaje': ticket['mensaje_firmado_op'],
+                                    'firma': ticket['firma_op'],
+                                    'pubkey': ticket['op_pubkey']}
+                firmas['coord'] = {'usuario': g.usuario, 'mensaje': mensaje_coord,
+                                   'firma': firma_coord, 'pubkey': pub_pem}
+                _exec(db, 'UPDATE migrantes SET firmas_aprobacion=%s WHERE id=%s',
+                      (_json.dumps(firmas), nuevo_id))
+                _exec(db,
+                    "UPDATE solicitudes_registro_migrante"
+                    " SET estado='aprobada', coord_aprobador=%s, firma_coord=%s,"
+                    "     coord_pubkey=%s, mensaje_firmado_coord=%s, coord_aprobado_en=%s"
+                    " WHERE id=%s",
+                    (g.usuario, firma_coord, pub_pem, mensaje_coord, ahora, sid)
+                )
+                log_evento('registro_mig_coord_aprobado', usuario=g.usuario, rol=g.rol,
+                           detalle=f'[Bulk] Ticket #{sid} aprobado. Folio: {folio}')
+                log_evento('registro_mig_insertado', usuario=g.usuario, rol=g.rol,
+                           detalle=f'[Bulk] Folio: {folio} · Aprobado por coord desde ticket #{sid}')
+                procesados += 1
+        except Exception as ex:
+            errores.append(f'#{sid}: {ex}')
+    db.commit()
+    return jsonify(ok=True, procesados=procesados, errores=errores)
+
+
+@app.route('/api/registro_migrante/bulk_admin_resolver', methods=['POST'])
+@verificar_certificado
+def api_bulk_admin_resolver():
+    if g.rol != 'admin':
+        abort(403)
+    import json as _json
+    data = request.get_json(silent=True) or {}
+    ids_raw = data.get('ids') or request.form.get('ids_json', '[]')
+    if isinstance(ids_raw, str):
+        try:
+            ids = _json.loads(ids_raw)
+        except Exception:
+            return jsonify(error='ids_json inválido'), 400
+    else:
+        ids = ids_raw
+    accion = (data.get('accion') or request.form.get('accion', '')).strip()
+    motivo = (data.get('motivo') or request.form.get('motivo', '')).strip()
+    if accion not in ('aprobar', 'rechazar'):
+        return jsonify(error='Acción inválida'), 400
+    if accion == 'rechazar' and not motivo:
+        return jsonify(error='El motivo es obligatorio para rechazar'), 400
+    if not ids:
+        return jsonify(error='Sin IDs'), 400
+
+    db = obtener_db()
+    priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
+    procesados, errores = 0, []
+
+    for sid in ids:
+        try:
+            ticket = _exec(db,
+                "SELECT * FROM solicitudes_registro_migrante"
+                " WHERE id=%s AND estado IN ('pendiente_op','pendiente_coord')",
+                (sid,)
+            ).fetchone()
+            if not ticket:
+                errores.append(f'#{sid}: no encontrado o ya procesado')
+                continue
+            ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if accion == 'rechazar':
+                _exec(db,
+                    "UPDATE solicitudes_registro_migrante"
+                    " SET estado='rechazada', rechazado_por=%s, motivo_rechazo=%s, rechazado_en=%s"
+                    " WHERE id=%s",
+                    (g.usuario, motivo, ahora, sid)
+                )
+                log_evento('registro_mig_coord_rechazado', usuario=g.usuario, rol=g.rol,
+                           detalle=f'[Bulk] Ticket #{sid} rechazado: {motivo}')
+                procesados += 1
+            else:
+                nombre = ticket['nombre'] or ''
+                fnac_str = str(ticket['fecha_nacimiento']) if ticket['fecha_nacimiento'] else ''
+                pais_str = ticket['pais_origen'] or ''
+                op_validador = ticket['op_validador'] or ''
+                firma_op_val = ticket['firma_op'] or ''
+                firma_op_ancla = firma_op_val[:16] if firma_op_val else ''
+                mensaje_admin = (
+                    f'REGISTRO_ADMIN|{sid}|{nombre}|{fnac_str}|{pais_str}'
+                    f'|{op_validador}|{g.usuario}|{ahora}|{firma_op_ancla}'
+                )
+                firma_admin = firmar_mensaje(priv_pem, mensaje_admin)
+                cur2 = _exec(db,
+                    'INSERT INTO migrantes'
+                    ' (folio, nombre, fecha_nacimiento, pais_origen,'
+                    '  fecha_atencion, genero, departamento_estado, estado_civil,'
+                    '  grupo_poblacion, telefono_contacto, registrado_por)'
+                    ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                    ('TEMP', ticket['nombre'], ticket['fecha_nacimiento'],
+                     ticket['pais_origen'], ticket['fecha_atencion'],
+                     ticket['genero'], ticket['departamento_estado'],
+                     ticket['estado_civil'], ticket['grupo_poblacion'],
+                     ticket['telefono_contacto'], ticket['enviado_por'])
+                )
+                nuevo_id = cur2.lastrowid
+                folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
+                _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
+                firmas = {}
+                if ticket['firma_op']:
+                    firmas['op'] = {'usuario': ticket['op_validador'],
+                                    'mensaje': ticket['mensaje_firmado_op'],
+                                    'firma': ticket['firma_op'],
+                                    'pubkey': ticket['op_pubkey']}
+                firmas['admin'] = {'usuario': g.usuario, 'mensaje': mensaje_admin,
+                                   'firma': firma_admin, 'pubkey': pub_pem}
+                _exec(db, 'UPDATE migrantes SET firmas_aprobacion=%s WHERE id=%s',
+                      (_json.dumps(firmas), nuevo_id))
+                _exec(db,
+                    "UPDATE solicitudes_registro_migrante"
+                    " SET estado='aprobada', admin_aprobador=%s, firma_admin=%s,"
+                    "     admin_pubkey=%s, mensaje_firmado_admin=%s, admin_aprobado_en=%s"
+                    " WHERE id=%s",
+                    (g.usuario, firma_admin, pub_pem, mensaje_admin, ahora, sid)
+                )
+                log_evento('registro_mig_admin_aprobado', usuario=g.usuario, rol=g.rol,
+                           detalle=f'[Bulk] Ticket #{sid} aprobado (override). Folio: {folio}')
+                log_evento('registro_mig_insertado', usuario=g.usuario, rol=g.rol,
+                           detalle=f'[Bulk] Folio: {folio} · Aprobado por admin desde ticket #{sid}')
+                procesados += 1
+        except Exception as ex:
+            errores.append(f'#{sid}: {ex}')
+    db.commit()
+    return jsonify(ok=True, procesados=procesados, errores=errores)
+
+
+@app.route('/admin/api/actividades_colaboradores')
+@verificar_certificado
+def api_actividades_colaboradores():
+    if g.rol != 'admin':
+        abort(403)
+    import json as _json
+    db = obtener_db()
+
+    _pendiente_de = {
+        'pendiente_op':    'Operativo',
+        'pendiente_coord': 'Coordinador',
+        'aprobada':        'Aprobado',
+        'rechazada':       'Rechazado',
+    }
+
+    def _fstr(v):
+        return str(v)[:19] if v else None
+
+    # Solicitudes de registro de migrante
+    rows_reg = _exec(db,
+        'SELECT id, nombre, pais_origen, estado, enviado_por,'
+        '       op_validador, coord_aprobador,'
+        '       rechazado_por, motivo_rechazo, creado'
+        ' FROM solicitudes_registro_migrante'
+        ' ORDER BY creado DESC LIMIT 200'
+    ).fetchall()
+    registro = []
+    for r in rows_reg:
+        d = dict(r)
+        d['creado'] = _fstr(d.get('creado'))
+        d['pendiente_de'] = _pendiente_de.get(d.get('estado'), d.get('estado', ''))
+        registro.append(d)
+
+    # Solicitudes de eliminación
+    rows_elim = _exec(db,
+        'SELECT s.id, m.folio, m.nombre AS nombre_migrante,'
+        '       s.solicitado_por, s.estado, s.fecha_solicitud, s.motivo'
+        ' FROM solicitudes_eliminacion s'
+        ' JOIN migrantes m ON m.id = s.migrante_id'
+        ' ORDER BY s.fecha_solicitud DESC LIMIT 100'
+    ).fetchall()
+    eliminacion = []
+    for r in rows_elim:
+        d = dict(r)
+        if d.get('fecha_solicitud') and hasattr(d['fecha_solicitud'], 'isoformat'):
+            d['fecha_solicitud'] = d['fecha_solicitud'].isoformat()
+        eliminacion.append(d)
+
+    # Solicitudes ARCO (rectificación y cancelaciones op)
+    rows_rect = _exec(db,
+        'SELECT r.id, m.folio, m.nombre AS nombre_migrante,'
+        '       r.solicitado_por, r.estado, r.fecha_solicitud AS creado, \'rect\' AS tipo_arco'
+        ' FROM solicitudes_arco_rect r'
+        ' JOIN migrantes m ON m.id = r.migrante_id'
+        ' ORDER BY r.fecha_solicitud DESC LIMIT 50'
+    ).fetchall()
+    rows_canc = _exec(db,
+        'SELECT c.id, m.folio, m.nombre AS nombre_migrante,'
+        '       c.solicitado_por, c.estado, c.fecha_solicitud AS creado, \'cancelacion\' AS tipo_arco'
+        ' FROM solicitudes_cancelacion_op c'
+        ' JOIN migrantes m ON m.id = c.migrante_id'
+        ' ORDER BY c.fecha_solicitud DESC LIMIT 50'
+    ).fetchall()
+    arco = []
+    for r in list(rows_rect) + list(rows_canc):
+        d = dict(r)
+        if d.get('creado') and hasattr(d['creado'], 'isoformat'):
+            d['creado'] = d['creado'].isoformat()[:19]
+        arco.append(d)
+    arco.sort(key=lambda x: x.get('creado') or '', reverse=True)
+
+    return jsonify(registro=registro, eliminacion=eliminacion, arco=arco)
+
+
+@app.route('/api/migrante/<int:mid>', methods=['GET'])
+@verificar_certificado
+def api_migrante_detalle(mid):
+    if g.rol not in ('admin', 'coord', 'op'):
+        abort(403)
+    db = obtener_db()
+    import json as _json
+    mig = _exec(db,
+        'SELECT id, folio, nombre, fecha_nacimiento, pais_origen,'
+        ' fecha_atencion, genero, departamento_estado, estado_civil,'
+        ' grupo_poblacion, telefono_contacto, registrado_por,'
+        ' firmas_aprobacion, creado'
+        ' FROM migrantes WHERE id=%s', (mid,)
+    ).fetchone()
+    if not mig:
+        return jsonify(error='Migrante no encontrado'), 404
+    def _fstr(v):
+        return v.isoformat()[:10] if hasattr(v, 'isoformat') else (str(v) if v else None)
+    m = dict(mig)
+    for k in ('fecha_nacimiento', 'fecha_atencion'):
+        m[k] = _fstr(m.get(k))
+    if m.get('creado'):
+        m['creado'] = str(m['creado'])[:19]
+    firmas = {}
+    if m.get('firmas_aprobacion'):
+        try:
+            firmas = _json.loads(m['firmas_aprobacion'])
+        except Exception:
+            pass
+    m['firmante_op']    = (firmas.get('op') or {}).get('usuario', '')
+    m['firmante_coord'] = (firmas.get('coord') or firmas.get('admin') or {}).get('usuario', '')
+    del m['firmas_aprobacion']
+    return jsonify(m)
 
 
 @app.route('/api/migrantes/<int:mid>', methods=['PUT'])
@@ -2654,7 +3531,7 @@ def api_solicitar_eliminacion(mid):
         return jsonify(error='Ya existe una solicitud pendiente para este registro'), 400
 
     motivo = request.form.get('motivo', '').strip() or None
-    ahora  = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ahora  = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # Firma EC del coordinador
     coord_keys = _exec(db,
@@ -2688,7 +3565,7 @@ def api_mis_solicitudes_eliminacion():
     db = obtener_db()
     vivas = _exec(db,
         'SELECT s.id, m.folio, m.nombre AS nombre_migrante,'
-        '  s.motivo, s.estado, s.fecha_solicitud, s.resuelto_por'
+        '  s.motivo, s.estado, s.fecha_solicitud, s.resuelto_por, s.es_arco'
         ' FROM solicitudes_eliminacion s'
         ' JOIN migrantes m ON m.id = s.migrante_id'
         " WHERE s.solicitado_por=%s AND s.estado IN ('pendiente','rechazada')"
@@ -2696,7 +3573,7 @@ def api_mis_solicitudes_eliminacion():
         (g.usuario,)
     ).fetchall()
     aprobadas = _exec(db,
-        'SELECT id, folio, nombre_migrante, motivo, aprobado_por, fecha_eliminacion'
+        'SELECT id, folio, nombre_migrante, motivo, aprobado_por, fecha_eliminacion, es_arco'
         ' FROM historial_eliminaciones'
         " WHERE solicitado_por=%s AND tipo='solicitada'"
         ' ORDER BY fecha_eliminacion DESC',
@@ -2732,7 +3609,7 @@ def api_solicitudes_lista():
     rows = _exec(db,
         'SELECT s.id, s.migrante_id, m.folio, m.nombre AS migrante_nombre,'
         '  s.solicitado_por, s.motivo, s.estado, s.fecha_solicitud,'
-        '  s.solicitante_op, s.firma_coord'
+        '  s.solicitante_op, s.firma_coord, s.es_arco'
         ' FROM solicitudes_eliminacion s'
         ' JOIN migrantes m ON m.id = s.migrante_id'
         " WHERE s.estado='pendiente'"
@@ -2762,7 +3639,7 @@ def api_resolver_solicitud(sid):
         return jsonify(error='La solicitud ya fue resuelta'), 400
 
     nuevo_estado = 'aprobada' if aprobar else 'rechazada'
-    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     _exec(db,
         'UPDATE solicitudes_eliminacion'
         ' SET estado=%s, resuelto_por=%s, fecha_resolucion=%s WHERE id=%s',
@@ -2776,12 +3653,12 @@ def api_resolver_solicitud(sid):
             _exec(db,
                 'INSERT INTO historial_eliminaciones'
                 ' (folio, nombre_migrante, fecha_solicitud, solicitado_por, motivo,'
-                '  firma_coord, coord_pubkey, mensaje_firmado, aprobado_por, tipo)'
-                ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                '  firma_coord, coord_pubkey, mensaje_firmado, aprobado_por, tipo, es_arco)'
+                ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
                 (mig['folio'], mig['nombre'],
                  sol['fecha_solicitud'], sol['solicitado_por'], sol['motivo'],
                  sol['firma_coord'], sol['coord_pubkey'], sol['mensaje_firmado'],
-                 g.usuario, 'solicitada')
+                 g.usuario, 'solicitada', sol.get('es_arco', 0) or 0)
             )
         _exec(db, 'DELETE FROM migrantes WHERE id=%s', (sol['migrante_id'],))
         db.commit()
@@ -2947,7 +3824,7 @@ def arco_resolver_rect(sid):
         return jsonify(error='Solicitud no encontrada'), 404
     if sol['estado'] != 'pendiente':
         return jsonify(error='La solicitud ya fue resuelta'), 400
-    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     if aprobar:
         try:
             cambios = _json.loads(sol['cambios_json'] or '{}')
@@ -3074,7 +3951,7 @@ def arco_resolver_cancelacion_op(sid):
     if sol['estado'] != 'pendiente':
         return jsonify(error='La solicitud ya fue resuelta'), 400
 
-    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     nuevo_estado = 'aprobada' if aprobar else 'rechazada'
     _exec(db,
         'UPDATE solicitudes_cancelacion_op'
@@ -3095,8 +3972,8 @@ def arco_resolver_cancelacion_op(sid):
         # Escala a solicitudes_eliminacion para admin
         _exec(db,
             'INSERT INTO solicitudes_eliminacion'
-            ' (migrante_id, solicitado_por, motivo, solicitante_op, firma_coord, coord_pubkey, mensaje_firmado)'
-            ' VALUES (%s,%s,%s,%s,%s,%s,%s)',
+            ' (migrante_id, solicitado_por, motivo, solicitante_op, firma_coord, coord_pubkey, mensaje_firmado, es_arco)'
+            ' VALUES (%s,%s,%s,%s,%s,%s,%s,1)',
             (sol['migrante_id'], g.usuario, sol['motivo'],
              sol['solicitado_por'], firma, pub_pem, mensaje)
         )
@@ -3155,20 +4032,155 @@ def arco_cancelacion(mid):
         return jsonify(error='Ya existe una solicitud de cancelación pendiente'), 400
     motivo = request.form.get('motivo', '').strip() or None
     priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
-    ahora = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     mensaje = (f"CANCELACION|{mid}|{mig['folio']}"
                f"||{g.usuario}|{ahora}|{motivo or ''}")
     firma = firmar_mensaje(priv_pem, mensaje)
     _exec(db,
         'INSERT INTO solicitudes_eliminacion'
-        ' (migrante_id, solicitado_por, motivo, firma_coord, coord_pubkey, mensaje_firmado)'
-        ' VALUES (%s,%s,%s,%s,%s,%s)',
+        ' (migrante_id, solicitado_por, motivo, firma_coord, coord_pubkey, mensaje_firmado, es_arco)'
+        ' VALUES (%s,%s,%s,%s,%s,%s,1)',
         (mid, g.usuario, motivo, firma, pub_pem, mensaje)
     )
     db.commit()
     log_evento('arco_cancel_coord_firmada', usuario=g.usuario, rol=g.rol,
                detalle=f'Cancelación directa firmada: {mig["nombre"]} · Folio: {mig["folio"]}')
     return jsonify(ok=True)
+
+
+# Historial unificado de solicitudes ARCO para op/coord/admin
+@app.route('/api/arco/historial_completo')
+@verificar_certificado
+def arco_historial_completo():
+    if g.rol not in ('admin', 'coord', 'op'):
+        abort(403)
+    db = obtener_db()
+    resultado = []
+
+    def _fstr(v):
+        return v.isoformat() if hasattr(v, 'isoformat') else (str(v) if v else None)
+
+    # Solicitudes de rectificación
+    if g.rol == 'op':
+        rect_rows = _exec(db,
+            'SELECT r.id, r.migrante_id, m.folio, m.nombre AS migrante_nombre,'
+            '  r.solicitado_por, r.estado, r.fecha_solicitud, r.resuelto_por, r.resuelto_en,'
+            '  r.motivo_rechazo'
+            ' FROM solicitudes_arco_rect r'
+            ' JOIN migrantes m ON m.id=r.migrante_id'
+            ' WHERE r.solicitado_por=%s ORDER BY r.fecha_solicitud DESC LIMIT 100',
+            (g.usuario,)
+        ).fetchall()
+    else:
+        rect_rows = _exec(db,
+            'SELECT r.id, r.migrante_id, m.folio, m.nombre AS migrante_nombre,'
+            '  r.solicitado_por, r.estado, r.fecha_solicitud, r.resuelto_por, r.resuelto_en,'
+            '  r.motivo_rechazo'
+            ' FROM solicitudes_arco_rect r'
+            ' JOIN migrantes m ON m.id=r.migrante_id'
+            ' ORDER BY r.fecha_solicitud DESC LIMIT 200'
+        ).fetchall()
+    for r in rect_rows:
+        d = dict(r)
+        d['tipo'] = 'rectificacion'
+        d['es_arco'] = 1
+        d['firma_coord'] = None
+        d['mensaje_firmado'] = None
+        for f in ('fecha_solicitud', 'resuelto_en'):
+            if d.get(f):
+                d[f] = _fstr(d[f])
+        resultado.append(d)
+
+    # Solicitudes de cancelación op→coord
+    if g.rol == 'op':
+        cancel_op_rows = _exec(db,
+            'SELECT s.id, s.migrante_id, m.folio, m.nombre AS migrante_nombre,'
+            '  s.solicitado_por, s.estado, s.fecha_solicitud, s.resuelto_por, s.resuelto_en, NULL AS motivo_rechazo'
+            ' FROM solicitudes_cancelacion_op s'
+            ' JOIN migrantes m ON m.id=s.migrante_id'
+            ' WHERE s.solicitado_por=%s ORDER BY s.fecha_solicitud DESC LIMIT 100',
+            (g.usuario,)
+        ).fetchall()
+    else:
+        cancel_op_rows = _exec(db,
+            'SELECT s.id, s.migrante_id, m.folio, m.nombre AS migrante_nombre,'
+            '  s.solicitado_por, s.estado, s.fecha_solicitud, s.resuelto_por, s.resuelto_en, NULL AS motivo_rechazo'
+            ' FROM solicitudes_cancelacion_op s'
+            ' JOIN migrantes m ON m.id=s.migrante_id'
+            ' ORDER BY s.fecha_solicitud DESC LIMIT 200'
+        ).fetchall()
+    for r in cancel_op_rows:
+        d = dict(r)
+        d['tipo'] = 'cancelacion'
+        d['es_arco'] = 1
+        d['firma_coord'] = None
+        d['mensaje_firmado'] = None
+        for f in ('fecha_solicitud', 'resuelto_en'):
+            if d.get(f):
+                d[f] = _fstr(d[f])
+        resultado.append(d)
+
+    # Solicitudes de eliminación ARCO (coord y admin ven las firmadas)
+    if g.rol in ('coord', 'admin'):
+        elim_rows = _exec(db,
+            'SELECT e.id, e.migrante_id, m.folio, m.nombre AS migrante_nombre,'
+            '  e.solicitado_por, e.estado, e.fecha_solicitud, e.resuelto_por, e.fecha_resolucion AS resuelto_en,'
+            '  e.solicitante_op, e.firma_coord, e.mensaje_firmado, NULL AS motivo_rechazo'
+            ' FROM solicitudes_eliminacion e'
+            ' JOIN migrantes m ON m.id=e.migrante_id'
+            ' WHERE e.es_arco=1 ORDER BY e.fecha_solicitud DESC LIMIT 200'
+        ).fetchall()
+        for r in elim_rows:
+            d = dict(r)
+            d['tipo'] = 'cancelacion_firmada'
+            d['es_arco'] = 1
+            for f in ('fecha_solicitud', 'resuelto_en'):
+                if d.get(f):
+                    d[f] = _fstr(d[f])
+            resultado.append(d)
+
+    resultado.sort(key=lambda x: x.get('fecha_solicitud') or '', reverse=True)
+    return jsonify(resultado)
+
+
+# Conteo de pendientes para badge de sidebar
+@app.route('/api/pendientes_count')
+@verificar_certificado
+def api_pendientes_count():
+    if g.rol not in ('admin', 'coord', 'op'):
+        abort(403)
+    db = obtener_db()
+    total = 0
+    if g.rol == 'op':
+        row = _exec(db,
+            "SELECT COUNT(*) c FROM solicitudes_registro_migrante WHERE estado='pendiente_op'"
+        ).fetchone()
+        total = row['c'] if row else 0
+    elif g.rol == 'coord':
+        row = _exec(db,
+            "SELECT COUNT(*) c FROM solicitudes_registro_migrante WHERE estado='pendiente_coord'"
+        ).fetchone()
+        total = row['c'] if row else 0
+        r_rect = _exec(db,
+            "SELECT COUNT(*) c FROM solicitudes_arco_rect WHERE estado='pendiente'"
+        ).fetchone()
+        r_cancel = _exec(db,
+            "SELECT COUNT(*) c FROM solicitudes_cancelacion_op WHERE estado='pendiente'"
+        ).fetchone()
+        arco_total = (r_rect['c'] if r_rect else 0) + (r_cancel['c'] if r_cancel else 0)
+        return jsonify(total=total, arco_total=arco_total)
+    else:
+        r1 = _exec(db,
+            "SELECT COUNT(*) c FROM solicitudes_registro_migrante WHERE estado='pendiente_coord'"
+        ).fetchone()
+        r2 = _exec(db,
+            "SELECT COUNT(*) c FROM solicitudes_pwd WHERE estado='pendiente'"
+        ).fetchone()
+        r3 = _exec(db,
+            "SELECT COUNT(*) c FROM solicitudes_eliminacion WHERE estado='pendiente'"
+        ).fetchone()
+        total = (r1['c'] if r1 else 0) + (r2['c'] if r2 else 0) + (r3['c'] if r3 else 0)
+    return jsonify(total=total)
 
 
 # ── ARRANQUE ──────────────────────────────────────────────────

@@ -191,11 +191,6 @@ textarea.form-control { resize: vertical; min-height: 72px; }
               <label class="form-label req">País de origen</label>
               <select class="form-control" id="v-pais">
                 <option value="">— Seleccionar —</option>
-                <option>Honduras</option><option>El Salvador</option><option>Guatemala</option>
-                <option>Nicaragua</option><option>Cuba</option><option>Venezuela</option>
-                <option>Haití</option><option>Colombia</option><option>Ecuador</option>
-                <option>Perú</option><option>Bolivia</option><option>Brasil</option>
-                <option>México</option><option>Otro</option>
               </select>
             </div>
             <div class="form-group">
@@ -334,6 +329,31 @@ function _validarRangoFecha(valor, nombre) {
   return null;
 }
 
+// ── CARGA DINÁMICA DE PAÍSES ───────────────────────────────────
+async function _poblarSelectPaises(...selectIds) {
+  let paises = [];
+  try {
+    const res = await fetch('https://restcountries.com/v3.1/all?fields=name,translations');
+    const data = await res.json();
+    paises = data.map(c => c.translations?.spa?.common || c.name.common).filter(Boolean).sort();
+  } catch(e) { console.error('Error cargando países:', e); }
+  for (const id of selectIds) {
+    const sel = document.getElementById(id);
+    if (!sel) continue;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Seleccionar —</option>';
+    paises.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+    const otro = document.createElement('option');
+    otro.value = 'Otro'; otro.textContent = 'Otro';
+    sel.appendChild(otro);
+    if (current) sel.value = current;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const hoy     = new Date().toISOString().slice(0, 10);
   const hace100 = new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().slice(0, 10);
@@ -341,6 +361,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const el = document.getElementById(id);
     if (el) { el.max = hoy; el.min = hace100; }
   });
+  _poblarSelectPaises('v-pais');
 });
 
 function calcularEdad() {

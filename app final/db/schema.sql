@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
     area               TEXT,
     observaciones      TEXT,
     serial_cert        TEXT,                         -- FK lógica al último cert emitido
+    activo             INTEGER NOT NULL DEFAULT 1,
+    intentos_fallidos  INTEGER NOT NULL DEFAULT 0,
+    bloqueado          INTEGER NOT NULL DEFAULT 0,
     creado             TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

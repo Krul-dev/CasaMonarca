@@ -24,10 +24,16 @@ CREATE TABLE IF NOT EXISTS usuarios (
     genero            VARCHAR(30),
     area              VARCHAR(80),
     observaciones     TEXT,
-    serial_cert       VARCHAR(80),
-    activo            TINYINT(1)   NOT NULL DEFAULT 1,
-    creado            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+    serial_cert          VARCHAR(80),
+    activo               TINYINT(1)   NOT NULL DEFAULT 1,
+    intentos_fallidos    INT          NOT NULL DEFAULT 0,
+    bloqueado            TINYINT(1)   NOT NULL DEFAULT 0,
+    creado               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+-- Migración para bases de datos existentes (ejecutar solo si la columna no existe):
+-- ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intentos_fallidos INT NOT NULL DEFAULT 0;
+-- ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS bloqueado TINYINT(1) NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS certificados (
     id                INT AUTO_INCREMENT PRIMARY KEY,
@@ -125,6 +131,11 @@ CREATE TABLE IF NOT EXISTS solicitudes_eliminacion (
     resuelto_por     VARCHAR(64),
     fecha_solicitud  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fecha_resolucion DATETIME,
+    solicitante_op   VARCHAR(120),
+    firma_coord      TEXT,
+    coord_pubkey     TEXT,
+    mensaje_firmado  TEXT,
+    es_arco          TINYINT(1) NOT NULL DEFAULT 0,
     FOREIGN KEY (migrante_id) REFERENCES migrantes(id) ON DELETE CASCADE,
     INDEX idx_sol_estado (estado)
 ) ENGINE=InnoDB;
