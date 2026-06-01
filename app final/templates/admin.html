@@ -894,6 +894,11 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
       </button>
 
       <span class="nav-label">Sistema</span>
+      <button class="nav-item" onclick="irA('actividades')" style="position:relative;">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h5"/><path d="M11 10l1.5 1.5 2.5-2.5"/></svg>
+        Actividades pendientes
+        <span id="badge-admin-pendientes" style="margin-left:auto;background:var(--rosa);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;display:none;"></span>
+      </button>
       <button class="nav-item" onclick="irA('log')">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v10H2z"/><path d="M4 6h8M4 9h8M4 12h5"/></svg>
         Log de Auditoría
@@ -927,62 +932,136 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
       <div class="vista activa" id="vista-inicio">
         <div class="encabezado">
           <div class="encabezado-texto">
-            <h1>Bienvenida al panel</h1>
-            <p>Gestión de certificados digitales para voluntarios de Casa Monarca</p>
-          </div>
-          <button class="btn btn-primario" onclick="irA('nuevo')">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
-            Nuevo Colaborador
-          </button>
-        </div>
-
-        <div class="metricas">
-          <div class="metrica">
-            <div class="metrica-valor rosa" id="cnt-total">0</div>
-            <div class="metrica-label">Certificados emitidos</div>
-          </div>
-          <div class="metrica">
-            <div class="metrica-valor" id="cnt-activos">0</div>
-            <div class="metrica-label">Vigentes</div>
-          </div>
-          <div class="metrica">
-            <div class="metrica-valor" id="cnt-revocados">0</div>
-            <div class="metrica-label">Revocados</div>
-          </div>
-          <div class="metrica">
-            <div class="metrica-valor" id="cnt-expirados">0</div>
-            <div class="metrica-label">Expirados</div>
+            <h1>Panel de administración</h1>
+            <p>Resumen general del sistema — Casa Monarca</p>
           </div>
         </div>
 
         <!-- Notificación solicitudes pwd pendientes -->
-        <div id="notif-sol-pwd" style="display:none;margin-bottom:20px;">
-          <div style="background:var(--amarillo-bg);border:1px solid var(--amarillo-borde);border-radius:var(--radio-lg);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+        <div id="notif-sol-pwd" style="display:none;margin-bottom:16px;">
+          <div style="background:var(--amarillo-bg);border:1px solid var(--amarillo-borde);border-radius:var(--radio-lg);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
             <div style="display:flex;align-items:center;gap:10px;">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="var(--amarillo-texto)" stroke-width="1.6"><path d="M9 2.2l7 12.1a1 1 0 01-.86 1.5H2.86A1 1 0 012 14.3l7-12.1z"/><line x1="9" y1="6.2" x2="9" y2="10.2"/><circle cx="9" cy="13" r=".7" fill="currentColor" stroke="none"/></svg>
+              <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="var(--amarillo-texto)" stroke-width="1.6"><path d="M9 2.2l7 12.1a1 1 0 01-.86 1.5H2.86A1 1 0 012 14.3l7-12.1z"/><line x1="9" y1="6.2" x2="9" y2="10.2"/><circle cx="9" cy="13" r=".7" fill="currentColor" stroke="none"/></svg>
               <span style="font-size:13px;font-weight:600;color:var(--amarillo-texto);">Hay <span id="notif-sol-pwd-cnt">0</span> solicitud(es) de restablecimiento de contraseña pendiente(s)</span>
             </div>
             <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px;" onclick="irA('usuarios')">Revisar</button>
           </div>
         </div>
 
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+
+          <!-- ── COLABORADORES ── -->
+          <div class="card" style="margin:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <p class="card-titulo" style="margin:0;">Colaboradores</p>
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="var(--gris-medio)" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.8 2.2-5 5-5s5 2.2 5 5"/><circle cx="12.5" cy="5" r="2"/><path d="M14 11c.3.9.5 1.9.5 3"/></svg>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+              <div style="background:var(--gris-fondo);border-radius:var(--radio-md);padding:12px 14px;">
+                <div style="font-size:24px;font-weight:800;color:var(--rosa);" id="ini-colab-total">—</div>
+                <div style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;">Total</div>
+              </div>
+              <div style="background:var(--gris-fondo);border-radius:var(--radio-md);padding:12px 14px;">
+                <div style="font-size:24px;font-weight:800;color:var(--negro);" id="ini-colab-coord">—</div>
+                <div style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;">Coordinadores</div>
+              </div>
+              <div style="background:var(--gris-fondo);border-radius:var(--radio-md);padding:12px 14px;">
+                <div style="font-size:24px;font-weight:800;color:var(--negro);" id="ini-colab-op">—</div>
+                <div style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;">Operativos</div>
+              </div>
+              <div style="background:var(--gris-fondo);border-radius:var(--radio-md);padding:12px 14px;">
+                <div style="font-size:24px;font-weight:800;color:var(--negro);" id="ini-colab-vol">—</div>
+                <div style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;">Voluntarios</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-primario" style="flex:1;font-size:12px;" onclick="irA('nuevo')">
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+                Alta nuevo
+              </button>
+              <button class="btn btn-ghost" style="flex:1;font-size:12px;" onclick="irA('usuarios')">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.8 2.2-5 5-5s5 2.2 5 5"/></svg>
+                Gestionar
+              </button>
+            </div>
+          </div>
+
+          <!-- ── OPERACIONES PENDIENTES ── -->
+          <div class="card" style="margin:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <p class="card-titulo" style="margin:0;">Operaciones pendientes</p>
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="var(--gris-medio)" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h5"/><path d="M11 10l1.5 1.5 2.5-2.5"/></svg>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+              <div onclick="irA('actividades')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--gris-fondo);border-radius:var(--radio-md);border:1px solid transparent;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--gris-linea)'" onmouseleave="this.style.borderColor='transparent'">
+                <span style="font-size:13px;font-weight:600;">Altas de migrantes</span>
+                <span style="font-size:20px;font-weight:800;" id="ini-pend-altas" class="pend-num">—</span>
+              </div>
+              <div onclick="irA('actividades')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--gris-fondo);border-radius:var(--radio-md);border:1px solid transparent;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--gris-linea)'" onmouseleave="this.style.borderColor='transparent'">
+                <span style="font-size:13px;font-weight:600;">Rectificaciones</span>
+                <span style="font-size:20px;font-weight:800;" id="ini-pend-rect" class="pend-num">—</span>
+              </div>
+              <div onclick="irA('actividades')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--gris-fondo);border-radius:var(--radio-md);border:1px solid transparent;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--gris-linea)'" onmouseleave="this.style.borderColor='transparent'">
+                <span style="font-size:13px;font-weight:600;">Eliminaciones</span>
+                <span style="font-size:20px;font-weight:800;" id="ini-pend-elim" class="pend-num">—</span>
+              </div>
+              <div onclick="irA('arco')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--gris-fondo);border-radius:var(--radio-md);border:1px solid transparent;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--gris-linea)'" onmouseleave="this.style.borderColor='transparent'">
+                <span style="font-size:13px;font-weight:600;">Procesos ARCO</span>
+                <span style="font-size:20px;font-weight:800;" id="ini-pend-arco" class="pend-num">—</span>
+              </div>
+            </div>
+            <button class="btn btn-ghost" style="width:100%;font-size:12px;" onclick="irA('actividades')">
+              Ver todas las actividades →
+            </button>
+          </div>
+
+        </div>
+
+        <!-- ── MIGRANTES ── -->
         <div class="card">
-          <p class="card-titulo">Últimos movimientos</p>
-          <p class="card-subtitulo">Actividad reciente en el sistema</p>
-          <div class="tabla-wrap">
-            <table class="tabla" id="tabla-inicio">
-              <thead>
-                <tr>
-                  <th>Voluntario</th>
-                  <th>Rol</th>
-                  <th>Fecha</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-inicio"></tbody>
-            </table>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <p class="card-titulo" style="margin:0;">Migrantes</p>
+            <button class="btn btn-ghost" style="font-size:12px;" onclick="irA('registros')">
+              Ver base de datos →
+            </button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+
+            <!-- Total y top países -->
+            <div>
+              <div style="font-size:36px;font-weight:900;color:var(--rosa);line-height:1;" id="ini-mig-total">—</div>
+              <div style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">Total registrados</div>
+              <p style="font-size:11px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Top 3 países</p>
+              <div id="ini-mig-paises" style="display:flex;flex-direction:column;gap:5px;">
+                <p style="font-size:12px;color:var(--gris-medio);">Cargando…</p>
+              </div>
+            </div>
+
+            <!-- Por género -->
+            <div>
+              <p style="font-size:11px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;margin:0 0 15px;">Por género</p>
+              <div id="ini-mig-generos" style="display:flex;flex-direction:column;gap:8px;">
+                <p style="font-size:12px;color:var(--gris-medio);">Cargando…</p>
+              </div>
+            </div>
+
+            <!-- Niños -->
+            <div>
+              <p style="font-size:11px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px;">Menores de edad</p>
+              <div id="ini-mig-ninos">
+                <p style="font-size:12px;color:var(--gris-medio);">Cargando…</p>
+              </div>
+            </div>
+
           </div>
         </div>
+
+        <!-- IDs ocultos para compatibilidad con código anterior -->
+        <span id="cnt-total" style="display:none;"></span>
+        <span id="cnt-activos" style="display:none;"></span>
+        <span id="cnt-revocados" style="display:none;"></span>
+        <span id="cnt-expirados" style="display:none;"></span>
+        <span id="tbody-inicio" style="display:none;"></span>
       </div>
 
       <!-- ── VISTA: NUEVO VOLUNTARIO ────────── -->
@@ -1019,14 +1098,14 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
 
               <div class="campo">
                 <label for="inp-fecha">Fecha de nacimiento</label>
-                <input type="text" id="inp-fecha" placeholder="dd/mm/aaaa">
+                <input type="date" id="inp-fecha" onchange="calcularEdadColab()">
               </div>
             </div>
 
             <div class="grid-3" style="margin-bottom:14px;">
               <div class="campo">
                 <label for="inp-edad">Edad</label>
-                <input type="text" id="inp-edad" placeholder="00">
+                <input type="text" id="inp-edad" placeholder="00" readonly>
               </div>
 
               <div class="campo">
@@ -1129,6 +1208,7 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
               <div>
                 <p style="font-weight:600;font-size:15px;color:var(--negro);" id="nombre-entrega">—</p>
+                <p style="font-size:12px;color:var(--gris-medio);font-family:var(--mono);margin-top:2px;" id="correo-entrega"></p>
                 <span class="badge" id="badge-rol-entrega">—</span>
               </div>
               <button class="btn btn-primario" onclick="descargarP12()">
@@ -1164,6 +1244,8 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
           </button>
         </div>
 
+        <div id="aviso-certs-vencer" style="display:none;background:var(--rojo-bg);border:1px solid var(--rojo-borde,#f5c6cb);border-radius:var(--radio-md);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--rojo-texto);"></div>
+
         <div class="card">
           <div class="tabla-wrap">
             <table class="tabla">
@@ -1173,6 +1255,7 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
                   <th>Rol</th>
                   <th>Serial</th>
                   <th>Emitido</th>
+                  <th>Vence en</th>
                   <th>Estado</th>
                   <th></th>
                 </tr>
@@ -1243,21 +1326,32 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
         </div>
       </div>
 
+      <!-- Modal: ver detalle colaborador -->
+      <div class="modal-overlay" id="modal-detalle-colaborador">
+        <div class="modal" style="max-width:520px;width:95%;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3 style="font-size:15px;font-weight:700;margin:0;">Detalle del colaborador</h3>
+            <button class="modal-cerrar" onclick="document.getElementById('modal-detalle-colaborador').classList.remove('visible')">✕</button>
+          </div>
+          <div id="detalle-colab-contenido"></div>
+        </div>
+      </div>
+
       <!-- Modal: editar usuario -->
       <div class="modal-overlay" id="modal-editar-usuario">
-        <div class="modal" style="max-width:440px;width:90%;">
+        <div class="modal" style="max-width:520px;width:95%;">
           <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">Editar perfil de usuario</h3>
           <p style="font-size:12px;color:var(--gris-medio);margin-bottom:20px;" id="edit-usr-email-label"></p>
           <input type="hidden" id="edit-usr-email">
           <input type="hidden" id="edit-usr-rol-original">
-          <div style="display:flex;flex-direction:column;gap:14px;">
-            <div>
-              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Nombre completo</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="grid-column:1/-1;">
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Nombre completo *</label>
               <input type="text" id="edit-usr-nombre"
                 style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;">
             </div>
             <div>
-              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Rol</label>
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Rol *</label>
               <select id="edit-usr-rol" onchange="actualizarAvisoRol()"
                 style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;background:#fff;">
                 <option value="coord">Coordinador</option>
@@ -1265,8 +1359,43 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
                 <option value="voluntario">Voluntario</option>
               </select>
             </div>
-            <div id="edit-usr-aviso-rol" style="display:none;background:#faf6ea;border-left:3px solid #d8ba64;border-radius:6px;padding:9px 12px;font-size:12px;color:#8a6710;line-height:1.5;"></div>
-            <div id="edit-usr-alerta" style="display:none;color:var(--rojo-texto);font-size:12px;"></div>
+            <div>
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Teléfono</label>
+              <input type="tel" id="edit-usr-telefono"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">CURP</label>
+              <input type="text" id="edit-usr-curp" maxlength="18"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Fecha de nacimiento</label>
+              <input type="date" id="edit-usr-fnac"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Género</label>
+              <select id="edit-usr-genero"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;background:#fff;">
+                <option value="">— Sin especificar —</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Prefiero no decir">Prefiero no decir</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Área</label>
+              <input type="text" id="edit-usr-area"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;">
+            </div>
+            <div style="grid-column:1/-1;">
+              <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Observaciones</label>
+              <textarea id="edit-usr-observaciones" rows="2"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:var(--radio-sm);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;resize:vertical;"></textarea>
+            </div>
+            <div id="edit-usr-aviso-rol" style="display:none;grid-column:1/-1;background:#faf6ea;border-left:3px solid #d8ba64;border-radius:6px;padding:9px 12px;font-size:12px;color:#8a6710;line-height:1.5;"></div>
+            <div id="edit-usr-alerta" style="display:none;grid-column:1/-1;color:var(--rojo-texto);font-size:12px;"></div>
           </div>
           <div class="modal-acciones" style="margin-top:20px;">
             <button class="btn btn-ghost" onclick="cerrarEditarUsuario()">Cancelar</button>
@@ -1419,7 +1548,7 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
 
         <div class="card" style="padding:0;overflow:hidden;">
           <div style="padding:12px 16px;border-bottom:1px solid var(--gris-linea);">
-            <input type="text" id="admin-buscar-mig" placeholder="Buscar por nombre o número de documento…"
+            <input type="text" id="admin-buscar-mig" placeholder="Buscar por folio, nombre…"
               oninput="adminFiltrarMigrantes(this.value)"
               style="width:100%;max-width:400px;padding:8px 12px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);outline:none;">
           </div>
@@ -1440,6 +1569,44 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
                 <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gris-medio)">Cargando...</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VISTA: ACTIVIDADES PENDIENTES ──── -->
+      <div class="vista" id="vista-actividades">
+        <div class="encabezado">
+          <div class="encabezado-texto">
+            <h1>Actividades pendientes</h1>
+            <p>Solicitudes de colaboradores que requieren acción del administrador</p>
+          </div>
+          <button class="btn btn-ghost" onclick="cargarActividadesColab()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 7a6 6 0 0111-3.5M13 7A6 6 0 012 10.5"/><path d="M11 1v3.5H7.5M3 13V9.5H6.5"/></svg>
+            Actualizar
+          </button>
+        </div>
+        <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--gris-linea);background:var(--gris-fondo);">
+            <h3 style="font-size:13px;font-weight:600;margin:0;">Solicitudes de registro de migrante</h3>
+          </div>
+          <div id="act-colab-registro" style="padding:12px 16px;">
+            <p style="color:var(--gris-medio);font-size:13px;text-align:center;padding:16px;">Cargando…</p>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--gris-linea);background:var(--gris-fondo);">
+            <h3 style="font-size:13px;font-weight:600;margin:0;">Solicitudes de eliminación</h3>
+          </div>
+          <div id="act-colab-elim" style="padding:12px 16px;">
+            <p style="color:var(--gris-medio);font-size:13px;text-align:center;padding:16px;">Cargando…</p>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--gris-linea);background:var(--gris-fondo);">
+            <h3 style="font-size:13px;font-weight:600;margin:0;">Solicitudes ARCO</h3>
+          </div>
+          <div id="act-colab-arco" style="padding:12px 16px;">
+            <p style="color:var(--gris-medio);font-size:13px;text-align:center;padding:16px;">Cargando…</p>
           </div>
         </div>
       </div>
@@ -1487,6 +1654,17 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
           </div>
           <div id="admin-arco-cancel-lista">
             <div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Cargando solicitudes…</div>
+          </div>
+        </div>
+
+        <!-- Histórico unificado ARCO -->
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h2 style="font-size:14px;font-weight:600;margin:0;">Histórico de solicitudes ARCO</h2>
+            <button class="btn btn-ghost" style="font-size:12px;" onclick="cargarHistorialArcoAdmin()">Actualizar</button>
+          </div>
+          <div id="admin-arco-historial">
+            <div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Cargando historial…</div>
           </div>
         </div>
 
@@ -1539,7 +1717,7 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="admin-mig-genero" value="Prefiero no especificar"> Prefiero no especificar</label>
           </div>
         </div>
-        <div class="mig-form-group">
+        <!-- <div class="mig-form-group">
           <label class="mig-form-label req">País de origen</label>
           <select class="mig-form-control" id="admin-mig-pais">
             <option value="">— Seleccionar —</option>
@@ -1548,6 +1726,12 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
             <option>Haití</option><option>Colombia</option><option>Ecuador</option>
             <option>Perú</option><option>Bolivia</option><option>Brasil</option>
             <option>México</option><option>Otro</option>
+          </select>
+        </div> -->
+        <div class="mig-form-group">
+          <label class="mig-form-label req">País de origen</label>
+          <select class="mig-form-control" id="admin-mig-pais">
+            <option value="">— Seleccionar —</option>
           </select>
         </div>
         <div class="mig-form-group">
@@ -1677,6 +1861,35 @@ textarea.mig-form-control { resize: vertical; min-height: 68px; }
   </div>
 </div>
 
+<!-- ── MODAL: VER EXPEDIENTE MIGRANTE ── -->
+<div class="modal-overlay" id="modal-ver-mig">
+  <div class="modal" style="max-width:600px;width:95%;">
+    <h3 style="margin-bottom:16px;">Expediente del migrante</h3>
+    <div id="ver-mig-contenido" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:20px;">
+    </div>
+    <div class="modal-acciones" style="justify-content:space-between;">
+      <button class="btn btn-ghost" onclick="cerrarVerMigrante()">Cerrar</button>
+      <button class="btn btn-primario" onclick="descargarMigrante()" id="btn-descargar-mig">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:5px;"><path d="M7 1v8M4 6l3 3 3-3M1 10v1a2 2 0 002 2h8a2 2 0 002-2v-1"/></svg>
+        Descargar este registro
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: DETALLE DE ACTIVIDAD COLABORADOR ── -->
+<div class="modal-overlay" id="modal-actividad-detalle">
+  <div class="modal" style="max-width:660px;width:95%;max-height:90vh;overflow-y:auto;">
+    <h3 id="act-det-titulo" style="margin-bottom:16px;">Detalle de actividad</h3>
+    <div id="act-det-contenido" style="margin-bottom:20px;">
+      <p style="text-align:center;color:var(--gris-medio);padding:16px;">Cargando…</p>
+    </div>
+    <div class="modal-acciones">
+      <button class="btn btn-ghost" onclick="cerrarDetalleActividad()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">
   <span class="toast-dot" id="toast-dot"></span>
   <span id="toast-msg"></span>
@@ -1689,15 +1902,16 @@ let eliminarCertId = null;
 let generoSeleccionado = 'Masculino';
 
 const topbarTitulos = {
-  inicio:    ['Inicio', 'Admin'],
-  nuevo:     ['Alta Colaborador', 'Admin'],
-  entrega:   ['Entrega de certificado', 'Admin'],
-  lista:     ['Certificados emitidos', 'Admin'],
-  registros: ['Base de Datos Migrantes', 'Admin'],
-  eliminados:['Registros de migrantes eliminados', 'Admin'],
-  usuarios:  ['Gestión de Colaboradores', 'Admin'],
-  log:       ['Log de Auditoría', 'Admin'],
-  arco:      ['Solicitudes ARCO', 'Admin'],
+  inicio:      ['Inicio', 'Admin'],
+  nuevo:       ['Alta Colaborador', 'Admin'],
+  entrega:     ['Entrega de certificado', 'Admin'],
+  lista:       ['Certificados emitidos', 'Admin'],
+  registros:   ['Base de Datos Migrantes', 'Admin'],
+  eliminados:  ['Registros de migrantes eliminados', 'Admin'],
+  usuarios:    ['Gestión de Colaboradores', 'Admin'],
+  actividades: ['Actividades Pendientes', 'Admin'],
+  log:         ['Log de Auditoría', 'Admin'],
+  arco:        ['Solicitudes ARCO', 'Admin'],
 };
 
 function irA(vista) {
@@ -1709,18 +1923,27 @@ function irA(vista) {
   document.getElementById('topbar-titulo').textContent = t[0];
   document.getElementById('topbar-badge').textContent = t[1];
 
-  const map = { inicio: 0, nuevo: 1, lista: 2, usuarios: 3, registros: 4, eliminados: 5, arco: 6, log: 7 };
+  const map = { inicio: 0, nuevo: 1, lista: 2, usuarios: 3, registros: 4, eliminados: 5, arco: 6, actividades: 7, log: 8 };
   if (map[vista] !== undefined) {
     document.querySelectorAll('.nav-item')[map[vista]]?.classList.add('activo');
   }
 
-  if (vista === 'inicio')     { renderTablaInicio(); cargarBadgeSolPwd(); }
+  if (vista === 'inicio')     { cargarInicioStats(); cargarBadgeSolPwd(); }
   if (vista === 'lista')      renderTablaLista();
   if (vista === 'eliminados') cargarEliminados();
   if (vista === 'usuarios')   cargarUsuarios();
   if (vista === 'log')        cargarLog();
-  if (vista === 'registros')  adminCargarMigrantes();
+  if (vista === 'registros')    adminCargarMigrantes();
+  if (vista === 'actividades')  cargarActividadesColab();
   if (vista === 'arco')       cargarArcoAdmin();
+  if (vista === 'nuevo') {
+    const hoy = new Date();
+    const hoyStr = hoy.toISOString().slice(0, 10);
+    const hace100 = new Date(hoy); hace100.setFullYear(hoy.getFullYear() - 100);
+    const hace100Str = hace100.toISOString().slice(0, 10);
+    const inpFecha = document.getElementById('inp-fecha');
+    if (inpFecha) { inpFecha.max = hoyStr; inpFecha.min = hace100Str; }
+  }
 }
 
 function _validarRangoFecha(valor, nombre) {
@@ -1733,6 +1956,38 @@ function _validarRangoFecha(valor, nombre) {
   return null;
 }
 
+// ── CARGA DINÁMICA DE PAÍSES ───────────────────────────────────
+let _paisesCache = null;
+async function _poblarSelectPaises(...selectIds) {
+  if (!_paisesCache) {
+    try {
+      const res = await fetch('https://restcountries.com/v3.1/all?fields=name,translations');
+      const data = await res.json();
+      _paisesCache = data
+        .map(c => c.translations?.spa?.common || c.name.common)
+        .filter(Boolean).sort();
+    } catch(e) {
+      console.error('Error cargando países:', e);
+      _paisesCache = [];
+    }
+  }
+  for (const id of selectIds) {
+    const sel = document.getElementById(id);
+    if (!sel) continue;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Seleccionar —</option>';
+    _paisesCache.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+    const otro = document.createElement('option');
+    otro.value = 'Otro'; otro.textContent = 'Otro';
+    sel.appendChild(otro);
+    if (current) sel.value = current;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const hoy     = new Date().toISOString().slice(0, 10);
   const hace100 = new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().slice(0, 10);
@@ -1740,6 +1995,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const el = document.getElementById(id);
     if (el) { el.max = hoy; el.min = hace100; }
   });
+  actualizarBadgeAdminPendientes();
+  cargarInicioStats();
+  cargarBadgeSolPwd();
+  _poblarSelectPaises('admin-mig-pais');
 });
 
 function calcularEdadAdmin() {
@@ -1800,31 +2059,35 @@ function estadoHtml(estado) {
   return `<span class="dot dot-rojo"></span>Revocado`;
 }
 
-function renderTablaInicio() {
-  const tbody = document.getElementById('tbody-inicio');
-  const recientes = [...certs].slice(0, 5);
+function renderTablaInicio() { /* reemplazado por cargarInicioStats */ }
 
-  if (!recientes.length) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--gris-medio)">No hay actividad reciente</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = recientes.map(c => `
-    <tr>
-      <td class="nombre-celda">${c.nombre}</td>
-      <td>${badgeHtml(c.rol)}</td>
-      <td style="font-variant-numeric:tabular-nums;font-size:12px">${c.fecha}</td>
-      <td>${estadoHtml(c.estado)}</td>
-    </tr>
-  `).join('');
+function _diasVenceHtml(dias) {
+  if (dias === null || dias === undefined) return '<span style="color:var(--gris-medio);font-size:11px;">—</span>';
+  if (dias <= 0) return `<span style="color:var(--rojo-texto);font-size:11px;font-weight:600;">Vencido</span>`;
+  if (dias <= 7) return `<span style="color:var(--rojo-texto);font-size:11px;font-weight:600;">⚠ ${dias}d</span>`;
+  if (dias <= 15) return `<span style="color:var(--amarillo-texto);font-size:11px;font-weight:600;">${dias}d</span>`;
+  return `<span style="color:var(--verde-texto);font-size:11px;">${dias}d</span>`;
 }
 
 function renderTablaLista() {
   const tbody = document.getElementById('tbody-lista');
 
   if (!certs.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gris-medio);font-size:13px">No hay certificados registrados</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gris-medio);font-size:13px">No hay certificados registrados</td></tr>`;
     return;
+  }
+
+  // Mostrar aviso de certs por vencer en ≤7 días
+  const porVencer = certs.filter(c => c.estado === 'vigente' && c.dias_para_vencer !== undefined && c.dias_para_vencer !== null && c.dias_para_vencer <= 7);
+  const avisoEl = document.getElementById('aviso-certs-vencer');
+  if (avisoEl) {
+    if (porVencer.length) {
+      avisoEl.style.display = 'block';
+      avisoEl.innerHTML = `<strong>⚠ Certificados próximos a vencer:</strong> ${porVencer.map(c => `${c.nombre} (${c.dias_para_vencer <= 0 ? 'vencido' : c.dias_para_vencer + ' días'
+      })`).join(', ')}`;
+    } else {
+      avisoEl.style.display = 'none';
+    }
   }
 
   tbody.innerHTML = certs.map(c => `
@@ -1833,10 +2096,13 @@ function renderTablaLista() {
       <td>${badgeHtml(c.rol)}</td>
       <td class="serial-celda">#${c.serial}</td>
       <td style="font-variant-numeric:tabular-nums;font-size:12px">${c.fecha}</td>
+      <td>${_diasVenceHtml(c.dias_para_vencer)}</td>
       <td>${estadoHtml(c.estado)}</td>
       <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
         ${c.estado === 'vigente'
-          ? `<button class="btn btn-peligro btn-sm" onclick="pedirRevocacion(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')">Revocar</button>`
+          ? `<button class="btn btn-ghost btn-sm" style="color:var(--azul-texto);border-color:var(--azul-borde);"
+               onclick="renovarCertificado(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')">Renovar</button>
+             <button class="btn btn-peligro btn-sm" onclick="pedirRevocacion(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')">Revocar</button>`
           : `<span class="badge badge-${c.estado === 'expirado' ? 'en_transito' : 'deportado'}" style="font-size:10px;padding:3px 8px;">${c.estado === 'expirado' ? 'Expirado' : 'Revocado'}</span>`
         }
         <button class="btn btn-ghost btn-sm" style="color:var(--rojo-texto);border-color:var(--rojo-borde);"
@@ -1846,16 +2112,103 @@ function renderTablaLista() {
   `).join('');
 }
 
-async function cargarMetricas() {
+async function renovarCertificado(certId, nombre) {
+  if (!confirm(`¿Renovar el certificado de ${nombre}?\nSe revocará el actual y se generará uno nuevo con 30 días de vigencia.`)) return;
   try {
-    const res = await fetch('/admin/api/metricas');
+    const res  = await fetch(`/admin/certificados/${certId}/renovar`, { method: 'POST' });
     const data = await res.json();
-    document.getElementById('cnt-total').textContent = data.total ?? 0;
-    document.getElementById('cnt-activos').textContent = data.vigentes ?? data.activos ?? 0;
-    document.getElementById('cnt-revocados').textContent = data.revocados ?? 0;
-    document.getElementById('cnt-expirados').textContent = data.expirados ?? 0;
-  } catch (e) {
-    console.error(e);
+    if (!res.ok || data.error) { alert(data.error || 'Error al renovar'); return; }
+    window.location.href = data.redirect_url;
+  } catch(e) {
+    alert('Error de conexión');
+  }
+}
+
+async function cargarMetricas() { /* reemplazado por cargarInicioStats */ }
+
+async function cargarInicioStats() {
+  try {
+    const res = await fetch('/admin/api/inicio_stats');
+    if (!res.ok) return;
+    const d = await res.json();
+
+    // Colaboradores
+    const c = d.colaboradores || {};
+    document.getElementById('ini-colab-total').textContent = c.total ?? '—';
+    document.getElementById('ini-colab-coord').textContent = c.coordinadores ?? '—';
+    document.getElementById('ini-colab-op').textContent    = c.operativos ?? '—';
+    document.getElementById('ini-colab-vol').textContent   = c.voluntarios ?? '—';
+
+    // Operaciones pendientes — resaltar en rojo si > 0
+    const p = d.pendientes || {};
+    const setPend = (id, val) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = val ?? 0;
+      el.style.color = (val > 0) ? 'var(--rojo-texto)' : 'var(--negro)';
+    };
+    setPend('ini-pend-altas', p.altas_migrantes);
+    setPend('ini-pend-rect',  p.rectificaciones);
+    setPend('ini-pend-elim',  p.eliminacion);
+    setPend('ini-pend-arco',  p.procesos_arco);
+
+    // Migrantes — total
+    const m = d.migrantes || {};
+    document.getElementById('ini-mig-total').textContent = m.total ?? '—';
+
+    // Top 3 países
+    const paisesEl = document.getElementById('ini-mig-paises');
+    if (paisesEl) {
+      if (!m.top_paises || !m.top_paises.length) {
+        paisesEl.innerHTML = '<p style="font-size:12px;color:var(--gris-medio);">Sin datos</p>';
+      } else {
+        const maxCnt = m.top_paises[0].cnt || 1;
+        paisesEl.innerHTML = m.top_paises.map((p, i) => `
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;font-weight:700;color:var(--gris-medio);min-width:14px;">${i+1}</span>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+                <span style="font-size:12px;font-weight:600;">${p.pais||'—'}</span>
+                <span style="font-size:12px;color:var(--gris-medio);">${p.cnt}</span>
+              </div>
+              <div style="height:4px;background:var(--gris-linea);border-radius:2px;">
+                <div style="height:4px;background:var(--rosa);border-radius:2px;width:${Math.round(p.cnt/maxCnt*100)}%;"></div>
+              </div>
+            </div>
+          </div>`).join('');
+      }
+    }
+
+    // Por género
+    const generosEl = document.getElementById('ini-mig-generos');
+    if (generosEl) {
+      const g = m.generos || {};
+      const filaGen = (label, key) => {
+        const info = g[key] || g[label];
+        if (!info) return '';
+        const edad = info.edad_media ? `<span style="font-size:11px;color:var(--gris-medio);margin-left:6px;">edad media: ${info.edad_media} años</span>` : '';
+        return `<div style="display:flex;align-items:baseline;gap:4px;padding:6px 0;border-bottom:1px solid var(--gris-linea);">
+          <span style="font-size:18px;font-weight:800;color:var(--negro);">${info.cnt}</span>
+          <span style="font-size:12px;font-weight:600;">${label}</span>${edad}
+        </div>`;
+      };
+      const html = filaGen('Hombre','Hombre') + filaGen('Mujer','Mujer') + filaGen('No binario/a','No binario/a');
+      generosEl.innerHTML = html || '<p style="font-size:12px;color:var(--gris-medio);">Sin datos</p>';
+    }
+
+    // Niños
+    const ninosEl = document.getElementById('ini-mig-ninos');
+    if (ninosEl) {
+      const n = m.ninos || {};
+      const edad = n.edad_media ? `<div style="font-size:11px;color:var(--gris-medio);margin-top:2px;">edad media: ${n.edad_media} años</div>` : '';
+      ninosEl.innerHTML = `
+        <div style="font-size:36px;font-weight:900;color:var(--negro);line-height:1;">${n.cnt ?? '—'}</div>
+        <div style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;">menores de 18 años</div>
+        ${edad}`;
+    }
+
+  } catch(e) {
+    console.error('cargarInicioStats:', e);
   }
 }
 
@@ -1967,16 +2320,23 @@ async function cargarUsuarios() {
     const toggleStyle = u.activo
       ? 'color:var(--rojo-texto);border-color:var(--rojo-borde);'
       : 'color:var(--verde-texto);border-color:var(--verde-borde);';
+    const bloqueadoBadge = u.bloqueado
+      ? '<span class="badge badge-deportado" style="font-size:9px;">Bloqueado</span> '
+      : '';
     return `<tr>
-      <td class="nombre-celda">${u.nombre}</td>
+      <td class="nombre-celda" style="cursor:pointer;" onclick="verDetalleColaborador(${JSON.stringify(u).replace(/"/g,'&quot;')})">${u.nombre}</td>
       <td style="font-size:12px;font-family:var(--mono);">${u.usuario}</td>
       <td><span class="badge badge-${u.rol === 'admin' ? 'deportado' : u.rol === 'coord' ? 'solicitante_asilo' : 'en_transito'}">${rolLabel[u.rol]||u.rol}</span></td>
-      <td>${estadoHtml}</td>
+      <td>${bloqueadoBadge}${estadoHtml}</td>
       <td style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;"
+          onclick="verDetalleColaborador(${JSON.stringify(u).replace(/"/g,'&quot;')})">Ver</button>
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;"
           onclick="abrirEditarUsuario(${JSON.stringify(u).replace(/"/g,'&quot;')})">Editar</button>
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;"
           onclick="resetPwd('${u.usuario}')">Reset pwd</button>
+        ${u.bloqueado && !esYo ? `<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;color:var(--verde-texto);border-color:var(--verde-borde);"
+          onclick="desbloquearUsuario('${u.usuario}','${u.nombre}')">Desbloquear</button>` : ''}
         ${esYo ? '' : `<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;${toggleStyle}"
           onclick="toggleActivo('${u.usuario}','${u.nombre}')">${toggleLabel}</button>`}
         ${!u.activo && !esYo
@@ -1986,6 +2346,43 @@ async function cargarUsuarios() {
       </td>
     </tr>`;
   }).join('');
+}
+
+function verDetalleColaborador(u) {
+  const rolLabel = { admin: 'Administrador', coord: 'Coordinador', op: 'Operativo', voluntario: 'Voluntario' };
+  const fila = (label, valor) => `<tr>
+    <td style="padding:8px 14px;font-size:12px;font-weight:600;color:var(--gris-medio);width:160px;border-bottom:1px solid var(--gris-linea);">${label}</td>
+    <td style="padding:8px 14px;font-size:13px;border-bottom:1px solid var(--gris-linea);">${valor || '<span style="color:var(--gris-medio);font-style:italic;">Sin datos</span>'}</td>
+  </tr>`;
+  document.getElementById('detalle-colab-contenido').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;border:1px solid var(--gris-linea);border-radius:8px;overflow:hidden;">
+      <tbody>
+        ${fila('Correo', u.usuario)}
+        ${fila('Nombre', u.nombre)}
+        ${fila('Rol', rolLabel[u.rol] || u.rol)}
+        ${fila('Teléfono', u.telefono)}
+        ${fila('CURP', u.curp)}
+        ${fila('Fecha de nacimiento', u.fecha_nacimiento)}
+        ${fila('Género', u.genero)}
+        ${fila('Área', u.area)}
+      </tbody>
+    </table>`;
+  document.getElementById('modal-detalle-colaborador').classList.add('visible');
+}
+
+async function desbloquearUsuario(email, nombre) {
+  if (!confirm(`¿Desbloquear la cuenta de ${nombre}?`)) return;
+  const fd = new FormData();
+  fd.append('usuario', email);
+  try {
+    const res = await fetch('/admin/api/usuarios/desbloquear', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) { alert(data.error || 'Error al desbloquear'); return; }
+    toast('Cuenta desbloqueada correctamente.');
+    cargarUsuarios();
+  } catch(e) {
+    alert('Error de conexión');
+  }
 }
 
 async function resetPwd(email) {
@@ -2053,6 +2450,12 @@ function abrirEditarUsuario(u) {
   document.getElementById('edit-usr-nombre').value = u.nombre || '';
   document.getElementById('edit-usr-rol').value = u.rol || 'op';
   document.getElementById('edit-usr-rol-original').value = u.rol || 'op';
+  document.getElementById('edit-usr-telefono').value = u.telefono || '';
+  document.getElementById('edit-usr-curp').value = u.curp || '';
+  document.getElementById('edit-usr-fnac').value = u.fecha_nacimiento || '';
+  document.getElementById('edit-usr-genero').value = u.genero || '';
+  document.getElementById('edit-usr-area').value = u.area || '';
+  document.getElementById('edit-usr-observaciones').value = u.observaciones || '';
   document.getElementById('edit-usr-alerta').style.display = 'none';
   document.getElementById('edit-usr-aviso-rol').style.display = 'none';
   document.getElementById('modal-editar-usuario').classList.add('visible');
@@ -2072,6 +2475,12 @@ async function guardarEditarUsuario() {
   fd.append('usuario', email);
   fd.append('nombre',  nombre);
   fd.append('rol',     rol);
+  fd.append('telefono', document.getElementById('edit-usr-telefono').value.trim());
+  fd.append('curp', document.getElementById('edit-usr-curp').value.trim());
+  fd.append('fecha_nacimiento', document.getElementById('edit-usr-fnac').value);
+  fd.append('genero', document.getElementById('edit-usr-genero').value);
+  fd.append('area', document.getElementById('edit-usr-area').value.trim());
+  fd.append('observaciones', document.getElementById('edit-usr-observaciones').value.trim());
   try {
     const res  = await fetch('/admin/api/usuarios/editar', { method: 'POST', body: fd });
     const data = await res.json();
@@ -2217,12 +2626,15 @@ async function cargarLog() {
       const detCorto = (r.detalle || '').length > 90
         ? (r.detalle || '').slice(0, 90) + '…'
         : (r.detalle || '');
+      const arcoBadge = r.es_arco
+        ? ' <span style="background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;">ARCO</span>'
+        : '';
       return `
       <div class="log-linea${esCambio ? ' clickable' : ''}"${esCambio ? ` onclick="verLogDetalle(${JSON.stringify(r.detalle).replace(/"/g,'&quot;')}, ${JSON.stringify((r.fecha||'').slice(0,19)).replace(/"/g,'&quot;')})"` : ''}>
         <span class="log-fecha">${(r.fecha || '').slice(0,19)}</span>
         <span>${r.usuario || '—'}</span>
         <span>${r.rol || '—'}</span>
-        <span class="log-resultado ${colorEvento[r.resultado] || 'azul'}">${(r.resultado || '').replace(/_/g,' ')}</span>
+        <span class="log-resultado ${colorEvento[r.resultado] || 'azul'}">${(r.resultado || '').replace(/_/g,' ')}${arcoBadge}</span>
         <span style="color:var(--gris-medio)">${esCambio ? detCorto + ' <span style="color:var(--azul-texto);font-size:10px;font-weight:600;">↗ ver cambios</span>' : (r.detalle || '')}</span>
       </div>`;
     }).join('');
@@ -2290,9 +2702,26 @@ async function generarCertificado() {
     mostrarError('El correo electrónico es obligatorio.');
     return;
   }
-  
+
   if (!rol) {
     mostrarError('Selecciona el rol del voluntario.');
+    return;
+  }
+
+  // Validar fecha de nacimiento
+  const fechaVal = document.getElementById('inp-fecha')?.value;
+  if (fechaVal) {
+    const nac = new Date(fechaVal + 'T00:00:00');
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const hace100 = new Date(hoy); hace100.setFullYear(hoy.getFullYear() - 100);
+    if (nac > hoy) { mostrarError('La fecha de nacimiento no puede ser futura.'); return; }
+    if (nac < hace100) { mostrarError('La fecha de nacimiento no puede ser hace más de 100 años.'); return; }
+  }
+
+  // Validar teléfono
+  const tel = document.getElementById('inp-telefono')?.value.trim() || '';
+  if (tel && !/^[0-9+\s\-().]{7,20}$/.test(tel)) {
+    mostrarError('El teléfono debe contener solo números y puede incluir +, espacios o guiones (7-20 caracteres).');
     return;
   }
 
@@ -2302,10 +2731,10 @@ async function generarCertificado() {
     const body = new URLSearchParams({
       nombre:        nombre,
       rol:           rol,
-      fecha_nac:     document.getElementById('inp-fecha')?.value.trim()    || '',
+      fecha_nac:     fechaVal || '',
       curp:          document.getElementById('inp-curp')?.value.trim()     || '',
-      telefono:      document.getElementById('inp-telefono')?.value.trim() || '',
-      correo:        document.getElementById('inp-correo')?.value.trim()   || '',
+      telefono:      tel,
+      correo:        correo,
       area:          document.getElementById('inp-area')?.value.trim()     || '',
       observaciones: document.getElementById('inp-observaciones')?.value.trim() || '',
       genero:        generoSeleccionado || '',
@@ -2313,9 +2742,7 @@ async function generarCertificado() {
 
     const res = await fetch('/admin/nuevo_voluntario', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString()
     });
 
@@ -2335,6 +2762,18 @@ async function generarCertificado() {
     mostrarError(error?.message || 'No se pudo conectar con el servidor. Intenta de nuevo.');
     btn.disabled = false;
   }
+}
+
+function calcularEdadColab() {
+  const v = document.getElementById('inp-fecha')?.value;
+  const el = document.getElementById('inp-edad');
+  if (!el) return;
+  if (!v) { el.value = ''; return; }
+  const hoy = new Date(), nac = new Date(v + 'T00:00:00');
+  if (nac > hoy) { el.value = ''; return; }
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  if (hoy.getMonth() < nac.getMonth() || (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate())) edad--;
+  el.value = edad >= 0 ? edad : '';
 }
 
 function descargarP12() {
@@ -2392,7 +2831,7 @@ async function confirmarRevocacion() {
 
     if (data.ok) {
       toast('Certificado revocado');
-      await cargarMetricas();
+      await cargarInicioStats();
       await cargarCertificados();
     } else {
       toast(data.error || 'No se pudo revocar', true);
@@ -2424,7 +2863,7 @@ async function confirmarEliminarCert() {
     if (data.ok) {
       cerrarModalElimCert();
       toast('Certificado eliminado');
-      await cargarMetricas();
+      await cargarInicioStats();
       await cargarCertificados();
     } else {
       toast(data.error || `Error del servidor (${res.status})`, true);
@@ -2452,6 +2891,44 @@ async function init() {
 
 init();
 
+// ── CADENA DE FIRMAS (helper reutilizable) ────────────────────
+function _renderCadenaFirmas(pasos) {
+  const filaStep = (p) => {
+    const bgMap = {1:'#e8eaf6', 2:'var(--amarillo-bg)', 3:'var(--verde-bg)'};
+    const colMap = {1:'#3949ab', 2:'var(--amarillo-texto)', 3:'var(--verde-texto)'};
+    const bg  = bgMap[p.paso] || 'var(--gris-claro)';
+    const col = colMap[p.paso] || 'var(--gris-medio)';
+    const pendienteHtml = p.pendiente
+      ? `<span style="color:var(--gris-medio);font-style:italic;font-size:11px;">Pendiente…</span>`
+      : '';
+    return `<tr>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);white-space:nowrap;">
+        <span style="display:inline-block;background:${bg};color:${col};font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">Paso ${p.paso}</span>
+      </td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">${p.accion}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-family:var(--mono);font-size:12px;">${p.responsable || pendienteHtml}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-size:12px;">${p.fecha || '—'}</td>
+    </tr>`;
+  };
+  return `
+    <div style="margin-top:12px;">
+      <p style="font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-medio);margin:0 0 6px;">Cadena de firmas</p>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--gris-claro);border-radius:8px;overflow:hidden;">
+          <thead>
+            <tr style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--gris-medio);">
+              <th style="padding:6px 10px;text-align:left;border-bottom:1px solid var(--gris-linea);">Paso</th>
+              <th style="padding:6px 10px;text-align:left;border-bottom:1px solid var(--gris-linea);">Acción</th>
+              <th style="padding:6px 10px;text-align:left;border-bottom:1px solid var(--gris-linea);">Responsable</th>
+              <th style="padding:6px 10px;text-align:left;border-bottom:1px solid var(--gris-linea);">Fecha</th>
+            </tr>
+          </thead>
+          <tbody>${pasos.map(filaStep).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 // ── REGISTROS DE MIGRANTES (ADMIN) ────────────────────────────
 let adminMigEditId = null;
 let adminElimId = null;
@@ -2472,7 +2949,7 @@ let adminListaMigrantes = [];
 function _renderFilaMig(m) {
   return `
     <tr>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--gris-medio)">${m.folio}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--azul-texto);cursor:pointer;text-decoration:underline;" onclick="verMigrante(${m.id})">${m.folio}</td>
       <td class="nombre-celda">${m.nombre}</td>
       <td style="font-size:12px;">${m.pais_origen || '—'}</td>
       <td style="font-size:12px;">${m.grupo_poblacion || '—'}</td>
@@ -2491,7 +2968,7 @@ function adminFiltrarMigrantes(q) {
   const lista = term
     ? adminListaMigrantes.filter(m =>
         (m.nombre || '').toLowerCase().includes(term) ||
-        (m.num_documento || '').toLowerCase().includes(term))
+        (m.folio || '').toLowerCase().includes(term))
     : adminListaMigrantes;
   if (!lista.length) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gris-medio)">${term ? 'Sin resultados para "' + term + '"' : 'No hay registros todavía'}</td></tr>`;
@@ -2515,18 +2992,25 @@ async function adminCargarMigrantes() {
     if (sols.length) {
       solSec.style.display = 'block';
       document.getElementById('sol-count-badge').textContent = sols.length;
-      document.getElementById('lista-solicitudes').innerHTML = sols.map(s => `
+      document.getElementById('lista-solicitudes').innerHTML = sols.map(s => {
+        const cadena = _renderCadenaFirmas([
+          { paso: 1, accion: 'Solicitud enviada', responsable: s.solicitado_por, fecha: (s.fecha_solicitud||'').slice(0,10), firma: s.firma_coord || null },
+          { paso: 2, accion: 'Aprobación administrador', responsable: '', fecha: '', firma: null, pendiente: true },
+        ]);
+        return `
         <div class="sol-card">
           <div class="sol-info">
-            <div class="sol-nombre">${s.migrante_nombre} <span style="font-weight:400;font-size:11px;color:var(--gris-medio)">${s.folio}</span></div>
+            <div class="sol-nombre">${s.migrante_nombre} <span style="font-weight:400;font-size:11px;color:var(--gris-medio)">${s.folio}</span>${s.es_arco ? ' <span style="background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;">ARCO</span>' : ''}</div>
             <div class="sol-meta">Solicitado por ${s.solicitado_por} · ${(s.fecha_solicitud || '').slice(0,10)}</div>
             ${s.motivo ? `<div class="sol-motivo">"${s.motivo}"</div>` : ''}
+            ${cadena}
           </div>
           <div class="sol-acciones">
             <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px;" onclick="adminResolverSol(${s.id}, false)">Rechazar</button>
             <button class="btn btn-peligro" style="font-size:11px;padding:6px 12px;" onclick="adminResolverSol(${s.id}, true)">Aprobar y eliminar</button>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     } else {
       solSec.style.display = 'none';
     }
@@ -2772,15 +3256,20 @@ async function cargarSolicitudesRectAdmin() {
     cont.innerHTML = pendientes.map(s => {
       let cambios = [];
       try { cambios = Object.entries(JSON.parse(s.cambios_json || '{}')); } catch(_) {}
+      const cadena = _renderCadenaFirmas([
+        { paso: 1, accion: 'Solicitud de rectificación', responsable: s.solicitado_por, fecha: (s.fecha_solicitud||'').slice(0,10), firma: null },
+        { paso: 2, accion: 'Aprobación administrador', responsable: '', fecha: '', firma: null, pendiente: true },
+      ]);
       return `
         <div style="border:1px solid var(--gris-linea);border-radius:var(--radio-md);padding:14px 16px;margin-bottom:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-            <div>
+            <div style="flex:1;">
               <div style="font-weight:600;font-size:13px;">${s.migrante_nombre} <span style="font-size:11px;font-family:var(--mono);color:var(--gris-medio);">${s.migrante_folio || ''}</span></div>
               <div style="font-size:11px;color:var(--gris-medio);margin-top:2px;">Solicitado por ${s.solicitado_por} · ${(s.fecha_solicitud||'').slice(0,10)}</div>
               <div style="font-size:12px;margin-top:8px;">${cambios.map(([k,v])=>`<span style="background:var(--gris-fondo);border-radius:4px;padding:2px 6px;margin-right:4px;"><strong>${k}</strong>: "${v}"</span>`).join('')}</div>
+              ${cadena}
             </div>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;align-self:flex-start;">
               <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px;" onclick="adminAbrirResolver(${s.id}, ${JSON.stringify(cambios).replace(/"/g,'&quot;')}, '${s.migrante_nombre.replace(/'/g,"\\'")}', '${s.migrante_folio||''}')">Revisar</button>
             </div>
           </div>
@@ -2859,16 +3348,25 @@ async function cargarCancelacionesAdmin() {
       const origen = s.solicitante_op
         ? `Op: <strong>${s.solicitante_op}</strong> → Coord: <strong>${s.solicitado_por}</strong>`
         : `Coord: <strong>${s.solicitado_por}</strong>`;
+      const cadena = _renderCadenaFirmas(s.solicitante_op ? [
+        { paso: 1, accion: 'Solicitud cancelación (op)', responsable: s.solicitante_op, fecha: '', firma: null },
+        { paso: 2, accion: 'Firma coordinador (EC)', responsable: s.solicitado_por, fecha: (s.fecha_solicitud||'').slice(0,10), firma: s.firma_coord },
+        { paso: 3, accion: 'Aprobación administrador', responsable: '', fecha: '', firma: null, pendiente: true },
+      ] : [
+        { paso: 1, accion: 'Solicitud cancelación (coord)', responsable: s.solicitado_por, fecha: (s.fecha_solicitud||'').slice(0,10), firma: s.firma_coord },
+        { paso: 2, accion: 'Aprobación administrador', responsable: '', fecha: '', firma: null, pendiente: true },
+      ]);
       return `
       <div style="border:1px solid var(--gris-linea);border-radius:var(--radio-md);padding:14px 16px;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-          <div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="flex:1;">
             <div style="font-weight:600;font-size:13px;">${s.migrante_nombre} <span style="font-size:11px;font-family:var(--mono);color:var(--gris-medio);">${s.folio || ''}</span></div>
             <div style="font-size:11px;color:var(--gris-medio);margin-top:2px;">${origen} · ${(s.fecha_solicitud||'').slice(0,10)}</div>
             ${s.motivo ? `<div style="font-size:12px;margin-top:4px;color:var(--gris-texto);">Motivo: ${s.motivo}</div>` : ''}
             <div style="margin-top:6px;">${firmaBadge}</div>
+            ${cadena}
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-self:flex-start;">
             <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px;color:var(--rojo-texto);border-color:var(--rojo-borde);" onclick="adminResolverSolArco(${s.id}, false)">Rechazar</button>
             <button class="btn btn-peligro" style="font-size:11px;padding:6px 12px;" onclick="adminResolverSolArco(${s.id}, true)">Aprobar y eliminar</button>
           </div>
@@ -2912,6 +3410,442 @@ async function verificarFirmaAdmin(solId) {
 function cargarArcoAdmin() {
   cargarSolicitudesRectAdmin();
   cargarCancelacionesAdmin();
+  cargarHistorialArcoAdmin();
+}
+
+async function cargarHistorialArcoAdmin() {
+  const cont = document.getElementById('admin-arco-historial');
+  if (!cont) return;
+  cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Cargando historial…</div>';
+  try {
+    const res  = await fetch('/api/arco/historial_completo');
+    const data = await res.json();
+    if (!data.length) {
+      cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gris-medio);font-size:13px;">Sin solicitudes registradas.</div>';
+      return;
+    }
+    const tipoLabel = { rectificacion: 'Rectificación', cancelacion: 'Cancelación (op→coord)', cancelacion_firmada: 'Cancelación firmada' };
+    const estadoBadge = (e) => {
+      const cls = { pendiente: 'background:#fef9c3;color:#92400e;border:1px solid #fde68a', aprobada: 'background:#dcfce7;color:#166534;border:1px solid #86efac', rechazada: 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5' };
+      return `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;${cls[e]||'background:#f3f4f6;color:#374151;border:1px solid #d1d5db'}">${e||'—'}</span>`;
+    };
+    cont.innerHTML = `<div style="overflow-x:auto;"><table class="tabla">
+      <thead><tr><th>Tipo</th><th>Folio</th><th>Migrante</th><th>Solicitado por</th><th>Fecha</th><th>Estado</th><th>Resuelto por</th><th>Firma</th></tr></thead>
+      <tbody>${data.map(s => {
+        const arcoBadge = s.es_arco ? '<span style="background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:4px;">ARCO</span>' : '';
+        const firma = s.firma_coord ? '<span style="font-size:10px;color:var(--verde-texto);font-weight:600;">&#10003; Firmado</span>' : '—';
+        return `<tr>
+          <td style="white-space:nowrap;">${tipoLabel[s.tipo]||s.tipo}${arcoBadge}</td>
+          <td style="font-family:var(--mono);font-size:11px;">${s.folio||'—'}</td>
+          <td style="font-weight:500;">${s.migrante_nombre||'—'}</td>
+          <td style="font-size:12px;">${s.solicitado_por||'—'}</td>
+          <td style="font-size:12px;white-space:nowrap;">${(s.fecha_solicitud||'').slice(0,10)}</td>
+          <td>${estadoBadge(s.estado)}</td>
+          <td style="font-size:12px;">${s.resuelto_por||'—'}</td>
+          <td>${firma}</td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>`;
+  } catch(e) {
+    cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--rojo-texto);font-size:13px;">Error al cargar historial.</div>';
+  }
+}
+
+async function actualizarBadgeAdminPendientes() {
+  try {
+    const res = await fetch('/api/pendientes_count');
+    if (!res.ok) return;
+    const data = await res.json();
+    const total = data.total || 0;
+    const badge = document.getElementById('badge-admin-pendientes');
+    if (badge) {
+      badge.textContent = total;
+      badge.style.display = total > 0 ? '' : 'none';
+    }
+  } catch(_) {}
+}
+
+// ── VER EXPEDIENTE COMPLETO (FOLIO CLICKEABLE) ─────────────────
+let _verMigId = null;
+
+async function verMigrante(id) {
+  _verMigId = id;
+  const overlay = document.getElementById('modal-ver-mig');
+  const cont = document.getElementById('ver-mig-contenido');
+  cont.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--gris-medio);padding:16px;">Cargando…</p>';
+  overlay.classList.add('visible');
+  try {
+    const res = await fetch(`/api/migrante/${id}`);
+    const m = await res.json();
+    if (!res.ok || m.error) {
+      cont.innerHTML = `<p style="grid-column:1/-1;color:var(--rojo-texto);text-align:center;">${m.error || 'Error al cargar datos'}</p>`;
+      return;
+    }
+    const hoy = new Date();
+    let edad = '—';
+    if (m.fecha_nacimiento) {
+      const nac = new Date(m.fecha_nacimiento + 'T00:00:00');
+      let e = hoy.getFullYear() - nac.getFullYear();
+      if (hoy.getMonth() < nac.getMonth() || (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate())) e--;
+      edad = e;
+    }
+    const campos = [
+      ['Folio',                m.folio       || '—'],
+      ['Nombre completo',      m.nombre      || '—'],
+      ['Fecha de nacimiento',  m.fecha_nacimiento || '—'],
+      ['Edad',                 edad],
+      ['País de origen',       m.pais_origen || '—'],
+      ['Grupo de población',   m.grupo_poblacion || '—'],
+      ['Fecha de atención',    m.fecha_atencion || '—'],
+      ['Género',               m.genero      || '—'],
+      ['Departamento/Estado',  m.departamento_estado || '—'],
+      ['Estado civil',         m.estado_civil || '—'],
+      ['Teléfono',             m.telefono_contacto || '—'],
+      ['Registrado por',       m.registrado_por || '—'],
+      ['Firmado (operativo)',  m.firmante_op  || '—'],
+      ['Firmado (coord/admin)',m.firmante_coord || '—'],
+      ['Fecha de creación',    m.creado       || '—'],
+    ];
+    cont.innerHTML = campos.map(([lbl, val]) => `
+      <div>
+        <div style="font-size:10px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">${lbl}</div>
+        <div style="font-size:13px;color:var(--negro);">${val}</div>
+      </div>`).join('');
+  } catch(e) {
+    cont.innerHTML = '<p style="grid-column:1/-1;color:var(--rojo-texto);text-align:center;">Error de conexión</p>';
+  }
+}
+
+function cerrarVerMigrante() {
+  document.getElementById('modal-ver-mig').classList.remove('visible');
+  _verMigId = null;
+}
+
+function descargarMigrante() {
+  if (_verMigId) window.location.href = `/admin/descargar/migrante/${_verMigId}`;
+}
+
+document.getElementById('modal-ver-mig').addEventListener('click', function(e) {
+  if (e.target === this) cerrarVerMigrante();
+});
+
+// ── DETALLE ACTIVIDADES COLABORADORES ─────────────────────────
+function cerrarDetalleActividad() {
+  document.getElementById('modal-actividad-detalle').classList.remove('visible');
+}
+document.getElementById('modal-actividad-detalle').addEventListener('click', function(e) {
+  if (e.target === this) cerrarDetalleActividad();
+});
+
+function _campo(lbl, val, mono) {
+  return `<div style="padding:8px 0;border-bottom:1px solid var(--gris-linea);">
+    <div style="font-size:10px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">${lbl}</div>
+    <div style="font-size:13px;color:var(--negro);${mono ? 'font-family:var(--mono);word-break:break-all;' : ''}">${val || '—'}</div>
+  </div>`;
+}
+
+function _seccion(titulo) {
+  return `<div style="grid-column:1/-1;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gris-medio);padding:10px 0 4px;border-top:2px solid var(--gris-linea);margin-top:8px;">${titulo}</div>`;
+}
+
+async function abrirDetalleActividad(tipo, id) {
+  const overlay = document.getElementById('modal-actividad-detalle');
+  const cont    = document.getElementById('act-det-contenido');
+  const titulo  = document.getElementById('act-det-titulo');
+  cont.innerHTML = '<p style="text-align:center;color:var(--gris-medio);padding:24px;">Cargando…</p>';
+  overlay.classList.add('visible');
+
+  try {
+    let url, data;
+    if (tipo === 'registro') {
+      url = `/api/registro_migrante/${id}/detalle`;
+      titulo.textContent = 'Solicitud de registro de migrante';
+    } else if (tipo === 'eliminacion') {
+      url = `/admin/api/actividad_detalle/eliminacion/${id}`;
+      titulo.textContent = 'Solicitud de eliminación';
+    } else if (tipo === 'arco_rect') {
+      url = `/admin/api/actividad_detalle/arco/rect/${id}`;
+      titulo.textContent = 'Solicitud ARCO — Rectificación';
+    } else if (tipo === 'arco_cancel') {
+      url = `/admin/api/actividad_detalle/arco/cancelacion/${id}`;
+      titulo.textContent = 'Solicitud ARCO — Cancelación';
+    } else { return; }
+
+    const res = await fetch(url);
+    data = await res.json();
+    if (!res.ok || data.error) {
+      cont.innerHTML = `<p style="color:var(--rojo-texto);text-align:center;padding:16px;">${data.error || 'Error al cargar'}</p>`;
+      return;
+    }
+
+    if (tipo === 'registro') {
+      const estadoLabels = { pendiente_op: 'Pendiente validación OP', pendiente_coord: 'Pendiente aprobación Coordinador', aprobada: 'Aprobada', rechazada: 'Rechazada' };
+      cont.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+        ${_seccion('Datos del formulario')}
+        ${_campo('Nombre', data.nombre)}
+        ${_campo('Fecha de atención', (data.fecha_atencion||'').slice(0,10))}
+        ${_campo('País de origen', data.pais_origen)}
+        ${_campo('Departamento / Estado', data.departamento_estado)}
+        ${_campo('Género', data.genero)}
+        ${_campo('Estado civil', data.estado_civil)}
+        ${_campo('Fecha de nacimiento', (data.fecha_nacimiento||'').slice(0,10))}
+        ${_campo('Grupo de población', data.grupo_poblacion)}
+        ${_campo('Teléfono de contacto', data.telefono_contacto)}
+        ${_seccion('Flujo de aprobación')}
+        ${_campo('Estado actual', estadoLabels[data.estado] || data.estado)}
+        ${_campo('Enviado por', data.enviado_por)}
+        ${_campo('Rol de quien envió', data.rol_enviado_por)}
+        ${_campo('Fecha de envío', (data.creado||'').slice(0,16).replace('T',' '))}
+        ${_campo('Operativo validador', data.op_validador)}
+        ${_campo('Fecha validación OP', (data.op_validado_en||'').slice(0,16).replace('T',' '))}
+        ${data.firma_op ? _campo('Firma OP', data.firma_op, true) : ''}
+        ${_campo('Coordinador aprobador', data.coord_aprobador)}
+        ${_campo('Fecha aprobación Coord', (data.coord_aprobado_en||'').slice(0,16).replace('T',' '))}
+        ${data.firma_coord ? _campo('Firma Coord', data.firma_coord, true) : ''}
+        ${data.rechazado_por ? _campo('Rechazado por', data.rechazado_por) : ''}
+        ${data.rechazado_en ? _campo('Fecha rechazo', (data.rechazado_en||'').slice(0,16).replace('T',' ')) : ''}
+        ${data.motivo_rechazo ? `<div style="grid-column:1/-1;">${_campo('Motivo del rechazo', data.motivo_rechazo)}</div>` : ''}
+      </div>`;
+
+    } else if (tipo === 'eliminacion') {
+      const firmaHtml = data.firma_valida === true
+        ? '<span style="color:var(--verde-texto);font-weight:600;">&#10003; Firma verificada — válida</span>'
+        : data.firma_valida === false
+          ? '<span style="color:var(--rojo-texto);font-weight:600;">&#9888; Firma inválida</span>'
+          : '<span style="color:var(--gris-medio);">Sin firma digital</span>';
+      const arcoTag = data.es_arco ? ' <span style="background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;">ARCO</span>' : '';
+      cont.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+        ${_seccion('Datos del migrante')}
+        ${_campo('Nombre', (data.nombre_migrante||'') + arcoTag)}
+        ${_campo('Folio', data.folio)}
+        ${_seccion('Solicitud')}
+        ${_campo('Solicitado por', data.solicitado_por)}
+        ${data.solicitante_op ? _campo('Operativo que inició', data.solicitante_op) : ''}
+        ${_campo('Fecha solicitud', (data.fecha_solicitud||'').slice(0,16).replace('T',' '))}
+        ${_campo('Estado', data.estado)}
+        ${data.motivo ? `<div style="grid-column:1/-1;">${_campo('Motivo', data.motivo)}</div>` : ''}
+        ${_campo('Resuelto por', data.resuelto_por)}
+        ${_campo('Fecha resolución', (data.fecha_resolucion||'').slice(0,16).replace('T',' '))}
+        ${_seccion('Firma electrónica')}
+        <div style="grid-column:1/-1;">${_campo('Estado firma', firmaHtml)}</div>
+        ${data.firma_coord_corta ? _campo('Firma (Coord)', data.firma_coord_corta, true) : ''}
+        ${data.mensaje_firmado ? `<div style="grid-column:1/-1;">${_campo('Mensaje firmado', data.mensaje_firmado, true)}</div>` : ''}
+      </div>`;
+
+    } else if (tipo === 'arco_rect') {
+      const etiquetas = { nombre:'Nombre', fecha_atencion:'Fecha de atención', pais_origen:'País de origen', departamento_estado:'Depto/Estado', estado_civil:'Estado civil', genero:'Género', fecha_nacimiento:'Fecha de nacimiento', grupo_poblacion:'Grupo de población', telefono_contacto:'Teléfono' };
+      const cambiosHtml = Object.keys(data.cambios||{}).length
+        ? `<div style="grid-column:1/-1;overflow-x:auto;"><table class="tabla" style="margin-top:4px;"><thead><tr><th>Campo</th><th>Valor propuesto</th></tr></thead><tbody>
+            ${Object.entries(data.cambios).map(([k,v]) => `<tr><td style="font-weight:600;font-size:12px;">${etiquetas[k]||k}</td><td style="font-size:12px;">${v||'—'}</td></tr>`).join('')}
+           </tbody></table></div>`
+        : '<div style="grid-column:1/-1;color:var(--gris-medio);font-size:13px;">Sin cambios registrados.</div>';
+      cont.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+        ${_seccion('Migrante')}
+        ${_campo('Nombre', data.migrante_nombre)}
+        ${_campo('Folio', data.folio)}
+        ${_seccion('Solicitud de rectificación')}
+        ${_campo('Solicitado por', data.solicitado_por)}
+        ${_campo('Fecha', (data.fecha_solicitud||'').slice(0,16).replace('T',' '))}
+        ${_campo('Estado', data.estado)}
+        ${_campo('Resuelto por', data.resuelto_por)}
+        ${_campo('Fecha resolución', (data.resuelto_en||'').slice(0,16).replace('T',' '))}
+        ${data.motivo_rechazo ? `<div style="grid-column:1/-1;">${_campo('Motivo rechazo', data.motivo_rechazo)}</div>` : ''}
+        ${_seccion('Cambios solicitados')}
+        ${cambiosHtml}
+      </div>`;
+
+    } else if (tipo === 'arco_cancel') {
+      cont.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+        ${_seccion('Migrante')}
+        ${_campo('Nombre', data.migrante_nombre)}
+        ${_campo('Folio', data.folio)}
+        ${_seccion('Solicitud de cancelación')}
+        ${_campo('Solicitado por (operativo)', data.solicitado_por)}
+        ${_campo('Fecha', (data.fecha_solicitud||'').slice(0,16).replace('T',' '))}
+        ${_campo('Estado', data.estado)}
+        ${_campo('Resuelto por', data.resuelto_por)}
+        ${_campo('Fecha resolución', (data.resuelto_en||'').slice(0,16).replace('T',' '))}
+        ${data.motivo ? `<div style="grid-column:1/-1;">${_campo('Motivo', data.motivo)}</div>` : ''}
+      </div>`;
+    }
+
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error de conexión</p>';
+  }
+}
+
+// ── ACTIVIDADES COLABORADORES ──────────────────────────────────
+const _estadoLabel = {
+  pendiente_op:    '<span class="badge" style="background:var(--amarillo-bg);color:var(--amarillo-texto);border-color:var(--amarillo-borde);">Pendiente OP</span>',
+  pendiente_coord: '<span class="badge" style="background:var(--azul-bg);color:var(--azul-texto);border-color:var(--azul-borde);">Pendiente Coord</span>',
+  aprobada:        '<span class="badge" style="background:var(--verde-bg);color:var(--verde-texto);border-color:var(--verde-borde);">Aprobada</span>',
+  rechazada:       '<span class="badge" style="background:#fde8e8;color:#8c2020;border-color:#e8a0a0;">Rechazada</span>',
+  pendiente:       '<span class="badge" style="background:var(--amarillo-bg);color:var(--amarillo-texto);border-color:var(--amarillo-borde);">Pendiente</span>',
+  resuelta:        '<span class="badge" style="background:var(--verde-bg);color:var(--verde-texto);border-color:var(--verde-borde);">Resuelta</span>',
+};
+
+function _estadoBadge(e) {
+  return _estadoLabel[e] || `<span class="badge">${e || '—'}</span>`;
+}
+
+function adminBulkToggleAll(cb) {
+  document.querySelectorAll('.admin-bulk-check').forEach(c => c.checked = cb.checked);
+  adminBulkCount();
+}
+
+function adminBulkCount() {
+  const sel = document.querySelectorAll('.admin-bulk-check:checked').length;
+  const el = document.getElementById('admin-bulk-count');
+  if (el) el.textContent = `${sel} seleccionados`;
+}
+
+async function bulkAdminResolver(accion) {
+  const checks = [...document.querySelectorAll('.admin-bulk-check:checked')];
+  if (!checks.length) { toast('Selecciona al menos un ticket'); return; }
+  const ids = checks.map(c => parseInt(c.value));
+  let motivo = '';
+  if (accion === 'rechazar') {
+    motivo = prompt('Motivo del rechazo:');
+    if (!motivo) return;
+  }
+  if (!confirm(`¿${accion === 'aprobar' ? 'Aprobar' : 'Rechazar'} ${ids.length} ticket(s)?`)) return;
+  try {
+    const res = await fetch('/api/registro_migrante/bulk_admin_resolver', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, accion, motivo }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { toast(data.error || 'Error', true); return; }
+    toast(`Procesados: ${data.procesados}${data.errores?.length ? ` · Errores: ${data.errores.length}` : ''}`);
+    cargarActividadesColab();
+  } catch(e) {
+    toast('Error de conexión', true);
+  }
+}
+
+async function cargarActividadesColab() {
+  try {
+    const res = await fetch('/admin/api/actividades_colaboradores');
+    const data = await res.json();
+    if (!res.ok) { return; }
+
+    // Registro de migrantes
+    const contReg = document.getElementById('act-colab-registro');
+    if (!data.registro || !data.registro.length) {
+      contReg.innerHTML = '<p style="color:var(--gris-medio);font-size:13px;text-align:center;padding:12px;">Sin solicitudes</p>';
+    } else {
+      const pendientes = data.registro.filter(r => r.estado === 'pendiente_op' || r.estado === 'pendiente_coord');
+      const bulkBarAdmin = pendientes.length ? `
+        <div id="admin-bulk-bar" style="background:var(--gris-fondo);border:1px solid var(--gris-linea);border-radius:var(--radio-md);padding:8px 14px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:12px;font-weight:600;" id="admin-bulk-count">0 seleccionados</span>
+          <button class="btn btn-ghost btn-sm" style="color:var(--verde-texto);border-color:var(--verde-borde);" onclick="bulkAdminResolver('aprobar')">Aprobar seleccionados</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--rojo-texto);border-color:var(--rojo-borde);" onclick="bulkAdminResolver('rechazar')">Rechazar seleccionados</button>
+        </div>` : '';
+      contReg.innerHTML = bulkBarAdmin + `
+        <div style="overflow-x:auto;">
+          <table class="tabla">
+            <thead><tr>
+              ${pendientes.length ? '<th><input type="checkbox" id="admin-bulk-all" onchange="adminBulkToggleAll(this)"></th>' : ''}
+              <th>Nombre</th><th>País</th><th>Enviado por</th>
+              <th>Estado</th><th>Pendiente de</th><th>Acciones</th>
+            </tr></thead>
+            <tbody>${data.registro.map(r => {
+              const puedeAprobar = r.estado === 'pendiente_op' || r.estado === 'pendiente_coord';
+              const chk = pendientes.length ? `<td onclick="event.stopPropagation()">${puedeAprobar ? `<input type="checkbox" class="admin-bulk-check" value="${r.id}" onchange="adminBulkCount()">` : ''}</td>` : '';
+              return `<tr style="cursor:pointer;" onclick="abrirDetalleActividad('registro',${r.id})">
+                ${chk}
+                <td class="nombre-celda" style="color:var(--azul-texto);text-decoration:underline dotted;">${r.nombre || '—'}</td>
+                <td style="font-size:12px;">${r.pais_origen || '—'}</td>
+                <td style="font-size:12px;">${r.enviado_por || '—'}</td>
+                <td>${_estadoBadge(r.estado)}</td>
+                <td style="font-size:12px;">${r.pendiente_de || '—'}</td>
+                <td style="white-space:nowrap;" onclick="event.stopPropagation()">
+                  ${puedeAprobar ? `
+                    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="adminResolverRegistroMig(${r.id},'aprobar')">Aprobar</button>
+                    <button class="btn btn-peligro" style="font-size:11px;padding:5px 10px;margin-left:4px;" onclick="adminResolverRegistroMig(${r.id},'rechazar')">Rechazar</button>
+                  ` : '—'}
+                </td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>`;
+    }
+
+    // Eliminación
+    const contElim = document.getElementById('act-colab-elim');
+    if (!data.eliminacion || !data.eliminacion.length) {
+      contElim.innerHTML = '<p style="color:var(--gris-medio);font-size:13px;text-align:center;padding:12px;">Sin solicitudes</p>';
+    } else {
+      contElim.innerHTML = `
+        <div style="overflow-x:auto;">
+          <table class="tabla">
+            <thead><tr><th>Folio</th><th>Migrante</th><th>Solicitado por</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <tbody>${data.eliminacion.map(r => `<tr style="cursor:pointer;" onclick="abrirDetalleActividad('eliminacion',${r.id})">
+              <td style="font-family:var(--mono);font-size:11px;">${r.folio || '—'}</td>
+              <td class="nombre-celda" style="color:var(--azul-texto);text-decoration:underline dotted;">${r.nombre_migrante || '—'}</td>
+              <td style="font-size:12px;">${r.solicitado_por || '—'}</td>
+              <td>${_estadoBadge(r.estado)}</td>
+              <td style="font-size:12px;">${(r.fecha_solicitud || '').slice(0,10) || '—'}</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>`;
+    }
+
+    // ARCO
+    const contArco = document.getElementById('act-colab-arco');
+    if (!data.arco || !data.arco.length) {
+      contArco.innerHTML = '<p style="color:var(--gris-medio);font-size:13px;text-align:center;padding:12px;">Sin solicitudes</p>';
+    } else {
+      const tipoLabel = { rect: 'Rectificación', cancelacion: 'Cancelación' };
+      contArco.innerHTML = `
+        <div style="overflow-x:auto;">
+          <table class="tabla">
+            <thead><tr><th>Tipo</th><th>Folio</th><th>Migrante</th><th>Solicitado por</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <tbody>${data.arco.map(r => {
+              const tipoDetalle = r.tipo_arco === 'rect' ? 'arco_rect' : 'arco_cancel';
+              return `<tr style="cursor:pointer;" onclick="abrirDetalleActividad('${tipoDetalle}',${r.id})">
+                <td style="font-size:12px;">${tipoLabel[r.tipo_arco] || r.tipo_arco}</td>
+                <td style="font-family:var(--mono);font-size:11px;">${r.folio || '—'}</td>
+                <td class="nombre-celda" style="color:var(--azul-texto);text-decoration:underline dotted;">${r.nombre_migrante || '—'}</td>
+                <td style="font-size:12px;">${r.solicitado_por || '—'}</td>
+                <td>${_estadoBadge(r.estado)}</td>
+                <td style="font-size:12px;">${(r.creado || '').slice(0,10) || '—'}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>`;
+    }
+  } catch(e) {
+    ['act-colab-registro','act-colab-elim','act-colab-arco'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<p style="color:var(--rojo-texto);font-size:13px;text-align:center;padding:12px;">Error al cargar</p>';
+    });
+  }
+}
+
+async function adminResolverRegistroMig(sid, accion) {
+  let motivo = '';
+  if (accion === 'rechazar') {
+    motivo = prompt('Motivo del rechazo (obligatorio):');
+    if (!motivo || !motivo.trim()) return;
+  } else {
+    if (!confirm('¿Aprobar esta solicitud con tu firma de administrador?')) return;
+  }
+  try {
+    const res = await fetch(`/admin/api/registro_migrante/${sid}/admin_resolver`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accion, motivo: motivo.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { toast(data.error || 'Error al procesar', true); return; }
+    toast(accion === 'aprobar' ? `Aprobado. Folio: ${data.folio}` : 'Solicitud rechazada');
+    cargarActividadesColab();
+    adminCargarMigrantes();
+  } catch(e) {
+    toast('Error de conexión', true);
+  }
 }
 </script>
 </body>

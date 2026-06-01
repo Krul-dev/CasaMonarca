@@ -291,6 +291,7 @@
     <div class="card-head">
       <div>
         <div class="nombre">{{ nombre }}</div>
+        {% if correo %}<div style="font-size:12px;color:#666;font-family:monospace;margin-top:2px;">{{ correo }}</div>{% endif %}
         {% if serial %}<div class="serial">Serial: {{ serial }}</div>{% endif %}
         {% if rol %}
           <span class="badge badge-{{ rol }}">{{ rol_legible }}</span>

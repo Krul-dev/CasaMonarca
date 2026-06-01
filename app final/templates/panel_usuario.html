@@ -288,9 +288,10 @@ textarea.form-control { resize: vertical; min-height: 72px; }
         Base de Datos Migrantes
       </button>
       {% if rol in ('coord', 'op') %}
-      <button class="nav-item" id="nav-arco" onclick="irA('arco')">
+      <button class="nav-item" id="nav-arco" onclick="irA('arco')" style="position:relative;">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5L2 4v4c0 3.3 2.6 5.7 6 6.5 3.4-.8 6-3.2 6-6.5V4L8 1.5z"/><path d="M5.5 8l1.8 1.8 3.2-3.2"/></svg>
         Derechos ARCO
+        <span id="badge-arco-text" style="margin-left:auto;background:var(--rosa);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;display:none;"></span>
       </button>
       {% endif %}
       {% if rol in ('op', 'coord') %}
@@ -333,6 +334,13 @@ textarea.form-control { resize: vertical; min-height: 72px; }
             <p>Panel de {{ rol_legible | lower }} — Casa Monarca</p>
           </div>
         </div>
+
+        {% if rol == 'coord' %}
+        <div id="alerta-cert-vencimiento" style="display:none;background:var(--rojo-bg);border:1px solid var(--rojo-borde,#f5c6cb);border-radius:var(--radio-md);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--rojo-texto);">
+          <strong>⚠ Tu certificado digital está próximo a vencer:</strong>
+          <span id="alerta-cert-dias-texto"></span>. Contacta al administrador para renovarlo.
+        </div>
+        {% endif %}
 
         <div class="metricas" {% if rol in ('op', 'coord') %}style="grid-template-columns:repeat(3,1fr);"{% endif %}>
           <div class="metrica">
@@ -409,19 +417,8 @@ textarea.form-control { resize: vertical; min-height: 72px; }
         <div class="card">
           <p class="card-titulo">Tu información</p>
           <p class="card-subtitulo">Datos asociados a tu cuenta</p>
-          <div class="info-usuario">
-            <div class="info-item">
-              <div class="info-label">Nombre</div>
-              <div class="info-valor">{{ nombre }}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Usuario</div>
-              <div class="info-valor mono">{{ usuario }}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Rol</div>
-              <div class="info-valor">{{ rol_legible }}</div>
-            </div>
+          <div id="mi-info-contenido">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:16px 0;">Cargando...</p>
           </div>
         </div>
       </div>
@@ -479,7 +476,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 
         <div class="card" style="padding:0;overflow:hidden;">
           <div style="padding:12px 16px;border-bottom:1px solid var(--gris-linea);">
-            <input type="text" id="buscar-migrante" placeholder="Buscar por nombre o número de documento…"
+            <input type="text" id="buscar-migrante" placeholder="Buscar por folio, nombre…"
               oninput="filtrarMigrantes(this.value)"
               style="width:100%;max-width:400px;padding:8px 12px;border:1px solid var(--gris-linea);border-radius:var(--radio-md);font-size:13px;font-family:var(--fuente);outline:none;">
           </div>
@@ -559,6 +556,18 @@ textarea.form-control { resize: vertical; min-height: 72px; }
           </div>
         </div>
         {% endif %}
+
+        <!-- Histórico ARCO — mismo frontend para op y coord -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <p class="card-titulo" style="margin-bottom:0;">Histórico de solicitudes ARCO</p>
+            <button class="btn btn-ghost btn-sm" onclick="cargarHistorialArco()">Actualizar</button>
+          </div>
+          <p class="card-subtitulo">Todas las solicitudes de rectificación y cancelación registradas</p>
+          <div id="arco-historial-lista">
+            <p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>
+          </div>
+        </div>
       </div>
       {% endif %}
 
@@ -667,17 +676,6 @@ textarea.form-control { resize: vertical; min-height: 72px; }
           <label class="form-label required">País de origen</label>
           <select class="form-control" id="mig-pais">
             <option value="">— Seleccionar —</option>
-            <option>Honduras</option><option>El Salvador</option><option>Guatemala</option>
-            <option>Nicaragua</option><option>Cuba</option><option>Venezuela</option>
-            <option>Haití</option><option>Colombia</option><option>Ecuador</option>
-            <option>Perú</option><option>Bolivia</option><option>México</option>
-            <option>Estados Unidos</option><option>Brasil</option><option>Argentina</option>
-            <option>Chile</option><option>Costa Rica</option><option>Panamá</option>
-            <option>República Dominicana</option><option>Jamaica</option>
-            <option>Trinidad y Tobago</option><option>India</option><option>China</option>
-            <option>Camerún</option><option>Guinea</option><option>Senegal</option>
-            <option>Congo</option><option>Bangladesh</option><option>Nepal</option>
-            <option>Otro</option>
           </select>
         </div>
         <div class="form-group">
@@ -817,17 +815,6 @@ textarea.form-control { resize: vertical; min-height: 72px; }
           <label class="form-label">País de origen</label>
           <select class="form-control" id="rect-pais">
             <option value="">— Seleccionar —</option>
-            <option>Honduras</option><option>El Salvador</option><option>Guatemala</option>
-            <option>Nicaragua</option><option>Cuba</option><option>Venezuela</option>
-            <option>Haití</option><option>Colombia</option><option>Ecuador</option>
-            <option>Perú</option><option>Bolivia</option><option>México</option>
-            <option>Estados Unidos</option><option>Brasil</option><option>Argentina</option>
-            <option>Chile</option><option>Costa Rica</option><option>Panamá</option>
-            <option>República Dominicana</option><option>Jamaica</option>
-            <option>Trinidad y Tobago</option><option>India</option><option>China</option>
-            <option>Camerún</option><option>Guinea</option><option>Senegal</option>
-            <option>Congo</option><option>Bangladesh</option><option>Nepal</option>
-            <option>Otro</option>
           </select>
         </div>
         <div class="form-group">
@@ -1110,6 +1097,38 @@ function _validarRangoFecha(valor, nombre) {
   return null;
 }
 
+// ── CARGA DINÁMICA DE PAÍSES ───────────────────────────────────
+let _paisesCache = null;
+async function _poblarSelectPaises(...selectIds) {
+  if (!_paisesCache) {
+    try {
+      const res = await fetch('https://restcountries.com/v3.1/all?fields=name,translations');
+      const data = await res.json();
+      _paisesCache = data
+        .map(c => c.translations?.spa?.common || c.name.common)
+        .filter(Boolean).sort();
+    } catch(e) {
+      console.error('Error cargando países:', e);
+      _paisesCache = [];
+    }
+  }
+  for (const id of selectIds) {
+    const sel = document.getElementById(id);
+    if (!sel) continue;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Seleccionar —</option>';
+    _paisesCache.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+    const otro = document.createElement('option');
+    otro.value = 'Otro'; otro.textContent = 'Otro';
+    sel.appendChild(otro);
+    if (current) sel.value = current;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const hoy     = new Date().toISOString().slice(0, 10);
   const hace100 = new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().slice(0, 10);
@@ -1117,7 +1136,31 @@ document.addEventListener('DOMContentLoaded', function() {
     const el = document.getElementById(id);
     if (el) { el.max = hoy; el.min = hace100; }
   });
+  actualizarBadgePendientes();
+  _poblarSelectPaises('mig-pais', 'rect-pais');
 });
+
+async function actualizarBadgePendientes() {
+  try {
+    const res = await fetch('/api/pendientes_count');
+    if (!res.ok) return;
+    const data = await res.json();
+    const total = data.total || 0;
+    const badge = document.getElementById('badge-aprobaciones-text');
+    if (badge) {
+      badge.textContent = total;
+      badge.style.display = total > 0 ? '' : 'none';
+    }
+    const cnt = document.getElementById('cnt-pendientes-op');
+    if (cnt) cnt.textContent = total;
+    const arcoTotal = data.arco_total || 0;
+    const badgeArco = document.getElementById('badge-arco-text');
+    if (badgeArco) {
+      badgeArco.textContent = arcoTotal;
+      badgeArco.style.display = arcoTotal > 0 ? '' : 'none';
+    }
+  } catch(_) {}
+}
 
 function calcularEdad(inputFechaId, inputEdadId) {
   const val = document.getElementById(inputFechaId).value;
@@ -1224,12 +1267,13 @@ async function cargarMisEliminaciones() {
             const fecha = (r.fecha_solicitud || r.fecha_eliminacion || '').slice(0, 10);
             const resueltoPor = r.resuelto_por || r.aprobado_por || '—';
             const motivoCorto = r.motivo ? r.motivo.slice(0, 60) + (r.motivo.length > 60 ? '…' : '') : '—';
+            const arcoTag = r.es_arco ? '<span class="badge" style="background:#ede9fe;color:#6d28d9;border-color:#c4b5fd;font-size:9px;margin-left:4px;">ARCO</span>' : '';
             return `<tr>
               <td style="font-family:var(--mono);font-size:11px;">${r.folio || '—'}</td>
               <td>${r.nombre_migrante || '—'}</td>
               <td style="white-space:nowrap;">${fecha}</td>
               <td style="font-style:${r.motivo ? 'normal' : 'italic'};color:var(--gris-oscuro);">${motivoCorto}</td>
-              <td><span class="badge ${badgeClase[r.estado] || ''}">${badgeLabel[r.estado] || r.estado}</span></td>
+              <td><span class="badge ${badgeClase[r.estado] || ''}">${badgeLabel[r.estado] || r.estado}</span>${arcoTag}</td>
               <td>${resueltoPor}</td>
             </tr>`;
           }).join('')}
@@ -1261,6 +1305,7 @@ function filtrarMigrantes(q) {
   const lista = term
     ? listaMigrantes.filter(m =>
         (m.nombre || '').toLowerCase().includes(term) ||
+        (m.folio || '').toLowerCase().includes(term) ||
         (m.pais_origen || '').toLowerCase().includes(term))
     : listaMigrantes;
 
@@ -1278,7 +1323,7 @@ function filtrarMigrantes(q) {
     ` : '';
     return `
       <tr>
-        <td class="serial-celda" style="font-family:var(--mono);font-size:11px;">${m.folio}</td>
+        <td class="serial-celda" style="font-family:var(--mono);font-size:11px;color:var(--azul-texto);cursor:pointer;text-decoration:underline;" onclick="verMigrante(${m.id})">${m.folio}</td>
         <td class="nombre-celda">${m.nombre}</td>
         <td>${m.pais_origen || '—'}</td>
         <td>${grupoBadge}</td>
@@ -1436,6 +1481,42 @@ document.getElementById('overlay-solicitud').addEventListener('click', function(
   if (e.target === this) cerrarSolicitud();
 });
 
+// ── CADENA DE FIRMAS (helper reutilizable) ────────────────────
+function _renderCadenaFirmas(pasos) {
+  const filaStep = (p) => {
+    const bgMap = {1:'#e8eaf6', 2:'var(--amarillo-bg)', 3:'var(--verde-bg)'};
+    const colMap = {1:'#3949ab', 2:'var(--amarillo-texto)', 3:'var(--verde-texto)'};
+    const bg  = bgMap[p.paso] || 'var(--gris-claro)';
+    const col = colMap[p.paso] || 'var(--gris-medio)';
+    const pendienteHtml = p.pendiente
+      ? `<span style="color:var(--gris-medio);font-style:italic;font-size:11px;">Pendiente…</span>`
+      : '';
+    return `<tr>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);white-space:nowrap;">
+        <span style="display:inline-block;background:${bg};color:${col};font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">Paso ${p.paso}</span>
+      </td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">${p.accion}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-family:var(--mono);font-size:12px;">${p.responsable || pendienteHtml}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-size:12px;">${p.fecha || '—'}</td>
+    </tr>`;
+  };
+  return `
+    <p style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-medio);margin:12px 0 8px;">Cadena de firmas</p>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--gris-claro);border-radius:8px;overflow:hidden;">
+        <thead>
+          <tr style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gris-medio);">
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Paso</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Acción</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Responsable</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Fecha</th>
+          </tr>
+        </thead>
+        <tbody>${pasos.map(filaStep).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
 // ── DERECHOS ARCO ─────────────────────────────────────────────
 let arcoMigrante  = null;
 let arcoOriginal  = {};
@@ -1456,6 +1537,56 @@ function cargarArco() {
   if (ROL === 'op') {
     cargarMisSolicitudes();
     cargarMisSolicitudesCancel();
+  }
+  cargarHistorialArco();
+}
+
+function _badgeArco(esArco) {
+  if (!esArco) return '';
+  return '<span class="badge" style="background:#ede9fe;color:#6d28d9;border-color:#c4b5fd;font-size:9px;margin-left:4px;">ARCO</span>';
+}
+
+function _badgeEstadoArco(estado) {
+  const m = {
+    pendiente: 'badge-pendiente',
+    aprobada:  'badge-aprobada',
+    rechazada: 'badge-rechazada',
+  };
+  return `<span class="badge ${m[estado]||'badge-otro'}">${estado||'—'}</span>`;
+}
+
+async function cargarHistorialArco() {
+  const cont = document.getElementById('arco-historial-lista');
+  if (!cont) return;
+  cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">Cargando...</p>';
+  try {
+    const res  = await fetch('/api/arco/historial_completo');
+    const data = await res.json();
+    if (!data.length) {
+      cont.innerHTML = '<p style="font-size:13px;color:var(--gris-medio);text-align:center;padding:20px 0;">No hay solicitudes registradas</p>';
+      return;
+    }
+    const tipoLabel = { rectificacion: 'Rectificación', cancelacion: 'Cancelación (op→coord)', cancelacion_firmada: 'Cancelación firmada' };
+    cont.innerHTML = `<div class="tabla-wrap"><table class="tabla">
+      <thead><tr><th>Tipo</th><th>Folio</th><th>Migrante</th><th>Solicitado por</th><th>Fecha</th><th>Estado</th><th>Resuelto por</th><th>Firma</th></tr></thead>
+      <tbody>${data.map(s => {
+        const firma = s.firma_coord
+          ? `<span style="font-size:10px;color:var(--verde-texto);font-weight:600;">✓ Firmado</span>`
+          : '—';
+        return `<tr>
+          <td style="white-space:nowrap;">${tipoLabel[s.tipo]||s.tipo}${_badgeArco(s.es_arco)}</td>
+          <td style="font-family:var(--mono);font-size:11px;">${s.folio||'—'}</td>
+          <td class="nombre-celda">${s.migrante_nombre||'—'}</td>
+          <td style="font-size:12px;">${s.solicitado_por||'—'}</td>
+          <td style="font-size:12px;">${(s.fecha_solicitud||'').slice(0,10)}</td>
+          <td>${_badgeEstadoArco(s.estado)}</td>
+          <td style="font-size:12px;">${s.resuelto_por||'—'}</td>
+          <td>${firma}</td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>`;
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--rojo-texto);text-align:center;padding:16px;">Error al cargar historial</p>';
   }
 }
 
@@ -1734,6 +1865,10 @@ async function abrirResolver(sid, sol) {
         <td style="padding:8px 12px;font-size:13px;">${actual[k]||'—'}</td>
         <td style="padding:8px 12px;font-size:13px;color:var(--azul-texto);font-weight:500;">${v||'—'}</td>
       </tr>`).join('');
+    const cadenaHtml = _renderCadenaFirmas([
+      { paso: 1, accion: 'Solicitud enviada', responsable: sol.solicitado_por, fecha: (sol.fecha_solicitud||'').slice(0,10), firma: null },
+      { paso: 2, accion: 'Aprobación coordinador', responsable: '', fecha: '', firma: null, pendiente: true },
+    ]);
     document.getElementById('resolver-info').innerHTML = `
       <p style="font-size:13px;margin-bottom:12px;">
         <strong>${sol.migrante_nombre}</strong> · Folio: ${sol.folio}<br>
@@ -1746,7 +1881,8 @@ async function abrirResolver(sid, sol) {
           <th style="color:var(--azul-texto);">Valor propuesto</th>
         </tr></thead>
         <tbody>${filas}</tbody>
-      </table></div>`;
+      </table></div>
+      ${cadenaHtml}`;
     document.getElementById('resolver-motivo').value = '';
     document.getElementById('alerta-resolver').style.display = 'none';
     document.getElementById('overlay-arco-resolver').classList.add('abierto');
@@ -1843,6 +1979,11 @@ async function cargarSolicitudesCancel() {
 
 function abrirResolverCancel(sid, nombre, folio, motivo, solicitadoPor) {
   resolverCancelId = sid;
+  const cadenaHtml = _renderCadenaFirmas([
+    { paso: 1, accion: 'Solicitud de cancelación (op)', responsable: solicitadoPor, fecha: '', firma: null },
+    { paso: 2, accion: 'Validación y firma coordinador', responsable: '', fecha: '', firma: null, pendiente: true },
+    { paso: 3, accion: 'Aprobación administrador', responsable: '', fecha: '', firma: null, pendiente: true },
+  ]);
   document.getElementById('resolver-cancel-info').innerHTML = `
     <p style="font-size:13px;margin-bottom:12px;">
       <strong>${nombre}</strong> · Folio: ${folio}<br>
@@ -1851,9 +1992,10 @@ function abrirResolverCancel(sid, nombre, folio, motivo, solicitadoPor) {
     <p style="font-size:13px;padding:10px 14px;background:var(--gris-fondo);border-radius:var(--radio-md);margin-bottom:12px;">
       <strong>Motivo:</strong> ${motivo || 'Sin motivo'}
     </p>
-    <p style="font-size:12px;color:var(--amarillo-texto);padding:8px 12px;background:var(--amarillo-bg);border-radius:var(--radio-md);">
+    <p style="font-size:12px;color:var(--amarillo-texto);padding:8px 12px;background:var(--amarillo-bg);border-radius:var(--radio-md);margin-bottom:8px;">
       Al aprobar, la solicitud se firmará con tu clave EC y se escalará al administrador para la eliminación definitiva.
-    </p>`;
+    </p>
+    ${cadenaHtml}`;
   document.getElementById('alerta-resolver-cancel').style.display = 'none';
   document.getElementById('overlay-arco-resolver-cancel').classList.add('abierto');
 }
@@ -1918,8 +2060,39 @@ async function cargarMisSolicitudesCancel() {
   if (el) el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('abierto'); });
 });
 
+// ── PERFIL PROPIO ─────────────────────────────────────────────
+async function cargarMiPerfil() {
+  const cont = document.getElementById('mi-info-contenido');
+  if (!cont) return;
+  try {
+    const res = await fetch('/panel/api/mi_perfil');
+    if (!res.ok) { cont.innerHTML = '<p style="font-size:13px;color:var(--rojo-texto);text-align:center;padding:12px 0;">Error al cargar datos</p>'; return; }
+    const u = await res.json();
+    const rolLabels = { admin: 'Administrador', coord: 'Coordinador', op: 'Operativo', voluntario: 'Voluntario' };
+    const fila = (label, valor) => `
+      <div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid var(--gris-linea);">
+        <div style="font-size:12px;font-weight:600;color:var(--gris-medio);min-width:150px;">${label}</div>
+        <div style="font-size:13px;color:var(--negro);">${valor || '<span style="color:var(--gris-medio);font-style:italic;">Sin datos</span>'}</div>
+      </div>`;
+    cont.innerHTML = `
+      <div style="display:flex;flex-direction:column;">
+        ${fila('Correo', u.usuario)}
+        ${fila('Nombre', u.nombre)}
+        ${fila('Rol', rolLabels[u.rol] || u.rol)}
+        ${fila('Teléfono', u.telefono)}
+        ${fila('CURP', u.curp)}
+        ${fila('Fecha de nacimiento', u.fecha_nacimiento)}
+        ${fila('Género', u.genero)}
+        ${fila('Área', u.area)}
+      </div>`;
+  } catch(e) {
+    if (cont) cont.innerHTML = '<p style="font-size:13px;color:var(--rojo-texto);text-align:center;padding:12px 0;">Error al cargar datos</p>';
+  }
+}
+
 // ── INIT ───────────────────────────────────────────────────────
 async function init() {
+  cargarMiPerfil();
   try {
     const res = await fetch('/api/migrantes');
     const lista = await res.json();
@@ -1933,7 +2106,28 @@ async function init() {
   }
   if (ROL === 'coord') {
     cargarPendientesCount();
+    verificarCertificadoCoord();
   }
+}
+
+async function verificarCertificadoCoord() {
+  try {
+    const res = await fetch('/panel/api/mi_certificado');
+    if (!res.ok) return;
+    const cert = await res.json();
+    if (!cert.fecha_expiracion) return;
+    const exp = new Date(cert.fecha_expiracion.replace(' ', 'T'));
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const dias = Math.ceil((exp - hoy) / 86400000);
+    const alertEl = document.getElementById('alerta-cert-vencimiento');
+    const textEl  = document.getElementById('alerta-cert-dias-texto');
+    if (alertEl && dias <= 7) {
+      textEl.textContent = dias <= 0
+        ? ' tu certificado ya venció'
+        : ` vence en ${dias} día${dias === 1 ? '' : 's'}`;
+      alertEl.style.display = 'block';
+    }
+  } catch(e) {}
 }
 
 // ── DASHBOARD OP / COORD ─────────────────────────────────────
@@ -2066,6 +2260,44 @@ async function buscarMigranteInicio(q) {
   }, 280);
 }
 
+// ── BULK APROBACIONES (coord) ─────────────────────────────────
+function bulkToggleAll(cb) {
+  document.querySelectorAll('.bulk-check-item').forEach(c => c.checked = cb.checked);
+  bulkUpdateCount();
+}
+
+function bulkUpdateCount() {
+  const sel = document.querySelectorAll('.bulk-check-item:checked').length;
+  const el = document.getElementById('bulk-sel-count');
+  if (el) el.textContent = `${sel} seleccionados`;
+}
+
+async function bulkCoordResolver(accion) {
+  const checks = [...document.querySelectorAll('.bulk-check-item:checked')];
+  if (!checks.length) { toast('Selecciona al menos un ticket'); return; }
+  const ids = checks.map(c => parseInt(c.value));
+  let motivo = '';
+  if (accion === 'rechazar') {
+    motivo = prompt('Motivo del rechazo (aplica a todos los seleccionados):');
+    if (!motivo) return;
+  }
+  if (!confirm(`¿${accion === 'aprobar' ? 'Aprobar' : 'Rechazar'} ${ids.length} ticket(s)?`)) return;
+  try {
+    const res  = await fetch('/api/registro_migrante/bulk_coord_resolver', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, accion, motivo }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { toast(data.error || 'Error', true); return; }
+    const msg = `Procesados: ${data.procesados}${data.errores?.length ? ` · Errores: ${data.errores.length}` : ''}`;
+    toast(msg);
+    cargarAprobacionesPorRol();
+  } catch(e) {
+    toast('Error de conexión', true);
+  }
+}
+
 // ── APROBACIONES UNIFICADAS (op y coord) ────────────────────
 let ticketOpActualId = null;
 let ticketCoordActualId = null;
@@ -2115,10 +2347,17 @@ async function cargarAprobacionesPorRol() {
           <td><button class="btn btn-sm btn-primary" onclick="abrirRevisarTicketOp(${t.id}, ${JSON.stringify(t).replace(/"/g,'&quot;')})">Revisar</button></td>
         </tr>`).join('') + '</tbody></table>';
       } else {
-        pendientesDiv.innerHTML = `<table class="tabla"><thead><tr>
+        const bulkBar = `<div id="bulk-bar-coord" style="display:none;background:var(--gris-fondo);border:1px solid var(--gris-linea);border-radius:var(--radio-md);padding:8px 14px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:12px;font-weight:600;" id="bulk-sel-count">0 seleccionados</span>
+          <button class="btn btn-ghost btn-sm" style="color:var(--verde-texto);border-color:var(--verde-borde);" onclick="bulkCoordResolver('aprobar')">Aprobar seleccionados</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--rojo-texto);border-color:var(--rojo-borde);" onclick="bulkCoordResolver('rechazar')">Rechazar seleccionados</button>
+        </div>`;
+        pendientesDiv.innerHTML = bulkBar + `<table class="tabla"><thead><tr>
+          <th><input type="checkbox" id="bulk-check-all" onchange="bulkToggleAll(this)"></th>
           <th>Nombre</th><th>País</th><th>Enviado por</th><th>Op. validador</th><th>Firma op</th><th>F. Envío</th><th></th>
         </tr></thead><tbody>` +
         pendientes.map(t => `<tr>
+          <td><input type="checkbox" class="bulk-check-item" value="${t.id}" onchange="bulkUpdateCount()"></td>
           <td>${t.nombre||'—'}</td>
           <td>${t.pais_origen||'—'}</td>
           <td><span style="font-family:var(--mono);font-size:12px;">${t.enviado_por}</span></td>
@@ -2129,6 +2368,7 @@ async function cargarAprobacionesPorRol() {
           <td>${(t.creado||'').slice(0,10)}</td>
           <td><button class="btn btn-sm btn-primary" onclick="abrirConfirmarRegistroCoord(${t.id}, ${JSON.stringify(t).replace(/"/g,'&quot;')})">Revisar</button></td>
         </tr>`).join('') + '</tbody></table>';
+        document.getElementById('bulk-bar-coord').style.display = 'flex';
       }
     }
 
@@ -2206,7 +2446,6 @@ async function abrirDetalleAprobacion(sid) {
           <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">Validación OP</td>
           <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-family:var(--mono);font-size:12px;">${d.op_validador}</td>
           <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">${(d.op_validado_en||'').slice(0,16)}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-family:var(--mono);font-size:11px;color:var(--gris-medio);">${d.firma_op||'—'}</td>
         </tr>`
       : '';
 
@@ -2218,7 +2457,6 @@ async function abrirDetalleAprobacion(sid) {
           <td style="padding:8px 12px;">Aprobación Coord</td>
           <td style="padding:8px 12px;font-family:var(--mono);font-size:12px;">${d.coord_aprobador}</td>
           <td style="padding:8px 12px;">${(d.coord_aprobado_en||'').slice(0,16)}</td>
-          <td style="padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--gris-medio);">${d.firma_coord||'—'}</td>
         </tr>`
       : '';
 
@@ -2250,7 +2488,6 @@ async function abrirDetalleAprobacion(sid) {
               <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Acción</th>
               <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Responsable</th>
               <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Fecha</th>
-              <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--gris-linea);">Firma (extracto)</th>
             </tr>
           </thead>
           <tbody>
@@ -2261,7 +2498,6 @@ async function abrirDetalleAprobacion(sid) {
               <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">Creación</td>
               <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);font-family:var(--mono);font-size:12px;">${d.enviado_por} <em style="color:var(--gris-medio);">(${rolLegible[d.rol_enviado_por]||d.rol_enviado_por})</em></td>
               <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);">${(d.creado||'').slice(0,16)}</td>
-              <td style="padding:8px 12px;border-bottom:1px solid var(--gris-linea);color:var(--gris-medio);">—</td>
             </tr>
             ${firmaOpHtml}
             ${firmaCoordHtml}
@@ -2282,19 +2518,48 @@ function cerrarDetalleAprobacion() {
 function abrirRevisarTicketOp(sid, datos) {
   ticketOpActualId = sid;
   const info = document.getElementById('ticket-op-info');
+  const rolLegible = { voluntario: 'Voluntario', op: 'Operativo' };
+  const campo = (label, valor) =>
+    `<div><span style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;">${label}</span><br><span style="font-size:13px;">${valor || '<em style="color:var(--gris-medio);">—</em>'}</span></div>`;
+  const edad = (() => {
+    if (!datos.fecha_nacimiento) return '—';
+    const nac = new Date(datos.fecha_nacimiento + 'T00:00:00');
+    const hoy = new Date();
+    let e = hoy.getFullYear() - nac.getFullYear();
+    if (hoy.getMonth() < nac.getMonth() || (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate())) e--;
+    return e >= 0 ? e + ' años' : '—';
+  })();
   if (info) info.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px;margin-bottom:8px;">
-      <div><span style="color:var(--gris-medio);">Nombre</span><br><strong>${datos.nombre||'—'}</strong></div>
-      <div><span style="color:var(--gris-medio);">País de origen</span><br><strong>${datos.pais_origen||'—'}</strong></div>
-      <div><span style="color:var(--gris-medio);">Fecha de nacimiento</span><br>${datos.fecha_nacimiento||'—'}</div>
-      <div><span style="color:var(--gris-medio);">Género</span><br>${datos.genero||'—'}</div>
-      <div><span style="color:var(--gris-medio);">Grupo de población</span><br>${datos.grupo_poblacion||'—'}</div>
-      <div><span style="color:var(--gris-medio);">Fecha de atención</span><br>${datos.fecha_atencion||'—'}</div>
+    <p style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-medio);margin:0 0 10px;">Datos del formulario</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:14px;">
+      ${campo('Nombre completo',       datos.nombre)}
+      ${campo('País de origen',        datos.pais_origen)}
+      ${campo('Fecha de nacimiento',   datos.fecha_nacimiento)}
+      ${campo('Edad',                  edad)}
+      ${campo('Fecha de atención',     datos.fecha_atencion)}
+      ${campo('Género',                datos.genero)}
+      ${campo('Estado civil',          datos.estado_civil)}
+      ${campo('Departamento / Estado', datos.departamento_estado)}
+      ${campo('Grupo de población',    datos.grupo_poblacion)}
+      ${campo('Teléfono de contacto',  datos.telefono_contacto)}
     </div>
-    <div style="background:var(--gris-claro);border-radius:6px;padding:8px 12px;font-size:12.5px;margin-bottom:4px;">
-      <strong>Enviado por:</strong> <span style="font-family:var(--mono);">${datos.enviado_por}</span>
-      &nbsp;·&nbsp; <span style="color:var(--gris-medio);">${(datos.creado||'').slice(0,16)}</span>
-    </div>`;
+    ${_renderCadenaFirmas([
+      {
+        paso: 1,
+        accion: 'Registro enviado por ' + (rolLegible[datos.rol_enviado_por] || 'Voluntario'),
+        responsable: datos.enviado_por,
+        fecha: (datos.creado||'').slice(0,16),
+        firma: null,
+      },
+      {
+        paso: 2,
+        accion: 'Validación operativo',
+        responsable: '',
+        fecha: '',
+        firma: null,
+        pendiente: true,
+      },
+    ])}`;
   const alerta = document.getElementById('alerta-ticket-op');
   if (alerta) { alerta.style.display = 'none'; alerta.textContent = ''; }
   const rechazoDiv = document.getElementById('ticket-op-rechazo');
@@ -2358,21 +2623,56 @@ async function resolverTicketOp(accion) {
 function abrirConfirmarRegistroCoord(sid, datos) {
   ticketCoordActualId = sid;
   const info = document.getElementById('registro-coord-info');
+  const rolLegible = { voluntario: 'Voluntario', op: 'Operativo' };
+  const campo = (label, valor) =>
+    `<div><span style="font-size:11px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.05em;">${label}</span><br><span style="font-size:13px;">${valor || '<em style="color:var(--gris-medio);">—</em>'}</span></div>`;
+  const edad = (() => {
+    if (!datos.fecha_nacimiento) return '—';
+    const nac = new Date(datos.fecha_nacimiento + 'T00:00:00');
+    const hoy = new Date();
+    let e = hoy.getFullYear() - nac.getFullYear();
+    if (hoy.getMonth() < nac.getMonth() || (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate())) e--;
+    return e >= 0 ? e + ' años' : '—';
+  })();
   if (info) info.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px;margin-bottom:8px;">
-      <div><span style="color:var(--gris-medio);">Nombre</span><br><strong>${datos.nombre||'—'}</strong></div>
-      <div><span style="color:var(--gris-medio);">País de origen</span><br><strong>${datos.pais_origen||'—'}</strong></div>
-      <div><span style="color:var(--gris-medio);">Fecha de nacimiento</span><br>${datos.fecha_nacimiento||'—'}</div>
-      <div><span style="color:var(--gris-medio);">Género</span><br>${datos.genero||'—'}</div>
-      <div><span style="color:var(--gris-medio);">Grupo de población</span><br>${datos.grupo_poblacion||'—'}</div>
-      <div><span style="color:var(--gris-medio);">Fecha de atención</span><br>${datos.fecha_atencion||'—'}</div>
+    <p style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris-medio);margin:0 0 10px;">Datos del formulario</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:14px;">
+      ${campo('Nombre completo',       datos.nombre)}
+      ${campo('País de origen',        datos.pais_origen)}
+      ${campo('Fecha de nacimiento',   datos.fecha_nacimiento)}
+      ${campo('Edad',                  edad)}
+      ${campo('Fecha de atención',     datos.fecha_atencion)}
+      ${campo('Género',                datos.genero)}
+      ${campo('Estado civil',          datos.estado_civil)}
+      ${campo('Departamento / Estado', datos.departamento_estado)}
+      ${campo('Grupo de población',    datos.grupo_poblacion)}
+      ${campo('Teléfono de contacto',  datos.telefono_contacto)}
     </div>
-    <div style="background:var(--gris-claro);border-radius:6px;padding:8px 12px;font-size:12.5px;margin-bottom:4px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-      <div><strong>Enviado por:</strong> <span style="font-family:var(--mono);">${datos.enviado_por}</span> <em style="color:var(--gris-medio);">(${datos.rol_enviado_por||''})</em></div>
-      <div><strong>Op. validador:</strong> ${datos.op_validador
-        ? `<span style="font-family:var(--mono);">${datos.op_validador}</span> <span style="color:var(--verde-texto);font-weight:600;">&#10003; firmado</span>`
-        : '<em style="color:var(--gris-medio);">N/A</em>'}</div>
-    </div>`;
+    ${_renderCadenaFirmas([
+      {
+        paso: 1,
+        accion: 'Registro enviado por ' + (rolLegible[datos.rol_enviado_por] || 'Voluntario'),
+        responsable: datos.enviado_por,
+        fecha: (datos.creado||'').slice(0,16),
+        firma: null,
+      },
+      {
+        paso: 2,
+        accion: 'Validación operativo',
+        responsable: datos.op_validador || '',
+        fecha: (datos.op_validado_en||'').slice(0,16),
+        firma: datos.tiene_firma_op ? '✓ Firma ECDSA presente' : null,
+        pendiente: !datos.op_validador,
+      },
+      {
+        paso: 3,
+        accion: 'Aprobación coordinador',
+        responsable: '',
+        fecha: '',
+        firma: null,
+        pendiente: true,
+      },
+    ])}`;
   const alerta = document.getElementById('alerta-registro-coord');
   if (alerta) { alerta.style.display = 'none'; alerta.textContent = ''; }
   const rechazoDiv = document.getElementById('registro-coord-rechazo');
@@ -2438,6 +2738,91 @@ async function resolverRegistroCoord(accion) {
 }
 
 init();
+</script>
+
+<!-- ── MODAL: VER EXPEDIENTE MIGRANTE ── -->
+<div class="overlay" id="overlay-ver-mig">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <span class="modal-titulo">Expediente del migrante</span>
+      <button class="modal-cerrar" onclick="cerrarVerMigrante()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="ver-mig-contenido" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:20px;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+        <button class="btn btn-ghost" onclick="cerrarVerMigrante()">Cerrar</button>
+        <button class="btn btn-primary" onclick="descargarMigrante()">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:5px;"><path d="M7 1v8M4 6l3 3 3-3M1 10v1a2 2 0 002 2h8a2 2 0 002-2v-1"/></svg>
+          Descargar este registro
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let _verMigId = null;
+
+async function verMigrante(id) {
+  _verMigId = id;
+  const overlay = document.getElementById('overlay-ver-mig');
+  const cont = document.getElementById('ver-mig-contenido');
+  cont.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--gris-medio);padding:16px;">Cargando…</p>';
+  overlay.classList.add('abierto');
+  try {
+    const res = await fetch(`/api/migrante/${id}`);
+    const m = await res.json();
+    if (!res.ok || m.error) {
+      cont.innerHTML = `<p style="grid-column:1/-1;color:var(--rojo-texto);text-align:center;">${m.error || 'Error al cargar datos'}</p>`;
+      return;
+    }
+    const hoy = new Date();
+    let edad = '—';
+    if (m.fecha_nacimiento) {
+      const nac = new Date(m.fecha_nacimiento + 'T00:00:00');
+      let e = hoy.getFullYear() - nac.getFullYear();
+      if (hoy.getMonth() < nac.getMonth() || (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate())) e--;
+      edad = e;
+    }
+    const campos = [
+      ['Folio',                m.folio             || '—'],
+      ['Nombre completo',      m.nombre            || '—'],
+      ['Fecha de nacimiento',  m.fecha_nacimiento  || '—'],
+      ['Edad',                 edad],
+      ['País de origen',       m.pais_origen       || '—'],
+      ['Grupo de población',   m.grupo_poblacion   || '—'],
+      ['Fecha de atención',    m.fecha_atencion    || '—'],
+      ['Género',               m.genero            || '—'],
+      ['Departamento/Estado',  m.departamento_estado || '—'],
+      ['Estado civil',         m.estado_civil      || '—'],
+      ['Teléfono',             m.telefono_contacto || '—'],
+      ['Registrado por',       m.registrado_por    || '—'],
+      ['Firmado (operativo)',  m.firmante_op       || '—'],
+      ['Firmado (coord/admin)',m.firmante_coord     || '—'],
+      ['Fecha de creación',    m.creado            || '—'],
+    ];
+    cont.innerHTML = campos.map(([lbl, val]) => `
+      <div>
+        <div style="font-size:10px;font-weight:600;color:var(--gris-medio);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">${lbl}</div>
+        <div style="font-size:13px;color:var(--negro);">${val}</div>
+      </div>`).join('');
+  } catch(e) {
+    cont.innerHTML = '<p style="grid-column:1/-1;color:var(--rojo-texto);text-align:center;">Error de conexión</p>';
+  }
+}
+
+function cerrarVerMigrante() {
+  document.getElementById('overlay-ver-mig').classList.remove('abierto');
+  _verMigId = null;
+}
+
+function descargarMigrante() {
+  if (_verMigId) window.location.href = `/admin/descargar/migrante/${_verMigId}`;
+}
+
+document.getElementById('overlay-ver-mig').addEventListener('click', function(e) {
+  if (e.target === this) cerrarVerMigrante();
+});
 </script>
 </body>
 </html>
