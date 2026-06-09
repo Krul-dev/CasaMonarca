@@ -30,6 +30,15 @@ from flask import (
 )
 from flask_session import Session
 
+import zoneinfo
+_MTY = zoneinfo.ZoneInfo(key='America/Monterrey')
+
+def now_mty():
+    """Devuelve datetime actual en zona horaria de Monterrey (UTC-6, naive para MySQL)."""
+    from datetime import timezone, timedelta
+    _MTY = timezone(timedelta(hours=-6))
+    return datetime.now(timezone.utc).astimezone(_MTY).replace(tzinfo=None)
+    
 # ── CONFIGURACIÓN ─────────────────────────────────────────────
 app = Flask(__name__)
 app.secret_key = 'demo-secret-key-cambiar-en-produccion'
@@ -184,6 +193,11 @@ def generar_claves_ec():
     return priv_pem, pub_pem
 
 def _obtener_o_crear_claves_ec(db, usuario):
+    # Para admin/coord: usar la llave del .p12 cargada en sesión al hacer login.
+    from flask import session as _session
+    if _session.get('cert_private_key'):
+        return _session['cert_private_key'], _session['cert_public_key']
+    # Para otros roles: usar o crear clave EC en DB.
     row = _exec(db, 'SELECT ec_private_key, ec_public_key FROM usuarios WHERE usuario=%s',
                 (usuario,)).fetchone()
     if row and row['ec_private_key']:
@@ -195,7 +209,11 @@ def _obtener_o_crear_claves_ec(db, usuario):
     return priv_pem, pub_pem
 
 def firmar_mensaje(priv_pem: str, mensaje: str) -> str:
-    privada = serialization.load_pem_private_key(priv_pem.encode(), password=None)
+    # Para admin/coord: usar la llave privada del .p12 cargado en sesión.
+    # Para otros roles: usar la clave EC de la DB (priv_pem recibido).
+    from flask import session as _session
+    llave_pem = _session.get('cert_private_key') or priv_pem
+    privada = serialization.load_pem_private_key(llave_pem.encode(), password=None)
     sig = privada.sign(mensaje.encode('utf-8'), ec.ECDSA(hashes.SHA256()))
     return base64.b64encode(sig).decode()
 
@@ -216,7 +234,8 @@ def obtener_db():
             user=DB_USER, password=DB_PASSWORD,
             database=DB_NAME,
             cursorclass=pymysql.cursors.DictCursor,
-            autocommit=False
+            autocommit=False,
+            init_command="SET time_zone = '-06:00'"
         )
     return g._db
 
@@ -239,7 +258,8 @@ def inicializar_db():
         user=DB_USER, password=DB_PASSWORD,
         database=DB_NAME,
         cursorclass=pymysql.cursors.DictCursor,
-        autocommit=False
+        autocommit=False,
+        init_command="SET time_zone = '-06:00'"
     )
     with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
         schema = f.read()
@@ -758,10 +778,8 @@ def generar_p12_real(email, nombre, rol, password):
     # Cargar la CA para firmar
     ca_cert, ca_key = cargar_ca()
 
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-    )
+    # EC P-256 — compatible con firmar_mensaje (ECDSA)
+    private_key = ec.generate_private_key(ec.SECP256R1())
 
     # Subject con email
     subject = x509.Name([
@@ -842,7 +860,7 @@ def log_evento(resultado, usuario=None, rol=None, serial=None, detalle=None):
 def refrescar_expirados():
     """Marca como 'expirado' todo cert cuya fecha ya pasó."""
     db = obtener_db()
-    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
     _exec(db,
         "UPDATE certificados SET estado='expirado'"
         " WHERE estado='vigente' AND fecha_expiracion IS NOT NULL"
@@ -1056,6 +1074,18 @@ def login_usb():
 
     # Login exitoso: completar sesión
     session['usuario'] = email
+
+    # ── Guardar llave del .p12 en sesión para firmar operaciones ──
+    session['cert_private_key'] = private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()
+    ).decode('utf-8')
+    session['cert_public_key'] = private_key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode('utf-8')
+
     log_evento('login_exitoso', usuario=email, rol=session['rol'],
                serial=cert['serial'] if cert else None)
 
@@ -1223,7 +1253,7 @@ def api_certificados():
     ).fetchall()
 
     certificados_ui = []
-    ahora = datetime.now()
+    ahora = now_mty().replace(tzinfo=None)
     for c in rows:
         dias = None
         fe = c['fecha_expiracion']
@@ -1766,8 +1796,8 @@ def admin_editar_usuario():
 
         _revocar_serial_anterior(serial_anterior)
 
-        fecha     = datetime.now().strftime('%Y-%m-%d')
-        fecha_exp = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+        fecha     = now_mty().strftime('%Y-%m-%d')
+        fecha_exp = (now_mty() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
         _exec(db,
             'INSERT INTO certificados'
             ' (serial, usuario, nombre, rol, fecha_emision, fecha_expiracion, estado, emitido_por)'
@@ -1982,8 +2012,8 @@ def nuevo_voluntario():
 ⚠️ La contraseña es personal y solo se muestra aquí.
 """
 
-    fecha = datetime.now().strftime('%Y-%m-%d')
-    fecha_exp = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    fecha = now_mty().strftime('%Y-%m-%d')
+    fecha_exp = (now_mty() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
 
     _exec(db,
         'INSERT INTO certificados'
@@ -2204,8 +2234,8 @@ def renovar_certificado(cert_id):
         (cert['serial'], email, rol, g.usuario, 'Renovación de certificado')
     )
 
-    fecha     = datetime.now().strftime('%Y-%m-%d')
-    fecha_exp = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    fecha     = now_mty().strftime('%Y-%m-%d')
+    fecha_exp = (now_mty() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
     _exec(db,
         'INSERT INTO certificados'
         ' (serial, usuario, nombre, rol, fecha_emision, fecha_expiracion, estado, emitido_por)'
@@ -2447,7 +2477,7 @@ def api_migrantes_crear():
 
     # ── Operativo: se auto-firma y crea ticket pendiente de coord ──
     if g.rol == 'op':
-        ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
         try:
             cur_tmp = _exec(db,
                 'INSERT INTO solicitudes_registro_migrante'
@@ -2483,7 +2513,7 @@ def api_migrantes_crear():
         return jsonify(ok=True, pendiente=True, ticket_id=ticket_id)
 
     # ── Coord / Admin: inserción directa con firma propia ──
-    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
     try:
         cur = _exec(db,
             'INSERT INTO migrantes'
@@ -2501,7 +2531,7 @@ def api_migrantes_crear():
         return jsonify(error=f'Error al guardar en base de datos: {e}'), 500
 
     nuevo_id = cur.lastrowid
-    folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
+    folio = f'MIG-{now_mty().strftime("%Y%m")}-{nuevo_id:04d}'
     _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
 
     priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
@@ -2830,7 +2860,7 @@ def api_registro_op_validar(sid):
         return jsonify(error='Solicitud no encontrada o ya procesada'), 404
 
     accion = request.form.get('accion', '').strip()
-    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
 
     if accion == 'rechazar':
         motivo = request.form.get('motivo', '').strip()
@@ -2891,7 +2921,7 @@ def api_registro_coord_resolver(sid):
         return jsonify(error='Solicitud no encontrada o ya procesada'), 404
 
     accion = request.form.get('accion', '').strip()
-    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
 
     if accion == 'rechazar':
         motivo = request.form.get('motivo', '').strip()
@@ -2943,7 +2973,7 @@ def api_registro_coord_resolver(sid):
             return jsonify(error=f'Error al insertar migrante: {e}'), 500
 
         nuevo_id = cur2.lastrowid
-        folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
+        folio = f'MIG-{now_mty().strftime("%Y%m")}-{nuevo_id:04d}'
         _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
 
         firmas = {}
@@ -3001,7 +3031,7 @@ def api_registro_admin_resolver(sid):
 
     data = request.get_json(silent=True) or {}
     accion = (data.get('accion') or request.form.get('accion', '')).strip()
-    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
 
     if accion == 'rechazar':
         motivo = (data.get('motivo') or request.form.get('motivo', '')).strip()
@@ -3052,7 +3082,7 @@ def api_registro_admin_resolver(sid):
             return jsonify(error=f'Error al insertar migrante: {e}'), 500
 
         nuevo_id = cur2.lastrowid
-        folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
+        folio = f'MIG-{now_mty().strftime("%Y%m")}-{nuevo_id:04d}'
         _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
 
         firmas = {}
@@ -3130,7 +3160,7 @@ def api_bulk_coord_resolver():
             if not ticket:
                 errores.append(f'#{sid}: no encontrado o ya procesado')
                 continue
-            ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
             if accion == 'rechazar':
                 _exec(db,
                     "UPDATE solicitudes_registro_migrante"
@@ -3166,7 +3196,7 @@ def api_bulk_coord_resolver():
                      ticket['telefono_contacto'], ticket['enviado_por'])
                 )
                 nuevo_id = cur2.lastrowid
-                folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
+                folio = f'MIG-{now_mty().strftime("%Y%m")}-{nuevo_id:04d}'
                 _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
                 firmas = {}
                 if ticket['firma_op']:
@@ -3234,7 +3264,7 @@ def api_bulk_admin_resolver():
             if not ticket:
                 errores.append(f'#{sid}: no encontrado o ya procesado')
                 continue
-            ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
             if accion == 'rechazar':
                 _exec(db,
                     "UPDATE solicitudes_registro_migrante"
@@ -3270,7 +3300,7 @@ def api_bulk_admin_resolver():
                      ticket['telefono_contacto'], ticket['enviado_por'])
                 )
                 nuevo_id = cur2.lastrowid
-                folio = f'MIG-{datetime.now().strftime("%Y%m")}-{nuevo_id:04d}'
+                folio = f'MIG-{now_mty().strftime("%Y%m")}-{nuevo_id:04d}'
                 _exec(db, 'UPDATE migrantes SET folio=%s WHERE id=%s', (folio, nuevo_id))
                 firmas = {}
                 if ticket['firma_op']:
@@ -3531,18 +3561,15 @@ def api_solicitar_eliminacion(mid):
         return jsonify(error='Ya existe una solicitud pendiente para este registro'), 400
 
     motivo = request.form.get('motivo', '').strip() or None
-    ahora  = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora  = now_mty().strftime('%Y-%m-%d %H:%M:%S')
 
-    # Firma EC del coordinador
-    coord_keys = _exec(db,
-        'SELECT ec_private_key, ec_public_key FROM usuarios WHERE usuario=%s',
-        (g.usuario,)
-    ).fetchone()
+    # Firma EC del coordinador — usar llave del .p12 de sesión
     firma_coord = pub_pem = mensaje_firmado = None
-    if coord_keys and coord_keys['ec_private_key']:
+    priv_pem_firma, pub_pem_firma = _obtener_o_crear_claves_ec(db, g.usuario)
+    if priv_pem_firma:
         mensaje_firmado = f"SOLICITUD_ELIMINACION|{mid}|{mig['folio']}|{g.usuario}|{ahora}|{motivo or ''}"
-        firma_coord     = firmar_mensaje(coord_keys['ec_private_key'], mensaje_firmado)
-        pub_pem         = coord_keys['ec_public_key']
+        firma_coord     = firmar_mensaje(priv_pem_firma, mensaje_firmado)
+        pub_pem         = pub_pem_firma
 
     _exec(db,
         'INSERT INTO solicitudes_eliminacion'
@@ -3639,7 +3666,7 @@ def api_resolver_solicitud(sid):
         return jsonify(error='La solicitud ya fue resuelta'), 400
 
     nuevo_estado = 'aprobada' if aprobar else 'rechazada'
-    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
     _exec(db,
         'UPDATE solicitudes_eliminacion'
         ' SET estado=%s, resuelto_por=%s, fecha_resolucion=%s WHERE id=%s',
@@ -3824,7 +3851,7 @@ def arco_resolver_rect(sid):
         return jsonify(error='Solicitud no encontrada'), 404
     if sol['estado'] != 'pendiente':
         return jsonify(error='La solicitud ya fue resuelta'), 400
-    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
     if aprobar:
         try:
             cambios = _json.loads(sol['cambios_json'] or '{}')
@@ -3951,7 +3978,7 @@ def arco_resolver_cancelacion_op(sid):
     if sol['estado'] != 'pendiente':
         return jsonify(error='La solicitud ya fue resuelta'), 400
 
-    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
     nuevo_estado = 'aprobada' if aprobar else 'rechazada'
     _exec(db,
         'UPDATE solicitudes_cancelacion_op'
@@ -4032,7 +4059,7 @@ def arco_cancelacion(mid):
         return jsonify(error='Ya existe una solicitud de cancelación pendiente'), 400
     motivo = request.form.get('motivo', '').strip() or None
     priv_pem, pub_pem = _obtener_o_crear_claves_ec(db, g.usuario)
-    ahora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ahora = now_mty().strftime('%Y-%m-%d %H:%M:%S')
     mensaje = (f"CANCELACION|{mid}|{mig['folio']}"
                f"||{g.usuario}|{ahora}|{motivo or ''}")
     firma = firmar_mensaje(priv_pem, mensaje)
@@ -4189,34 +4216,7 @@ inicializar_cert_servidor()
 inicializar_db()
 
 if __name__ == '__main__':
-    import ssl
 
-    print('\n── Casa Monarca Demo ─────────────────────────────')
-    if MTLS_ENABLED:
-        print('   URL:      https://localhost:5001')
-        print('   Modo:     TLS ACTIVO — solo cert de servidor (sin cliente)')
-    else:
-        print('   URL:      http://localhost:5001')
-        print('   Modo:     DEBUG — TLS desactivado')
-    print('   Usuario:  admin    Contraseña: admin123')
-    print('   Usuario:  coord    Contraseña: coord123')
-    print('─────────────────────────────────────────────────\n')
-
-    if MTLS_ENABLED:
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ctx.load_cert_chain(SERVER_CERT_PATH, SERVER_KEY_PATH)
-        ctx.load_verify_locations(CA_CERT_PATH)
-
-        # 🔴 Cambio: ya no exigimos certificado de cliente
-        ctx.verify_mode = ssl.CERT_NONE
-
-        app.run(
-            debug=False,
-            port=5001,
-            ssl_context=ctx,
-            host='127.0.0.1',
-            threaded=True
-        )
-    else:
-        app.run(debug=True, port=5001)
-        
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=False, port=port, host='0.0.0.0')
+    print("Listo")
