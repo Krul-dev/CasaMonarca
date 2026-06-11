@@ -25,12 +25,11 @@ Equipo 3:
 - A01198777 - Andrés Alarcón Navarro
 
 Contacto del proyecto:
-- Responsable / representante: Santiago Dueñas Sánchez
-- Correo de contacto: [agregar correo institucional del representante]
+- Responsable / representante: Paola Michelle Martínez Galeazzi
+- Correo de contacto: A00839082@tec.mx
 - Institución: Tecnológico de Monterrey
 
-Nota: antes de entregar, sustituir el campo de correo por el correo real que el
-equipo decida usar como contacto oficial.
+
 
 3. DESCRIPCIÓN BREVE DEL PROYECTO
 ---------------------------------
@@ -154,7 +153,7 @@ Opción B: si se clona desde GitHub
 
 1. Clonar el repositorio:
 
-   git clone [URL_DEL_REPOSITORIO]
+   git clone
    cd reto-casa-monarca-main
    cd "app final"
 
@@ -399,11 +398,15 @@ Prueba 9: Reportes
 Uso académico y demostrativo para el reto Casa Monarca / Tecnológico de
 Monterrey.
 
-Licencia formal: pendiente por definir.
+Licencia formal: 
 
-Este proyecto no debe usarse en producción sin una revisión de seguridad,
-protección de datos, manejo de secretos, despliegue seguro con HTTPS y pruebas
-formales.
+Este proyecto se distribuye bajo la licencia MIT.
+
+La licencia MIT permite usar, copiar, modificar, fusionar, publicar, distribuir y adaptar el software, siempre que se conserve el aviso de copyright y el texto de la licencia original.
+
+El software se entrega “tal cual”, sin garantía de funcionamiento, seguridad, disponibilidad o adecuación para un propósito específico. Los desarrolladores no se hacen responsables por daños, pérdidas de información o mal uso del sistema.
+
+Esta licencia aplica únicamente al código fuente del proyecto. No aplica a datos personales, documentos sensibles, certificados digitales, llaves privadas, bases de datos reales ni información confidencial de Casa Monarca.
 
 13. TODO - PENDIENTES POR HACER
 -------------------------------
