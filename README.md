@@ -11,8 +11,4 @@ El fin en mente del presente repositorio, es poder almacenar los avances sobre e
 - A00840131 - María Paula Recinos Rios
 - A01198777 - Andrés Alarcón Navarro
 
-## Bitácora
 
-### 24 de Marzo de 2026
-1. Se añade un demo en streamlit de la interfaz con los distintos usuarios.
-2. Login en HTML
