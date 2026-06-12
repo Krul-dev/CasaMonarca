@@ -3,11 +3,11 @@
 En este repositorio se estarán almacenando los entregables de las evidencias a realizar. Incluyendo archivos de documentación y ejecución.
 
 ##  Firma de conformidad de entrega del equipo
-Jorge Eduardo Gonzalez Cantu
-André Robles Bueckmann
-Cedrick Patricio Treviño OrtizC
-Daniel Eugenio González Limas
-Sebastián Zaragoza Díaz
+- Jorge Eduardo Gonzalez Cantu
+- André Robles Bueckmann
+- Cedrick Patricio Treviño OrtizC
+- Daniel Eugenio González Limas
+- Sebastián Zaragoza Díaz
 
 ## Diagrama de Gantt
 Para visualizar el diagrama de Gantt, favor de descargar el archivo *gantt.json*. Favor de cargar el archivo anteriormente descargado en el [visualizador de Gantt](https://carleslc.me/Gantt/) para más detalle. 
