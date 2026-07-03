@@ -13,15 +13,6 @@ CasaMonarca/
     └── deploy-staging-web.sh
 ```
 
-The original imported branches are:
-
-- `import/team-601-3-backend`: source for `API/`
-- `import/team-601-3-frontend`: source for `Web/`
-
-The combined branch is:
-
-- `feature/team-601-3-integrate`
-
 ## Prerequisites
 
 Install the backend and frontend toolchains locally:
