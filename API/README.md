@@ -140,6 +140,33 @@ If caches need to be cleared during development:
 php artisan optimize:clear
 ```
 
+## Running Tests
+
+The test suite uses MySQL, matching the project runtime. Tests must point to a dedicated database whose name starts with `test_` or ends with `_test`; this prevents `RefreshDatabase` from wiping the local development database.
+
+Create a local test database:
+
+```sql
+CREATE DATABASE IF NOT EXISTS casamonarca_api_test
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+GRANT ALL PRIVILEGES ON casamonarca_api_test.* TO 'casamonarca'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Run tests with explicit test database settings:
+
+```bash
+DB_CONNECTION=mysql \
+DB_HOST=127.0.0.1 \
+DB_PORT=3306 \
+DB_DATABASE=casamonarca_api_test \
+DB_USERNAME=casamonarca \
+DB_PASSWORD=Use-A-Strong-Local-Password-123! \
+php artisan test
+```
+
 ## Staging Pull
 
 Use the monorepo deployment helper from the repository root:
