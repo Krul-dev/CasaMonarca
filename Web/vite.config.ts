@@ -17,5 +17,11 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    test: {
+      environment: 'jsdom',
+      exclude: ['**/node_modules/**', '**/dist/**', '**/tests/visual/**'],
+      globals: true,
+      setupFiles: ['./src/test/setup.ts'],
+    },
   }
 })

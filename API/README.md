@@ -4,8 +4,6 @@ Backend project for the CasaMonarca access control system.
 
 This project lives inside the CasaMonarca monorepo under `API/`.
 
-Current repository state: Laravel 13 skeleton generated and ready for local configuration.
-
 ## Scope
 
 - backend framework: `Laravel 13`
@@ -118,7 +116,9 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Before running migrations, configure MySQL as described below. The copied `.env` defaults to the documented local database name and user, but you must create that database and set your actual local password first.
+Before running migrations, configure MySQL as described below. The copied `.env`
+defaults to the documented local database name and user, but you must create
+that database and set your actual local password first.
 
 ## Local MySQL Setup
 
