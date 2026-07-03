@@ -4,10 +4,12 @@ use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\RequireRole;
 use App\Http\Middleware\RequireSecurityEnrollment;
 use App\Http\Middleware\TrustConfiguredProxies;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Session\TokenMismatchException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -59,6 +61,20 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'message' => 'CSRF token mismatch.',
             ], 419);
+        });
+
+        $exceptions->render(function (DecryptException $exception, Request $request) {
+            if (! $request->expectsJson()) {
+                return null;
+            }
+
+            return response()
+                ->json([
+                    'message' => 'Your browser session expired. Please refresh and sign in again.',
+                ], 419)
+                ->withoutCookie(Cookie::forget('laravel-session'))
+                ->withoutCookie(Cookie::forget('XSRF-TOKEN'))
+                ->withoutCookie(Cookie::forget('cm_device_id'));
         });
 
         $exceptions->render(function (HttpExceptionInterface $exception, Request $request) {
