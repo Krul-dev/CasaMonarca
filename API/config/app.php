@@ -43,6 +43,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Temporary Dev Admin Invites
+    |--------------------------------------------------------------------------
+    |
+    | Temporary escape hatch for development/staging QA only. Keep this disabled
+    | in production; admin creation should use a permanent, audited flow instead.
+    |
+    */
+
+    'temporary_dev_admin_invites' => env('TEMPORARY_DEV_ADMIN_INVITES'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |
