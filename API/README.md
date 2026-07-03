@@ -47,6 +47,8 @@ cp .env.example .env
 php artisan key:generate
 ```
 
+Before running migrations, configure MySQL as described below. The copied `.env` defaults to the documented local database name and user, but you must create that database and set your actual local password first.
+
 ## Local MySQL Setup
 
 Start your local MySQL service before logging in.
@@ -100,6 +102,7 @@ DB_PASSWORD=Use-A-Strong-Local-Password-123!
 Run the database migrations:
 
 ```bash
+php artisan optimize:clear
 php artisan migrate
 ```
 

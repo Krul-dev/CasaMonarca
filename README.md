@@ -41,6 +41,12 @@ cd API
 composer install
 cp .env.example .env
 php artisan key:generate
+```
+
+Create the MySQL database/user described in `API/README.md`, update `API/.env` with those credentials, then run:
+
+```bash
+php artisan optimize:clear
 php artisan migrate
 php artisan serve --host=127.0.0.1 --port=8000
 ```
