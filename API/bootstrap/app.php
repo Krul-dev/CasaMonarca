@@ -70,7 +70,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return response()
                 ->json([
-                    'message' => 'Your browser session expired. Please refresh and sign in again.',
+                    'message' => 'Encrypted session or account security data could not be read. Refresh and sign in again; if this persists, reset the affected security enrollment or restore the original application key.',
                 ], 419)
                 ->withoutCookie(Cookie::forget('laravel-session'))
                 ->withoutCookie(Cookie::forget('XSRF-TOKEN'))
