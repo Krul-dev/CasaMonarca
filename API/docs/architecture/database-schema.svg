@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900" role="img" aria-labelledby="title desc">
+  <title id="title">Casa Monarca API database schema graph</title>
+  <desc id="desc">Entity relationship graph exported from Laravel migrations.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#334155"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .node { fill: #ffffff; stroke: #334155; stroke-width: 1.5; rx: 8; }
+      .system { fill: #f1f5f9; stroke: #64748b; stroke-width: 1.25; rx: 8; }
+      .title { fill: #0f172a; font: 700 14px Arial, sans-serif; }
+      .field { fill: #475569; font: 12px Arial, sans-serif; }
+      .edge { stroke: #334155; stroke-width: 1.4; fill: none; marker-end: url(#arrow); }
+      .edge-soft { stroke: #64748b; stroke-width: 1.2; fill: none; stroke-dasharray: 6 5; marker-end: url(#arrow); }
+      .label { fill: #334155; font: 12px Arial, sans-serif; }
+      .heading { fill: #0f172a; font: 700 22px Arial, sans-serif; }
+      .note { fill: #475569; font: 12px Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="900"/>
+  <text class="heading" x="40" y="42">Casa Monarca API Database Schema</text>
+  <text class="note" x="40" y="64">Exported from Laravel migrations. Solid arrows are declared foreign keys; dashed arrows are indexed or polymorphic references.</text>
+
+  <rect class="node" x="500" y="285" width="220" height="230"/>
+  <text class="title" x="520" y="312">users</text>
+  <text class="field" x="520" y="338">PK id</text>
+  <text class="field" x="520" y="358">UK email</text>
+  <text class="field" x="520" y="378">role, status</text>
+  <text class="field" x="520" y="398">two_factor_enabled</text>
+  <text class="field" x="520" y="418">suspended_by_user_id FK</text>
+  <text class="field" x="520" y="438">last_sign_in_at</text>
+  <text class="field" x="520" y="458">timestamps</text>
+
+  <rect class="node" x="70" y="105" width="245" height="115"/>
+  <text class="title" x="90" y="132">webauthn_credentials</text>
+  <text class="field" x="90" y="158">PK id</text>
+  <text class="field" x="90" y="178">FK user_id</text>
+  <text class="field" x="90" y="198">UK credential_id</text>
+
+  <rect class="node" x="70" y="245" width="245" height="115"/>
+  <text class="title" x="90" y="272">user_devices</text>
+  <text class="field" x="90" y="298">PK id</text>
+  <text class="field" x="90" y="318">FK user_id</text>
+  <text class="field" x="90" y="338">UK user_id + device hash</text>
+
+  <rect class="node" x="70" y="385" width="245" height="135"/>
+  <text class="title" x="90" y="412">account_invites</text>
+  <text class="field" x="90" y="438">PK id</text>
+  <text class="field" x="90" y="458">FK invited_by_user_id</text>
+  <text class="field" x="90" y="478">FK verified_out_of_band_by_user_id</text>
+  <text class="field" x="90" y="498">UK token_hash</text>
+
+  <rect class="node" x="70" y="545" width="245" height="115"/>
+  <text class="title" x="90" y="572">audit_events</text>
+  <text class="field" x="90" y="598">PK id uuid</text>
+  <text class="field" x="90" y="618">FK actor_user_id</text>
+  <text class="field" x="90" y="638">resource and audit refs</text>
+
+  <rect class="node" x="70" y="685" width="245" height="135"/>
+  <text class="title" x="90" y="712">security_challenge_intents</text>
+  <text class="field" x="90" y="738">PK id uuid</text>
+  <text class="field" x="90" y="758">FK actor_user_id</text>
+  <text class="field" x="90" y="778">target_type + target_id</text>
+  <text class="field" x="90" y="798">challenge_hash</text>
+
+  <rect class="node" x="860" y="140" width="260" height="135"/>
+  <text class="title" x="880" y="167">documents</text>
+  <text class="field" x="880" y="193">PK id</text>
+  <text class="field" x="880" y="213">FK owner_user_id</text>
+  <text class="field" x="880" y="233">FK uploaded_by_user_id</text>
+  <text class="field" x="880" y="253">FK current_revision_id</text>
+
+  <rect class="node" x="860" y="330" width="260" height="155"/>
+  <text class="title" x="880" y="357">document_revisions</text>
+  <text class="field" x="880" y="383">PK id</text>
+  <text class="field" x="880" y="403">FK document_id</text>
+  <text class="field" x="880" y="423">FK parent_revision_id</text>
+  <text class="field" x="880" y="443">FK created_by_user_id</text>
+  <text class="field" x="880" y="463">UK document_id + revision_number</text>
+
+  <rect class="node" x="860" y="540" width="260" height="125"/>
+  <text class="title" x="880" y="567">document_signatures</text>
+  <text class="field" x="880" y="593">PK id</text>
+  <text class="field" x="880" y="613">FK document_revision_id</text>
+  <text class="field" x="880" y="633">FK signed_by_user_id</text>
+
+  <rect class="node" x="860" y="710" width="260" height="115"/>
+  <text class="title" x="880" y="737">document_tombstones</text>
+  <text class="field" x="880" y="763">PK id</text>
+  <text class="field" x="880" y="783">FK deleted_by_user_id</text>
+  <text class="field" x="880" y="803">original_document_id ref</text>
+
+  <rect class="system" x="500" y="610" width="220" height="52"/>
+  <text class="title" x="520" y="642">password_reset_tokens</text>
+  <rect class="system" x="500" y="685" width="220" height="52"/>
+  <text class="title" x="520" y="717">sessions</text>
+  <rect class="system" x="500" y="760" width="100" height="52"/>
+  <text class="title" x="520" y="792">cache</text>
+  <rect class="system" x="620" y="760" width="120" height="52"/>
+  <text class="title" x="640" y="792">cache_locks</text>
+  <rect class="system" x="770" y="850" width="100" height="38"/>
+  <text class="title" x="790" y="875">jobs</text>
+  <rect class="system" x="890" y="850" width="130" height="38"/>
+  <text class="title" x="910" y="875">job_batches</text>
+  <rect class="system" x="1040" y="850" width="130" height="38"/>
+  <text class="title" x="1060" y="875">failed_jobs</text>
+
+  <path class="edge" d="M315 162 C405 162, 415 330, 500 330"/>
+  <text class="label" x="348" y="190">user_id</text>
+  <path class="edge" d="M315 302 C405 302, 415 365, 500 365"/>
+  <text class="label" x="350" y="325">user_id</text>
+  <path class="edge" d="M315 452 C405 452, 415 430, 500 430"/>
+  <text class="label" x="332" y="444">invited / verified by</text>
+  <path class="edge" d="M315 602 C405 602, 415 475, 500 475"/>
+  <text class="label" x="350" y="566">actor_user_id</text>
+  <path class="edge" d="M315 752 C430 752, 425 500, 500 500"/>
+  <text class="label" x="332" y="704">actor_user_id</text>
+
+  <path class="edge" d="M720 340 C790 300, 805 225, 860 207"/>
+  <text class="label" x="750" y="286">owner / uploaded by</text>
+  <path class="edge" d="M720 420 C785 420, 800 407, 860 407"/>
+  <text class="label" x="744" y="406">created_by_user_id</text>
+  <path class="edge" d="M720 465 C790 510, 800 610, 860 610"/>
+  <text class="label" x="748" y="548">signed_by_user_id</text>
+  <path class="edge" d="M720 492 C795 575, 800 770, 860 770"/>
+  <text class="label" x="747" y="715">deleted_by_user_id</text>
+
+  <path class="edge" d="M990 275 L990 330"/>
+  <text class="label" x="1000" y="309">document_id</text>
+  <path class="edge" d="M1120 207 C1195 230, 1195 374, 1120 394"/>
+  <text class="label" x="1138" y="302">current_revision_id</text>
+  <path class="edge" d="M1120 427 C1198 454, 1198 340, 1120 365"/>
+  <text class="label" x="1136" y="396">parent_revision_id</text>
+  <path class="edge" d="M990 485 L990 540"/>
+  <text class="label" x="1000" y="519">revision_id</text>
+
+  <path class="edge" d="M610 285 C610 250, 610 240, 610 230 C610 185, 520 185, 520 285"/>
+  <text class="label" x="625" y="250">suspended_by_user_id</text>
+
+  <path class="edge-soft" d="M500 711 C410 711, 390 500, 500 480"/>
+  <text class="label" x="410" y="690">sessions.user_id</text>
+  <path class="edge-soft" d="M315 620 C525 648, 730 330, 860 205"/>
+  <text class="label" x="552" y="572">audit document refs</text>
+  <path class="edge-soft" d="M315 778 C560 820, 720 620, 860 603"/>
+  <text class="label" x="520" y="806">polymorphic target refs</text>
+</svg>
