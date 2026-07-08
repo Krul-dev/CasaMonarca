@@ -62,4 +62,8 @@ enum AuditEventType: string
     case VcsEntryCreated = 'vcs.entry.created';
     case VcsEntryAmended = 'vcs.entry.amended';
     case VcsEntryDeleted = 'vcs.entry.deleted';
+    case MigrantRegistryCreated = 'migrant.registry.created';
+    case MigrantRegistrySubmitted = 'migrant.registry.submitted';
+    case MigrantArcoRequested = 'migrant.arco.requested';
+    case MigrantArcoResolved = 'migrant.arco.resolved';
 }
