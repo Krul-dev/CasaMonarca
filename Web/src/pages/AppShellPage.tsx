@@ -87,7 +87,7 @@ function renderModule(
         />
       )
     case APP_MIGRANT_REGISTRY_PATH:
-      return <MigrantsRegistryPage onSessionExpired={onSessionExpired} />
+      return <MigrantsRegistryPage onSessionExpired={onSessionExpired} user={user} />
     case APP_MIGRANT_APPROVALS_PATH:
       return (
         <MigrantsApprovalsPage
@@ -169,7 +169,7 @@ export function AppShellPage({
               <details
                 className="workspace-nav__group"
                 key={workspace}
-                open={routes.some((navRoute) => navRoute.path === currentPath) || workspace === 'internal'}
+                open
               >
                 <summary>{WORKSPACE_LABELS[workspace]}</summary>
                 <div className="workspace-nav__group-items">

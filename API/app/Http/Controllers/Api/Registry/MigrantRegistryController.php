@@ -65,12 +65,23 @@ class MigrantRegistryController extends Controller
         UpdateMigrantRegistryRequest $request,
         MigrantRegistryEntry $migrantRegistryEntry,
     ): JsonResponse {
-        $migrantRegistryEntry->update([
-            'payload_json' => $request->validated()['payload_json'],
-        ]);
+        $entry = $this->service->requestUpdate(
+            $request->user(),
+            $migrantRegistryEntry,
+            $request->validated()['payload_json'],
+        );
 
         return response()->json([
-            'data' => $migrantRegistryEntry->fresh(),
+            'data' => $entry,
+        ]);
+    }
+
+    public function destroy(Request $request, MigrantRegistryEntry $migrantRegistryEntry): JsonResponse
+    {
+        $this->service->delete($request->user(), $migrantRegistryEntry);
+
+        return response()->json([
+            'message' => 'Migrant registration deleted.',
         ]);
     }
 

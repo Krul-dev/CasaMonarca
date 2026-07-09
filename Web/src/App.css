@@ -2475,6 +2475,13 @@
   gap: 1rem;
 }
 
+.registry-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
 .registry-form__footer span {
   color: #536171;
   font-size: 0.9rem;
@@ -2488,10 +2495,21 @@
 }
 
 .registry-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   border: 1px solid rgba(24, 36, 55, 0.08);
   border-radius: 0.85rem;
   background: rgba(248, 242, 233, 0.62);
   padding: 0.9rem;
+}
+
+.registry-list__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
 }
 
 .registry-list__item h3,
@@ -3776,6 +3794,9 @@
   }
 
   .registry-form__footer,
+  .registry-form__actions,
+  .registry-list__actions,
+  .registry-list__item,
   .registry-approval-card__actions {
     align-items: stretch;
     flex-direction: column;

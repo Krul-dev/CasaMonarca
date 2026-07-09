@@ -204,7 +204,7 @@ export function SessionPage({
   const assignedSignatureQueue = pendingSignatureQueue.filter((item) => item.kind === 'user')
   const roleSignatureQueue = pendingSignatureQueue.filter((item) => item.kind === 'role')
   const actionableMigrantApprovals = pendingMigrantApprovals.filter(
-    (entry) => user.role === 'admin' || entry.created_by !== user.id,
+    (entry) => user.role === 'admin' || (entry.pending_requested_by ?? entry.created_by) !== user.id,
   )
 
   const loadPendingSignatureQueue = useCallback(async () => {

@@ -82,7 +82,8 @@ class MigrantRegistryApprovalOptionsController extends Controller
         $challenge = $this->base64UrlService->encode(random_bytes(32));
         $decision = (string) $validated['decision'];
         $reason = trim((string) ($validated['reason'] ?? '')) ?: null;
-        $payloadHash = hash('sha256', json_encode($migrantRegistryEntry->payload_json, JSON_THROW_ON_ERROR));
+        $approvalPayload = $this->approvalPayload($migrantRegistryEntry);
+        $payloadHash = hash('sha256', json_encode($approvalPayload, JSON_THROW_ON_ERROR));
         $intent = [
             'version' => 1,
             'purpose' => 'migrant-registry-approval',
@@ -151,6 +152,8 @@ class MigrantRegistryApprovalOptionsController extends Controller
             'approvalTarget' => [
                 'entryId' => $migrantRegistryEntry->getKey(),
                 'decision' => $decision,
+                'pendingAction' => $migrantRegistryEntry->pending_action,
+                'payloadHash' => $payloadHash,
                 'expiresAt' => $expiresAt->toIso8601String(),
             ],
             'challengeIntent' => [
@@ -174,6 +177,23 @@ class MigrantRegistryApprovalOptionsController extends Controller
             return true;
         }
 
-        return (int) $entry->created_by !== (int) $actor->getKey();
+        $requesterId = $entry->pending_requested_by ?? $entry->created_by;
+
+        return (int) $requesterId !== (int) $actor->getKey();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function approvalPayload(MigrantRegistryEntry $entry): array
+    {
+        if (
+            $entry->pending_action === MigrantRegistryService::ACTION_UPDATE &&
+            is_array($entry->pending_payload_json)
+        ) {
+            return $entry->pending_payload_json;
+        }
+
+        return is_array($entry->payload_json) ? $entry->payload_json : [];
     }
 }

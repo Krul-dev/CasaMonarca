@@ -7,6 +7,7 @@ export type RegistryStatus =
   | 'pending_approval'
   | 'approved'
   | 'rejected'
+  | 'deleted_by_admin'
   | 'submitted_by_volunteer'
   | 'reviewed_by_operator'
   | 'approved_by_operator'
@@ -51,6 +52,10 @@ export type RegistryEntry = {
   current_assignee_role?: RegistryRole | null
   current_status: RegistryStatus
   id: number
+  pending_action?: 'create' | 'update' | null
+  pending_payload_json?: (Partial<MigrantRegistrationPayload> & Record<string, unknown>) | null
+  pending_requested_by?: number | null
+  pending_requested_by_role?: RegistryRole | null
   payload_json: Partial<MigrantRegistrationPayload> & Record<string, unknown>
   updated_at: string
 }

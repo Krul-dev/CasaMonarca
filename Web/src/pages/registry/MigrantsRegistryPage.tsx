@@ -2,19 +2,27 @@ import { useEffect, useState } from 'react'
 import {
   ApiRequestError,
   createRegistryEntry,
+  deleteRegistryEntry,
   getRegistryEntries,
   type MigrantRegistrationPayload,
   type RegistryEntry,
+  updateRegistryEntry,
 } from '../../lib/registry'
+import type { AuthenticatedUser } from '../../lib/auth'
 import { MigrantRegistryForm } from '../../components/registry/MigrantRegistryForm'
 import { MigrantRegistryList } from '../../components/registry/MigrantRegistryList'
 
 type MigrantsRegistryPageProps = {
   onSessionExpired?: () => void
+  user: AuthenticatedUser
 }
 
-export function MigrantsRegistryPage({ onSessionExpired }: MigrantsRegistryPageProps) {
+export function MigrantsRegistryPage({
+  onSessionExpired,
+  user,
+}: MigrantsRegistryPageProps) {
   const [entries, setEntries] = useState<RegistryEntry[]>([])
+  const [editingEntry, setEditingEntry] = useState<RegistryEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,15 +54,57 @@ export function MigrantsRegistryPage({ onSessionExpired }: MigrantsRegistryPageP
     await loadEntries()
   }
 
+  const handleUpdate = async (payload_json: MigrantRegistrationPayload) => {
+    if (!editingEntry) {
+      return
+    }
+
+    await updateRegistryEntry(editingEntry.id, { payload_json })
+    setEditingEntry(null)
+    await loadEntries()
+  }
+
+  const handleDelete = async (entry: RegistryEntry) => {
+    if (!window.confirm(`Delete ${entry.payload_json.fullName ?? `registration #${entry.id}`}?`)) {
+      return
+    }
+
+    setError(null)
+
+    try {
+      await deleteRegistryEntry(entry.id)
+      if (editingEntry?.id === entry.id) {
+        setEditingEntry(null)
+      }
+      await loadEntries()
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      setError(err instanceof Error ? err.message : 'Unable to delete the registration.')
+    }
+  }
+
   return (
     <section className="workspace-stack">
       <section className="workspace-panel">
-        <h2 className="workspace-panel__title">Registration intake</h2>
+        <h2 className="workspace-panel__title">
+          {editingEntry ? 'Modify registration' : 'Registration intake'}
+        </h2>
         <p className="workspace-panel__copy">
-          New submissions enter coordinator/admin review before becoming approved records.
+          {editingEntry
+            ? 'Submitted changes enter coordinator/admin review before replacing the approved record.'
+            : 'New submissions enter coordinator/admin review before becoming approved records.'}
         </p>
 
-        <MigrantRegistryForm onSubmit={handleCreate} />
+        <MigrantRegistryForm
+          initialPayload={editingEntry?.payload_json ?? null}
+          onCancel={editingEntry ? () => setEditingEntry(null) : undefined}
+          onSubmit={editingEntry ? handleUpdate : handleCreate}
+          submitLabel={editingEntry ? 'Submit modification' : 'Submit registration'}
+        />
       </section>
 
       <section className="workspace-panel">
@@ -62,7 +112,12 @@ export function MigrantsRegistryPage({ onSessionExpired }: MigrantsRegistryPageP
         {loading? <p>Cargando registros...</p>: null}
         {error? <p className="route-error">{error}</p>: null}
 
-        <MigrantRegistryList entries={entries} />
+        <MigrantRegistryList
+          canDelete={user.role === 'admin'}
+          entries={entries}
+          onDelete={user.role === 'admin' ? handleDelete : undefined}
+          onEdit={setEditingEntry}
+        />
       </section>
     </section>
   )

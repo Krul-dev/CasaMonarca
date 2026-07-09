@@ -57,8 +57,12 @@ export type RegistryApprovalOptionsResponse = {
 }
 
 export type RegistryApprovalVerifyResponse = {
-  challengeIntent: SecurityChallengeSummary
+  challengeIntent: SecurityChallengeSummary | null
   data: RegistryEntry
+  message: string
+}
+
+export type DeleteRegistryEntryResponse = {
   message: string
 }
 
@@ -100,6 +104,17 @@ export async function updateRegistryEntry(
       'X-CSRF-TOKEN': csrfToken,
     },
     body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteRegistryEntry(id: number) {
+  const { csrfToken } = await getCsrfToken()
+
+  return apiFetch<DeleteRegistryEntryResponse>(`/registry/migrants/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'X-CSRF-TOKEN': csrfToken,
+    },
   })
 }
 

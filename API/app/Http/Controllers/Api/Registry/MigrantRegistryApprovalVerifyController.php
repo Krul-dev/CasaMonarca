@@ -101,7 +101,7 @@ class MigrantRegistryApprovalVerifyController extends Controller
             (string) $pendingIntent['entryStatus'] !== MigrantRegistryService::STATUS_PENDING_APPROVAL ||
             ! hash_equals(
                 (string) $pendingIntent['payloadHash'],
-                hash('sha256', json_encode($migrantRegistryEntry->payload_json, JSON_THROW_ON_ERROR)),
+                hash('sha256', json_encode($this->approvalPayload($migrantRegistryEntry), JSON_THROW_ON_ERROR)),
             )
         ) {
             $this->markChallengeFailed($challengeIntent, 'entry_state_changed');
@@ -256,7 +256,24 @@ class MigrantRegistryApprovalVerifyController extends Controller
             return true;
         }
 
-        return (int) $entry->created_by !== (int) $actor->getKey();
+        $requesterId = $entry->pending_requested_by ?? $entry->created_by;
+
+        return (int) $requesterId !== (int) $actor->getKey();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function approvalPayload(MigrantRegistryEntry $entry): array
+    {
+        if (
+            $entry->pending_action === MigrantRegistryService::ACTION_UPDATE &&
+            is_array($entry->pending_payload_json)
+        ) {
+            return $entry->pending_payload_json;
+        }
+
+        return is_array($entry->payload_json) ? $entry->payload_json : [];
     }
 
     private function markChallengeFailed(?SecurityChallengeIntent $challengeIntent, string $reason): void

@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { MigrantRegistrationPayload } from '../../lib/registry'
 
 type Props = {
+  initialPayload?: Partial<MigrantRegistrationPayload> | null
+  onCancel?: () => void
   onSubmit: (payload: MigrantRegistrationPayload) => Promise<void>
+  submitLabel?: string
 }
 
 type FormState = Omit<MigrantRegistrationPayload, 'fullName'>
@@ -32,11 +35,39 @@ const buildFullName = (state: FormState) =>
     .filter(Boolean)
     .join(' ')
 
-export function MigrantRegistryForm({ onSubmit }: Props) {
-  const [form, setForm] = useState<FormState>(initialState)
+const formStateFromPayload = (
+  payload?: Partial<MigrantRegistrationPayload> | null,
+): FormState => ({
+  ...initialState,
+  attentionDate: payload?.attentionDate ?? initialState.attentionDate,
+  birthDate: payload?.birthDate ?? '',
+  civilStatus: payload?.civilStatus ?? '',
+  countryOfOrigin: payload?.countryOfOrigin ?? '',
+  departmentState: payload?.departmentState ?? '',
+  firstLastName: payload?.firstLastName ?? '',
+  firstName: payload?.firstName ?? '',
+  gender: payload?.gender ?? '',
+  notes: payload?.notes ?? '',
+  phone: payload?.phone ?? '',
+  populationGroup: payload?.populationGroup ?? '',
+  secondLastName: payload?.secondLastName ?? '',
+})
+
+export function MigrantRegistryForm({
+  initialPayload,
+  onCancel,
+  onSubmit,
+  submitLabel = 'Submit registration',
+}: Props) {
+  const [form, setForm] = useState<FormState>(() => formStateFromPayload(initialPayload))
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const fullName = useMemo(() => buildFullName(form), [form])
+
+  useEffect(() => {
+    setForm(formStateFromPayload(initialPayload))
+    setMessage(null)
+  }, [initialPayload])
 
   const updateField = (field: keyof FormState, value: string) => {
     setForm((current) => ({
@@ -56,7 +87,7 @@ export function MigrantRegistryForm({ onSubmit }: Props) {
         fullName,
       })
 
-      setForm(initialState)
+      setForm(formStateFromPayload(initialPayload))
       setMessage('Registration submitted for coordinator/admin approval.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to submit the registration.')
@@ -201,9 +232,21 @@ export function MigrantRegistryForm({ onSubmit }: Props) {
 
       <div className="registry-form__footer">
         <span>Record: {fullName || 'Incomplete name'}</span>
-        <button className="session-action" disabled={submitting} type="submit">
-          {submitting ? 'Submitting...' : 'Submit registration'}
-        </button>
+        <div className="registry-form__actions">
+          {onCancel ? (
+            <button
+              className="session-action session-action--quiet"
+              disabled={submitting}
+              onClick={onCancel}
+              type="button"
+            >
+              Cancel
+            </button>
+          ) : null}
+          <button className="session-action" disabled={submitting} type="submit">
+            {submitting ? 'Submitting...' : submitLabel}
+          </button>
+        </div>
       </div>
 
       {message ? <p className="workspace-panel__copy">{message}</p> : null}

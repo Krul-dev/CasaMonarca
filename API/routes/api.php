@@ -149,6 +149,9 @@ Route::middleware('web')->group(function (): void {
             Route::post('/{migrantRegistryEntry}/approval/verify', MigrantRegistryApprovalVerifyController::class);
         });
 
+        Route::delete('/{migrantRegistryEntry}', [MigrantRegistryController::class, 'destroy'])
+            ->middleware('requireRole:admin');
+
         Route::get('/{migrantRegistryEntry}', [MigrantRegistryController::class, 'show']);
         Route::patch('/{migrantRegistryEntry}', [MigrantRegistryController::class, 'update']);
         Route::post('/{migrantRegistryEntry}/submit', [MigrantRegistryController::class, 'submit']);

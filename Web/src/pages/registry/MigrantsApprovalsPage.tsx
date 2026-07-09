@@ -26,11 +26,14 @@ const formatEntryName = (entry: RegistryEntry) =>
   String(entry.payload_json.fullName || entry.payload_json.full_name || `Registration #${entry.id}`)
 
 const formatEntrySubtitle = (entry: RegistryEntry) => {
-  const country = entry.payload_json.countryOfOrigin
-    ? String(entry.payload_json.countryOfOrigin)
+  const payload = entry.pending_action === 'update' && entry.pending_payload_json
+    ? entry.pending_payload_json
+    : entry.payload_json
+  const country = payload.countryOfOrigin
+    ? String(payload.countryOfOrigin)
     : 'Country unavailable'
-  const group = entry.payload_json.populationGroup
-    ? String(entry.payload_json.populationGroup)
+  const group = payload.populationGroup
+    ? String(payload.populationGroup)
     : 'Population group unavailable'
 
   return `${country} · ${group}`
@@ -161,7 +164,8 @@ export function MigrantsApprovalsPage({
         <div className="signature-queue-list">
           {entries.map((entry) => {
             const isOwnCoordinatorSubmission =
-              user.role === 'coordinator' && entry.created_by === user.id
+              user.role === 'coordinator' &&
+              (entry.pending_requested_by ?? entry.created_by) === user.id
             const isBusy = approvalState?.entryId === entry.id
 
             return (
@@ -169,6 +173,11 @@ export function MigrantsApprovalsPage({
                 <div>
                   <strong>{formatEntryName(entry)}</strong>
                   <span>{formatEntrySubtitle(entry)}</span>
+                  <span>
+                    {entry.pending_action === 'update'
+                      ? 'Modification approval'
+                      : 'New registration approval'}
+                  </span>
                   <small>
                     Submitted {new Date(entry.created_at).toLocaleString()} by{' '}
                     {entry.creator?.email ?? entry.created_by_role}

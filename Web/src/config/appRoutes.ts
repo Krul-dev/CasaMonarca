@@ -27,6 +27,7 @@ export type AppRouteConfig = {
   path: string
   requiredModule: keyof SessionModuleCapabilities
   allowedRoles?: UserRole[]
+  hidden?: boolean
   workspace: AppWorkspace
 }
 
@@ -104,6 +105,7 @@ export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
     copy: 'ARCO request capture and resolution foundations for migrant records.',
     requiredModule: 'dashboard',
     allowedRoles: ['admin', 'coordinator', 'non_coordinator', 'volunteer'],
+    hidden: true,
     workspace: 'migrant',
   },
 ]
@@ -152,7 +154,7 @@ export const canAccessRoute = (user: AuthenticatedUser, pathname: string) => {
 
 export const getVisibleRoutesForUser = (user: AuthenticatedUser) =>
   APP_ROUTE_CONFIG
-    .filter((route) => canAccessRoute(user, route.path))
+    .filter((route) => !route.hidden && canAccessRoute(user, route.path))
     .map((route) => getRouteConfigForUser(route.path, user) ?? route)
 
 export const getRoleLabel = (role: UserRole) => {
