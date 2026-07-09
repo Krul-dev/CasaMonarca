@@ -13,7 +13,12 @@ export const APP_DOCUMENTS_PATH = '/app/documents'
 export const APP_INVITES_PATH = '/app/invites'
 export const APP_LOGGING_PATH = '/app/logging'
 export const APP_ADMIN_PATH = '/app/admin'
+export const APP_MIGRANT_REGISTRY_PATH = '/app/migrants/registry'
+export const APP_MIGRANT_APPROVALS_PATH = '/app/migrants/approvals'
+export const APP_MIGRANT_ARCO_PATH = '/app/migrants/arco'
 export const FORBIDDEN_PATH = '/403'
+
+export type AppWorkspace = 'internal' | 'migrant'
 
 export type AppRouteConfig = {
   copy: string
@@ -21,6 +26,8 @@ export type AppRouteConfig = {
   label: string
   path: string
   requiredModule: keyof SessionModuleCapabilities
+  allowedRoles?: UserRole[]
+  workspace: AppWorkspace
 }
 
 export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
@@ -30,6 +37,7 @@ export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
     kicker: 'Access overview',
     copy: 'Current session, credential state, and role-aware module access.',
     requiredModule: 'dashboard',
+    workspace: 'internal',
   },
   {
     path: APP_UPLOAD_PATH,
@@ -37,6 +45,7 @@ export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
     kicker: 'Submission intake',
     copy: 'Private document intake with confidential handling from the first upload.',
     requiredModule: 'upload',
+    workspace: 'internal',
   },
   {
     path: APP_DOCUMENTS_PATH,
@@ -44,6 +53,7 @@ export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
     kicker: 'View, sign, version',
     copy: 'Role-aware document review, revision signing, verification, and version history.',
     requiredModule: 'documents',
+    workspace: 'internal',
   },
   {
     path: APP_INVITES_PATH,
@@ -51,6 +61,7 @@ export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
     kicker: 'Account onboarding',
     copy: 'Role-bound invite lifecycle for coordinator, non coordinator, and volunteer account provisioning.',
     requiredModule: 'invites',
+    workspace: 'internal',
   },
   {
     path: APP_LOGGING_PATH,
@@ -58,6 +69,7 @@ export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
     kicker: 'Admin audit',
     copy: 'Restricted operational logs and future privileged audit views.',
     requiredModule: 'logging',
+    workspace: 'internal',
   },
   {
     path: APP_ADMIN_PATH,
@@ -65,6 +77,34 @@ export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
     kicker: 'Admin only',
     copy: 'System administration and restricted configuration workflows.',
     requiredModule: 'admin',
+    workspace: 'internal',
+  },
+  {
+    path: APP_MIGRANT_REGISTRY_PATH,
+    label: 'Migrant Registration',
+    kicker: 'Migrant intake',
+    copy: 'Structured migrant registration intake submitted into coordinator/admin approval.',
+    requiredModule: 'dashboard',
+    allowedRoles: ['admin', 'coordinator', 'non_coordinator', 'volunteer'],
+    workspace: 'migrant',
+  },
+  {
+    path: APP_MIGRANT_APPROVALS_PATH,
+    label: 'Pending Approvals',
+    kicker: 'Migrant validation',
+    copy: 'Passkey-backed coordinator/admin review for submitted migrant registrations.',
+    requiredModule: 'dashboard',
+    allowedRoles: ['admin', 'coordinator'],
+    workspace: 'migrant',
+  },
+  {
+    path: APP_MIGRANT_ARCO_PATH,
+    label: 'ARCO Requests',
+    kicker: 'Privacy rights',
+    copy: 'ARCO request capture and resolution foundations for migrant records.',
+    requiredModule: 'dashboard',
+    allowedRoles: ['admin', 'coordinator', 'non_coordinator', 'volunteer'],
+    workspace: 'migrant',
   },
 ]
 
@@ -97,18 +137,22 @@ export const getRequiredModuleForPath = (pathname: string) =>
 export const isProtectedPath = (pathname: string) => APP_PATHS.includes(pathname)
 
 export const canAccessRoute = (user: AuthenticatedUser, pathname: string) => {
-  const requiredModule = getRequiredModuleForPath(pathname)
+  const route = getRouteConfig(pathname)
+  const requiredModule = route?.requiredModule ?? null
 
-  if (!requiredModule) {
+  if (!route || !requiredModule) {
     return false
   }
 
-  return user.capabilities.modules[requiredModule]
+  return (
+    user.capabilities.modules[requiredModule] &&
+    (!route.allowedRoles || route.allowedRoles.includes(user.role))
+  )
 }
 
 export const getVisibleRoutesForUser = (user: AuthenticatedUser) =>
   APP_ROUTE_CONFIG
-    .filter((route) => user.capabilities.modules[route.requiredModule])
+    .filter((route) => canAccessRoute(user, route.path))
     .map((route) => getRouteConfigForUser(route.path, user) ?? route)
 
 export const getRoleLabel = (role: UserRole) => {

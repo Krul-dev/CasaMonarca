@@ -4,6 +4,8 @@ import './App.css'
 import {
   APP_HOME_PATH,
   APP_DOCUMENTS_PATH,
+  APP_MIGRANT_ARCO_PATH,
+  APP_MIGRANT_REGISTRY_PATH,
   canAccessRoute,
   FORBIDDEN_PATH,
   isProtectedPath,
@@ -17,8 +19,6 @@ import { getCurrentUser, type AuthenticatedUser, type UserRole } from './lib/aut
 import { AppShellPage } from './pages/AppShellPage'
 import { ForbiddenPage } from './pages/ForbiddenPage'
 import { LoginPage } from './pages/LoginPage'
-import { MigrantsArcoPage } from './pages/registry/MigrantsArcoPage'
-import { MigrantsRegistryPage } from './pages/registry/MigrantsRegistryPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 
@@ -715,7 +715,7 @@ function App() {
     return (
       <>
         <EnvironmentBadge />
-        <MigrantsRegistryPage />
+        <RedirectPage onNavigate={navigate} to={APP_MIGRANT_REGISTRY_PATH} />
       </>
     )
   }
@@ -724,7 +724,7 @@ function App() {
     return (
       <>
         <EnvironmentBadge />
-        <MigrantsArcoPage />
+        <RedirectPage onNavigate={navigate} to={APP_MIGRANT_ARCO_PATH} />
       </>
     )
   }

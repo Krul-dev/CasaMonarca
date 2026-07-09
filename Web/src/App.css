@@ -215,6 +215,43 @@
   margin-top: 1rem;
 }
 
+.workspace-nav__group {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.workspace-nav__group summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.35rem 0.15rem;
+  color: #8f5308;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.workspace-nav__group summary::-webkit-details-marker {
+  display: none;
+}
+
+.workspace-nav__group summary::after {
+  content: '+';
+  float: right;
+  color: #536171;
+  font-size: 0.9rem;
+  letter-spacing: 0;
+}
+
+.workspace-nav__group[open] summary::after {
+  content: '-';
+}
+
+.workspace-nav__group-items {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .workspace-nav__item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -2393,6 +2430,93 @@
   font-weight: 750;
 }
 
+.registry-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.registry-form label {
+  display: grid;
+  gap: 0.42rem;
+  color: #0f2640;
+  font-size: 0.83rem;
+  font-weight: 760;
+}
+
+.registry-form input,
+.registry-form select,
+.registry-form textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid rgba(24, 36, 55, 0.14);
+  border-radius: 0.85rem;
+  background: #fffdf8;
+  color: #182437;
+  font: inherit;
+  padding: 0.7rem 0.85rem;
+}
+
+.registry-form textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.registry-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.registry-form__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.registry-form__footer span {
+  color: #536171;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.registry-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.registry-list__item {
+  border: 1px solid rgba(24, 36, 55, 0.08);
+  border-radius: 0.85rem;
+  background: rgba(248, 242, 233, 0.62);
+  padding: 0.9rem;
+}
+
+.registry-list__item h3,
+.registry-list__item p {
+  margin: 0;
+}
+
+.registry-list__item h3 {
+  color: #0f2640;
+  font-size: 1rem;
+}
+
+.registry-list__item p {
+  margin-top: 0.35rem;
+  color: #536171;
+  font-size: 0.88rem;
+}
+
+.registry-approval-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
 .totp-enrollment__qr {
   display: inline-grid;
   gap: 0.5rem;
@@ -3643,6 +3767,16 @@
 
   .dashboard-signature-queue__header,
   .signature-queue-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .registry-form__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .registry-form__footer,
+  .registry-approval-card__actions {
     align-items: stretch;
     flex-direction: column;
   }

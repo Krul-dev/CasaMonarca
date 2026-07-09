@@ -7,10 +7,14 @@ import {
   APP_HOME_PATH,
   APP_INVITES_PATH,
   APP_LOGGING_PATH,
+  APP_MIGRANT_APPROVALS_PATH,
+  APP_MIGRANT_ARCO_PATH,
+  APP_MIGRANT_REGISTRY_PATH,
   APP_UPLOAD_PATH,
   getRouteConfigForUser,
   getVisibleRoutesForUser,
   getRouteConfig,
+  type AppWorkspace,
 } from '../config/appRoutes'
 import { AdminPage } from './AdminPage'
 import { DocumentsPage } from './DocumentsPage'
@@ -18,6 +22,9 @@ import { DocumentUploadPage } from './DocumentUploadPage'
 import { LoggingPage } from './LoggingPage'
 import { SessionPage } from './SessionPage'
 import { InviteManagementPage } from './InviteManagementPage'
+import { MigrantsApprovalsPage } from './registry/MigrantsApprovalsPage'
+import { MigrantsArcoPage } from './registry/MigrantsArcoPage'
+import { MigrantsRegistryPage } from './registry/MigrantsRegistryPage'
 
 const ROUTE_ICONS: Record<string, AppIconName> = {
   [APP_HOME_PATH]: 'dashboard',
@@ -26,6 +33,14 @@ const ROUTE_ICONS: Record<string, AppIconName> = {
   [APP_INVITES_PATH]: 'invite',
   [APP_LOGGING_PATH]: 'logging',
   [APP_ADMIN_PATH]: 'admin',
+  [APP_MIGRANT_REGISTRY_PATH]: 'invite',
+  [APP_MIGRANT_APPROVALS_PATH]: 'verify',
+  [APP_MIGRANT_ARCO_PATH]: 'document',
+}
+
+const WORKSPACE_LABELS: Record<AppWorkspace, string> = {
+  internal: 'Internal workspace',
+  migrant: 'Migrant workspace',
 }
 
 type AppShellPageProps = {
@@ -71,6 +86,17 @@ function renderModule(
           user={user}
         />
       )
+    case APP_MIGRANT_REGISTRY_PATH:
+      return <MigrantsRegistryPage onSessionExpired={onSessionExpired} />
+    case APP_MIGRANT_APPROVALS_PATH:
+      return (
+        <MigrantsApprovalsPage
+          onSessionExpired={onSessionExpired}
+          user={user}
+        />
+      )
+    case APP_MIGRANT_ARCO_PATH:
+      return <MigrantsArcoPage onSessionExpired={onSessionExpired} />
     default:
       return (
         <SessionPage
@@ -104,6 +130,16 @@ export function AppShellPage({
   }
 
   const activeRouteIcon = ROUTE_ICONS[route.path] ?? 'document'
+  const groupedRoutes = visibleRoutes.reduce<Record<AppWorkspace, typeof visibleRoutes>>(
+    (groups, navRoute) => {
+      groups[navRoute.workspace].push(navRoute)
+      return groups
+    },
+    {
+      internal: [],
+      migrant: [],
+    },
+  )
 
   return (
     <main className="workspace-shell">
@@ -122,27 +158,46 @@ export function AppShellPage({
         </section>
 
         <nav aria-label="App navigation" className="workspace-nav">
-          {visibleRoutes.map((navRoute) => {
-            const isActive = navRoute.path === currentPath
+          {(['internal', 'migrant'] as AppWorkspace[]).map((workspace) => {
+            const routes = groupedRoutes[workspace]
+
+            if (routes.length === 0) {
+              return null
+            }
 
             return (
-              <a
-                key={navRoute.path}
-                className={`workspace-nav__item${isActive ? ' workspace-nav__item--active' : ''}`}
-                href={navRoute.path}
-                onClick={(event) => {
-                  event.preventDefault()
-                  onNavigate(navRoute.path)
-                }}
+              <details
+                className="workspace-nav__group"
+                key={workspace}
+                open={routes.some((navRoute) => navRoute.path === currentPath) || workspace === 'internal'}
               >
-                <span className="workspace-nav__icon">
-                  <AppIcon name={ROUTE_ICONS[navRoute.path] ?? 'document'} />
-                </span>
-                <span className="workspace-nav__content">
-                  <span className="workspace-nav__eyebrow">{navRoute.kicker}</span>
-                  <strong className="workspace-nav__label">{navRoute.label}</strong>
-                </span>
-              </a>
+                <summary>{WORKSPACE_LABELS[workspace]}</summary>
+                <div className="workspace-nav__group-items">
+                  {routes.map((navRoute) => {
+                    const isActive = navRoute.path === currentPath
+
+                    return (
+                      <a
+                        key={navRoute.path}
+                        className={`workspace-nav__item${isActive ? ' workspace-nav__item--active' : ''}`}
+                        href={navRoute.path}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          onNavigate(navRoute.path)
+                        }}
+                      >
+                        <span className="workspace-nav__icon">
+                          <AppIcon name={ROUTE_ICONS[navRoute.path] ?? 'document'} />
+                        </span>
+                        <span className="workspace-nav__content">
+                          <span className="workspace-nav__eyebrow">{navRoute.kicker}</span>
+                          <strong className="workspace-nav__label">{navRoute.label}</strong>
+                        </span>
+                      </a>
+                    )
+                  })}
+                </div>
+              </details>
             )
           })}
         </nav>

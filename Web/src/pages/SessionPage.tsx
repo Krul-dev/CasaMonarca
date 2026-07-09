@@ -3,7 +3,7 @@ import { toDataURL } from 'qrcode'
 
 import { AppIcon } from '../components/ui/AppIcon'
 import { RoleBadge } from '../components/ui/RoleBadge'
-import { APP_DOCUMENTS_PATH } from '../config/appRoutes'
+import { APP_DOCUMENTS_PATH, APP_MIGRANT_APPROVALS_PATH } from '../config/appRoutes'
 import { ApiRequestError } from '../lib/api'
 import {
   getCurrentUser,
@@ -18,6 +18,7 @@ import {
   type WebauthnCredentialSummary,
 } from '../lib/auth'
 import { getDocuments, type DocumentSignatureRequirement, type DocumentSummary } from '../lib/documents'
+import { getPendingRegistryApprovals, type RegistryEntry } from '../lib/registry'
 
 type SessionPageProps = {
   onLoggedOut?: () => void
@@ -80,6 +81,9 @@ const isIpHostname = (hostname: string): boolean => {
 }
 
 const supportsPasskeyEnrollment = (role: AuthenticatedUser['role']) =>
+  role === 'admin' || role === 'coordinator'
+
+const canApproveMigrantRegistrations = (role: AuthenticatedUser['role']) =>
   role === 'admin' || role === 'coordinator'
 
 const formatDashboardDate = (value?: string | null) => {
@@ -155,6 +159,9 @@ const getPendingSignatureQueue = (
       }
     })
 
+const getMigrantApprovalName = (entry: RegistryEntry) =>
+  String(entry.payload_json.fullName || entry.payload_json.full_name || `Registration #${entry.id}`)
+
 export function SessionPage({
   onLoggedOut,
   onNavigate,
@@ -182,8 +189,11 @@ export function SessionPage({
   const [totpEnrollmentError, setTotpEnrollmentError] = useState<string | null>(null)
   const [totpEnrollmentSuccess, setTotpEnrollmentSuccess] = useState<string | null>(null)
   const [pendingSignatureQueue, setPendingSignatureQueue] = useState<PendingSignatureQueueItem[]>([])
+  const [pendingMigrantApprovals, setPendingMigrantApprovals] = useState<RegistryEntry[]>([])
   const [signatureQueueError, setSignatureQueueError] = useState<string | null>(null)
+  const [migrantApprovalQueueError, setMigrantApprovalQueueError] = useState<string | null>(null)
   const [isSignatureQueueLoading, setIsSignatureQueueLoading] = useState(false)
+  const [isMigrantApprovalQueueLoading, setIsMigrantApprovalQueueLoading] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() =>
     typeof Notification === 'undefined' ? 'denied' : Notification.permission,
   )
@@ -193,6 +203,9 @@ export function SessionPage({
   const isSecurityEnrollmentPending = security.enforced && !security.isFullyEnrolled
   const assignedSignatureQueue = pendingSignatureQueue.filter((item) => item.kind === 'user')
   const roleSignatureQueue = pendingSignatureQueue.filter((item) => item.kind === 'role')
+  const actionableMigrantApprovals = pendingMigrantApprovals.filter(
+    (entry) => user.role === 'admin' || entry.created_by !== user.id,
+  )
 
   const loadPendingSignatureQueue = useCallback(async () => {
     if (!user.capabilities.modules.documents) {
@@ -245,6 +258,32 @@ export function SessionPage({
     }
   }, [notificationPermission, onSessionExpired, user])
 
+  const loadPendingMigrantApprovals = useCallback(async () => {
+    if (!canApproveMigrantRegistrations(user.role)) {
+      setPendingMigrantApprovals([])
+      return
+    }
+
+    setIsMigrantApprovalQueueLoading(true)
+    setMigrantApprovalQueueError(null)
+
+    try {
+      const response = await getPendingRegistryApprovals()
+      setPendingMigrantApprovals(response.data)
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      setMigrantApprovalQueueError(
+        error instanceof Error ? error.message : 'Unable to load pending migrant approvals.',
+      )
+    } finally {
+      setIsMigrantApprovalQueueLoading(false)
+    }
+  }, [onSessionExpired, user.role])
+
   useEffect(() => {
     if (!supportsPasskeyEnrollment(user.role)) {
       setWebauthnState('idle')
@@ -283,15 +322,17 @@ export function SessionPage({
 
   useEffect(() => {
     void loadPendingSignatureQueue()
+    void loadPendingMigrantApprovals()
 
     const intervalId = window.setInterval(() => {
       void loadPendingSignatureQueue()
+      void loadPendingMigrantApprovals()
     }, 60_000)
 
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [loadPendingSignatureQueue])
+  }, [loadPendingMigrantApprovals, loadPendingSignatureQueue])
 
   const handleEnableNotifications = async () => {
     if (typeof Notification === 'undefined') {
@@ -740,6 +781,70 @@ export function SessionPage({
                 ))}
               </div>
             </section>
+          ) : null}
+        </section>
+      ) : null}
+
+      {canApproveMigrantRegistrations(user.role) ? (
+        <section className="workspace-panel dashboard-signature-queue" aria-label="Pending migrant approvals">
+          <div className="dashboard-signature-queue__header">
+            <div>
+              <h2 className="workspace-panel__title">Migrant registrations pending approval</h2>
+              <p className="workspace-panel__copy">
+                Queue of submitted migrant registrations available for coordinator/admin review.
+              </p>
+            </div>
+            <div className="session-actions">
+              <button
+                className="session-action session-action--quiet"
+                disabled={isMigrantApprovalQueueLoading}
+                onClick={() => void loadPendingMigrantApprovals()}
+                type="button"
+              >
+                <AppIcon name="refresh" />
+                {isMigrantApprovalQueueLoading ? 'Refreshing...' : 'Refresh queue'}
+              </button>
+            </div>
+          </div>
+
+          {migrantApprovalQueueError ? (
+            <div className="login-feedback login-feedback--error">
+              {migrantApprovalQueueError}
+            </div>
+          ) : null}
+
+          {!isMigrantApprovalQueueLoading &&
+          actionableMigrantApprovals.length === 0 &&
+          !migrantApprovalQueueError ? (
+            <p className="workspace-panel__copy">
+              There are no migrant registrations available for your approval right now.
+            </p>
+          ) : null}
+
+          {actionableMigrantApprovals.length > 0 ? (
+            <div className="signature-queue-list">
+              {actionableMigrantApprovals.map((entry) => (
+                <article className="signature-queue-card" key={`migrant-${entry.id}`}>
+                  <div>
+                    <strong>{getMigrantApprovalName(entry)}</strong>
+                    <span>
+                      {entry.payload_json.countryOfOrigin
+                        ? String(entry.payload_json.countryOfOrigin)
+                        : 'Country unavailable'}
+                    </span>
+                    <small>Submitted {formatDashboardDate(entry.created_at)}</small>
+                  </div>
+                  <button
+                    className="session-action"
+                    onClick={() => onNavigate(APP_MIGRANT_APPROVALS_PATH)}
+                    type="button"
+                  >
+                    <AppIcon name="verify" />
+                    Open approvals
+                  </button>
+                </article>
+              ))}
+            </div>
           ) : null}
         </section>
       ) : null}

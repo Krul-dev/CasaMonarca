@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Registry;
 
 use App\Enums\AuditEventType;
 use App\Models\MigrantRegistryEntry;
@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\DB;
 
 class MigrantRegistryService
 {
+    public const STATUS_PENDING_APPROVAL = 'pending_approval';
+
+    public const STATUS_APPROVED = 'approved';
+
+    public const STATUS_REJECTED = 'rejected';
+
     public function __construct(
         private readonly AuditEventService $auditService,
         private readonly Request $request,
@@ -23,10 +29,19 @@ class MigrantRegistryService
         return DB::transaction(function () use ($user, $payloadJson) {
             $entry = MigrantRegistryEntry::create([
                 'created_by' => $user->id,
-                'created_by_role' => $user->role ?? 'volunteer',
-                'current_status' => 'draft',
-                'current_assignee_role' => 'operator',
+                'created_by_role' => $user->role?->value ?? 'volunteer',
+                'current_status' => self::STATUS_PENDING_APPROVAL,
+                'current_assignee_role' => 'coordinator',
                 'payload_json' => $payloadJson,
+            ]);
+
+            MigrantRegistryStatusHistory::create([
+                'registry_entry_id' => $entry->id,
+                'from_status' => null,
+                'to_status' => self::STATUS_PENDING_APPROVAL,
+                'changed_by' => $user->id,
+                'changed_by_role' => $user->role?->value ?? 'volunteer',
+                'reason' => 'Registration submitted for coordinator/admin approval',
             ]);
 
             $this->auditService->success(
@@ -40,6 +55,70 @@ class MigrantRegistryService
             );
 
             return $entry;
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $signatureData
+     */
+    public function resolveApproval(
+        User $user,
+        MigrantRegistryEntry $entry,
+        string $decision,
+        ?string $reason,
+        array $signatureData,
+    ): MigrantRegistryEntry {
+        return DB::transaction(function () use ($user, $entry, $decision, $reason, $signatureData) {
+            $fromStatus = (string) $entry->current_status;
+            $toStatus = $decision === 'approve'
+                ? self::STATUS_APPROVED
+                : self::STATUS_REJECTED;
+
+            $signature = MigrantRegistrySignature::create([
+                'registry_entry_id' => $entry->id,
+                'actor_user_id' => $user->id,
+                'actor_role' => $user->role?->value ?? 'coordinator',
+                'action_type' => $decision === 'approve' ? 'approve' : 'reject',
+                'algorithm' => 'webauthn-passkey',
+                'signature_payload' => json_encode($signatureData, JSON_THROW_ON_ERROR),
+                'public_key_ref' => (string) ($signatureData['credentialId'] ?? ''),
+                'verified_at' => now(),
+            ]);
+
+            $entry->forceFill([
+                'current_status' => $toStatus,
+                'current_assignee_role' => null,
+            ])->save();
+
+            MigrantRegistryStatusHistory::create([
+                'registry_entry_id' => $entry->id,
+                'from_status' => $fromStatus,
+                'to_status' => $toStatus,
+                'changed_by' => $user->id,
+                'changed_by_role' => $user->role?->value ?? 'coordinator',
+                'reason' => $reason,
+                'signature_id' => $signature->id,
+            ]);
+
+            $this->auditService->success(
+                $this->request,
+                $decision === 'approve'
+                    ? AuditEventType::MigrantRegistryApproved
+                    : AuditEventType::MigrantRegistryRejected,
+                $user,
+                resource: [
+                    'type' => MigrantRegistryEntry::class,
+                    'id' => $entry->id,
+                ],
+                metadata: [
+                    'decision' => $decision,
+                    'reason' => $reason,
+                    'previousStatus' => $fromStatus,
+                    'status' => $toStatus,
+                ],
+            );
+
+            return $entry->fresh(['signatures', 'statusHistory']) ?? $entry;
         });
     }
 

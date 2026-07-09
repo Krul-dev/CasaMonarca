@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
-import { getRegistryEntries, type RegistryEntry } from '../../lib/registry'
+import { ApiRequestError, getRegistryEntries, type RegistryEntry } from '../../lib/registry'
 import { ArcoRequestForm } from '../../components/arco/ArcoRequestForm'
 import { ArcoRequestList } from '../../components/arco/ArcoRequestList'
 
-export function MigrantsArcoPage() {
+type MigrantsArcoPageProps = {
+  onSessionExpired?: () => void
+}
+
+export function MigrantsArcoPage({ onSessionExpired }: MigrantsArcoPageProps) {
   const [entries, setEntries] = useState<RegistryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -16,6 +20,11 @@ export function MigrantsArcoPage() {
       const response = await getRegistryEntries()
       setEntries(response.data)
     } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
       setError(err instanceof Error? err.message: 'No fue posible cargar ARCO.')
     } finally {
       setLoading(false)
@@ -27,10 +36,9 @@ export function MigrantsArcoPage() {
   }, [])
 
   return (
-    <main className="route-shell">
-      <section className="route-card">
-        <p className="route-kicker">Derechos ARCO</p>
-        <h1 className="route-title">Solicitudes y resolución</h1>
+    <section className="workspace-stack">
+      <section className="workspace-panel">
+        <h2 className="workspace-panel__title">ARCO requests</h2>
 
         <ArcoRequestForm entries={entries} />
 
@@ -39,6 +47,6 @@ export function MigrantsArcoPage() {
 
         <ArcoRequestList />
       </section>
-    </main>
+    </section>
   )
 }

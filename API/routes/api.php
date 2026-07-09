@@ -51,6 +51,8 @@ use App\Http\Controllers\Api\Documents\DocumentVerificationBundleController;
 use App\Http\Controllers\Api\Documents\DocumentVerificationController;
 use App\Http\Controllers\Api\Documents\DocumentVerificationPackageController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalVerifyController;
 use App\Http\Controllers\Api\Registry\MigrantArcoController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryController;
 use App\Http\Controllers\Api\SecurityChallengeCancelController;
@@ -131,7 +133,7 @@ Route::middleware('web')->group(function (): void {
         Route::post('/documents/{document}/delete/verify', DocumentDeleteVerifyController::class);
     });
 
-    Route::middleware(['auth', 'requireActiveAccount'])->prefix('registry/migrants')->group(function (): void {
+    Route::middleware(['auth', 'requireActiveAccount', 'requireRole:admin,coordinator,non_coordinator,volunteer'])->prefix('registry/migrants')->group(function (): void {
         Route::get('/', [MigrantRegistryController::class, 'index']);
         Route::post('/', [MigrantRegistryController::class, 'store']);
 
@@ -139,6 +141,12 @@ Route::middleware('web')->group(function (): void {
             Route::get('/', [MigrantArcoController::class, 'index']);
             Route::post('/', [MigrantArcoController::class, 'store']);
             Route::post('/{migrantArcoRequest}/resolve', [MigrantArcoController::class, 'resolve']);
+        });
+
+        Route::middleware('requireRole:admin,coordinator')->group(function (): void {
+            Route::get('/pending-approval', [MigrantRegistryController::class, 'pendingApproval']);
+            Route::post('/{migrantRegistryEntry}/approval/options', MigrantRegistryApprovalOptionsController::class);
+            Route::post('/{migrantRegistryEntry}/approval/verify', MigrantRegistryApprovalVerifyController::class);
         });
 
         Route::get('/{migrantRegistryEntry}', [MigrantRegistryController::class, 'show']);

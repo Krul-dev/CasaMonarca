@@ -20,7 +20,21 @@ class MigrantRegistryController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json([
-            'data' => MigrantRegistryEntry::latest()->get(),
+            'data' => MigrantRegistryEntry::query()
+                ->with(['creator:id,name,email,role', 'signatures', 'statusHistory'])
+                ->latest()
+                ->get(),
+        ]);
+    }
+
+    public function pendingApproval(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data' => MigrantRegistryEntry::query()
+                ->with(['creator:id,name,email,role', 'signatures', 'statusHistory'])
+                ->where('current_status', MigrantRegistryService::STATUS_PENDING_APPROVAL)
+                ->latest()
+                ->get(),
         ]);
     }
 
@@ -40,6 +54,7 @@ class MigrantRegistryController extends Controller
     {
         return response()->json([
             'data' => $migrantRegistryEntry->load([
+                'creator:id,name,email,role',
                 'signatures',
                 'statusHistory',
             ]),

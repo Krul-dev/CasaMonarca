@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MigrantRegistryEntry extends Model
@@ -22,6 +23,11 @@ class MigrantRegistryEntry extends Model
     public function signatures(): HasMany
     {
         return $this->hasMany(MigrantRegistrySignature::class, 'registry_entry_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function statusHistory(): HasMany

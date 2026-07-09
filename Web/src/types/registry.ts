@@ -1,7 +1,12 @@
-export type RegistryRole = 'volunteer' | 'operator' | 'coordinator' | 'admin'
+import type { UserRole } from '../lib/auth'
+
+export type RegistryRole = UserRole
 
 export type RegistryStatus =
   | 'draft'
+  | 'pending_approval'
+  | 'approved'
+  | 'rejected'
   | 'submitted_by_volunteer'
   | 'reviewed_by_operator'
   | 'approved_by_operator'
@@ -15,25 +20,50 @@ export type RegistryStatus =
   | 'sent_to_admin_for_deletion'
   | 'deleted_by_admin'
 
-export type RegistryEntry = {
+export type MigrantRegistrationPayload = {
+  attentionDate: string
+  birthDate: string
+  civilStatus?: string
+  countryOfOrigin: string
+  departmentState?: string
+  firstLastName: string
+  firstName: string
+  fullName: string
+  gender: string
+  notes?: string
+  phone?: string
+  populationGroup: string
+  secondLastName?: string
+}
+
+export type RegistryActor = {
+  email?: string | null
   id: number
+  name?: string | null
+  role?: UserRole | null
+}
+
+export type RegistryEntry = {
+  created_at: string
   created_by: number
   created_by_role: RegistryRole
+  creator?: RegistryActor | null
+  current_assignee_role?: RegistryRole | null
   current_status: RegistryStatus
-  payload_json: Record<string, unknown>
-  created_at: string
+  id: number
+  payload_json: Partial<MigrantRegistrationPayload> & Record<string, unknown>
   updated_at: string
 }
 
 export type RegistrySignature = {
-  id: number
-  registry_entry_id: number
-  actor_user_id: number
-  actor_role: RegistryRole
   action_type: string
+  actor_role: RegistryRole
+  actor_user_id: number
   algorithm: string
-  signature_payload: string
-  public_key_ref?: string | null
-  verified_at?: string | null
   created_at: string
+  id: number
+  public_key_ref?: string | null
+  registry_entry_id: number
+  signature_payload: string
+  verified_at?: string | null
 }
