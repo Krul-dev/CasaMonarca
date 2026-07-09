@@ -51,6 +51,8 @@ use App\Http\Controllers\Api\Documents\DocumentVerificationBundleController;
 use App\Http\Controllers\Api\Documents\DocumentVerificationController;
 use App\Http\Controllers\Api\Documents\DocumentVerificationPackageController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\Registry\MigrantArcoController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryController;
 use App\Http\Controllers\Api\SecurityChallengeCancelController;
 use Illuminate\Support\Facades\Route;
 
@@ -127,5 +129,20 @@ Route::middleware('web')->group(function (): void {
     Route::middleware(['auth', 'requireActiveAccount', 'requireRole:admin'])->group(function (): void {
         Route::post('/documents/{document}/delete/options', DocumentDeleteOptionsController::class);
         Route::post('/documents/{document}/delete/verify', DocumentDeleteVerifyController::class);
+    });
+
+    Route::middleware(['auth', 'requireActiveAccount'])->prefix('registry/migrants')->group(function (): void {
+        Route::get('/', [MigrantRegistryController::class, 'index']);
+        Route::post('/', [MigrantRegistryController::class, 'store']);
+
+        Route::prefix('arco')->group(function (): void {
+            Route::get('/', [MigrantArcoController::class, 'index']);
+            Route::post('/', [MigrantArcoController::class, 'store']);
+            Route::post('/{migrantArcoRequest}/resolve', [MigrantArcoController::class, 'resolve']);
+        });
+
+        Route::get('/{migrantRegistryEntry}', [MigrantRegistryController::class, 'show']);
+        Route::patch('/{migrantRegistryEntry}', [MigrantRegistryController::class, 'update']);
+        Route::post('/{migrantRegistryEntry}/submit', [MigrantRegistryController::class, 'submit']);
     });
 });

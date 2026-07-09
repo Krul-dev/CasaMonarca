@@ -17,6 +17,8 @@ import { getCurrentUser, type AuthenticatedUser, type UserRole } from './lib/aut
 import { AppShellPage } from './pages/AppShellPage'
 import { ForbiddenPage } from './pages/ForbiddenPage'
 import { LoginPage } from './pages/LoginPage'
+import { MigrantsArcoPage } from './pages/registry/MigrantsArcoPage'
+import { MigrantsRegistryPage } from './pages/registry/MigrantsRegistryPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 
@@ -705,6 +707,24 @@ function App() {
             roleOverride={devRoleOverride}
           />
         ) : null}
+      </>
+    )
+  }
+
+  if (pathname === '/registry/migrants') {
+    return (
+      <>
+        <EnvironmentBadge />
+        <MigrantsRegistryPage />
+      </>
+    )
+  }
+
+  if (pathname === '/registry/migrants/arco') {
+    return (
+      <>
+        <EnvironmentBadge />
+        <MigrantsArcoPage />
       </>
     )
   }
