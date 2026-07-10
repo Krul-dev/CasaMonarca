@@ -10,6 +10,7 @@ import {
   APP_MIGRANT_APPROVALS_PATH,
   APP_MIGRANT_ARCO_PATH,
   APP_MIGRANT_REGISTRY_PATH,
+  APP_MIGRANT_REGISTRATIONS_PATH,
   APP_UPLOAD_PATH,
   getRouteConfigForUser,
   getVisibleRoutesForUser,
@@ -25,6 +26,7 @@ import { InviteManagementPage } from './InviteManagementPage'
 import { MigrantsApprovalsPage } from './registry/MigrantsApprovalsPage'
 import { MigrantsArcoPage } from './registry/MigrantsArcoPage'
 import { MigrantsRegistryPage } from './registry/MigrantsRegistryPage'
+import { MigrantRegistrationsPage } from './registry/MigrantRegistrationsPage'
 
 const ROUTE_ICONS: Record<string, AppIconName> = {
   [APP_HOME_PATH]: 'dashboard',
@@ -34,6 +36,7 @@ const ROUTE_ICONS: Record<string, AppIconName> = {
   [APP_LOGGING_PATH]: 'logging',
   [APP_ADMIN_PATH]: 'admin',
   [APP_MIGRANT_REGISTRY_PATH]: 'invite',
+  [APP_MIGRANT_REGISTRATIONS_PATH]: 'document',
   [APP_MIGRANT_APPROVALS_PATH]: 'verify',
   [APP_MIGRANT_ARCO_PATH]: 'document',
 }
@@ -87,7 +90,16 @@ function renderModule(
         />
       )
     case APP_MIGRANT_REGISTRY_PATH:
-      return <MigrantsRegistryPage onSessionExpired={onSessionExpired} user={user} />
+      return (
+        <MigrantsRegistryPage
+          locationSearch={currentSearch}
+          onNavigate={onNavigate}
+          onSessionExpired={onSessionExpired}
+          user={user}
+        />
+      )
+    case APP_MIGRANT_REGISTRATIONS_PATH:
+      return <MigrantRegistrationsPage onSessionExpired={onSessionExpired} />
     case APP_MIGRANT_APPROVALS_PATH:
       return (
         <MigrantsApprovalsPage

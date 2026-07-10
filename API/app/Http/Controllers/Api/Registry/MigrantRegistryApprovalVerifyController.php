@@ -252,13 +252,7 @@ class MigrantRegistryApprovalVerifyController extends Controller
             return false;
         }
 
-        if ($role === UserRole::Admin) {
-            return true;
-        }
-
-        $requesterId = $entry->pending_requested_by ?? $entry->created_by;
-
-        return (int) $requesterId !== (int) $actor->getKey();
+        return true;
     }
 
     /**

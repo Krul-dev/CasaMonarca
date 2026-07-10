@@ -14,6 +14,7 @@ export type {
   RegistryRole,
   RegistrySignature,
   RegistryStatus,
+  RegistryStatusHistory,
 } from '../types/registry'
 
 export type RegistryListResponse = {
@@ -62,6 +63,26 @@ export type RegistryApprovalVerifyResponse = {
   message: string
 }
 
+export type RegistryReviewOptionsPayload = {
+  reason?: string
+}
+
+export type RegistryReviewOptionsResponse = {
+  challengeIntent: SecurityChallengeSummary
+  message: string
+  options: WebauthnLoginOptions
+}
+
+export type RegistryReviewVerifyResponse = {
+  data: RegistryEntry
+  message: string
+}
+
+export type RegistryReviewReturnResponse = {
+  data: RegistryEntry
+  message: string
+}
+
 export type DeleteRegistryEntryResponse = {
   message: string
 }
@@ -72,6 +93,14 @@ export async function getRegistryEntries() {
 
 export async function getPendingRegistryApprovals() {
   return apiFetch<RegistryListResponse>('/registry/migrants/pending-approval')
+}
+
+export async function getPendingRegistryReviews() {
+  return apiFetch<RegistryListResponse>('/registry/migrants/pending-review')
+}
+
+export async function getRegistryCorrections() {
+  return apiFetch<RegistryListResponse>('/registry/migrants/corrections')
 }
 
 export async function getRegistryEntryById(id: number) {
@@ -170,6 +199,57 @@ export async function verifyRegistryApproval(
       body: JSON.stringify(payload),
     },
   )
+}
+
+export async function startRegistryReview(
+  id: number,
+  payload: RegistryReviewOptionsPayload,
+) {
+  const { csrfToken } = await getCsrfToken()
+
+  return apiFetch<RegistryReviewOptionsResponse>(
+    `/registry/migrants/${id}/review/options`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export async function verifyRegistryReview(
+  id: number,
+  payload: WebauthnLoginAssertionPayload,
+) {
+  const { csrfToken } = await getCsrfToken()
+
+  return apiFetch<RegistryReviewVerifyResponse>(
+    `/registry/migrants/${id}/review/verify`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export async function returnRegistryForCorrections(id: number, reason: string) {
+  const { csrfToken } = await getCsrfToken()
+
+  return apiFetch<RegistryReviewReturnResponse>(`/registry/migrants/${id}/review/return`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+    },
+    body: JSON.stringify({ reason }),
+  })
 }
 
 export { ApiRequestError }

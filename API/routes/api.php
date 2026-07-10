@@ -55,6 +55,9 @@ use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalOptionsController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalVerifyController;
 use App\Http\Controllers\Api\Registry\MigrantArcoController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryReviewReturnController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryReviewOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryReviewVerifyController;
 use App\Http\Controllers\Api\SecurityChallengeCancelController;
 use Illuminate\Support\Facades\Route;
 
@@ -136,11 +139,19 @@ Route::middleware('web')->group(function (): void {
     Route::middleware(['auth', 'requireActiveAccount', 'requireRole:admin,coordinator,non_coordinator,volunteer'])->prefix('registry/migrants')->group(function (): void {
         Route::get('/', [MigrantRegistryController::class, 'index']);
         Route::post('/', [MigrantRegistryController::class, 'store']);
+        Route::get('/corrections', [MigrantRegistryController::class, 'corrections']);
 
         Route::prefix('arco')->group(function (): void {
             Route::get('/', [MigrantArcoController::class, 'index']);
             Route::post('/', [MigrantArcoController::class, 'store']);
             Route::post('/{migrantArcoRequest}/resolve', [MigrantArcoController::class, 'resolve']);
+        });
+
+        Route::middleware('requireRole:admin,coordinator,non_coordinator')->group(function (): void {
+            Route::get('/pending-review', [MigrantRegistryController::class, 'pendingReview']);
+            Route::post('/{migrantRegistryEntry}/review/options', MigrantRegistryReviewOptionsController::class);
+            Route::post('/{migrantRegistryEntry}/review/verify', MigrantRegistryReviewVerifyController::class);
+            Route::post('/{migrantRegistryEntry}/review/return', MigrantRegistryReviewReturnController::class);
         });
 
         Route::middleware('requireRole:admin,coordinator')->group(function (): void {

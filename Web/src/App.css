@@ -2488,44 +2488,165 @@
   font-weight: 700;
 }
 
-.registry-list {
+.registry-browser__population-filter {
+  width: min(19rem, 100%);
+  margin-top: 0.55rem;
+}
+
+.registry-browser__feed {
   display: grid;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.registry-list__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border: 1px solid rgba(24, 36, 55, 0.08);
-  border-radius: 0.85rem;
-  background: rgba(248, 242, 233, 0.62);
-  padding: 0.9rem;
-}
-
-.registry-list__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 0.55rem;
 }
 
-.registry-list__item h3,
-.registry-list__item p {
+.registry-browser__card {
+  --registry-accent: rgba(30, 79, 137, 0.5);
+  --registry-tint: rgba(30, 79, 137, 0.055);
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(24, 36, 55, 0.08);
+  border-left: 0.3rem solid var(--registry-accent);
+  border-radius: 0.8rem;
+  background:
+    linear-gradient(90deg, var(--registry-tint), transparent 36%),
+    linear-gradient(135deg, rgba(255, 252, 247, 0.82), rgba(248, 242, 233, 0.58));
+  box-shadow: 0 0.45rem 1.2rem rgba(18, 24, 33, 0.035);
+}
+
+.registry-browser__card--approved {
+  --registry-accent: rgba(35, 125, 84, 0.62);
+  --registry-tint: rgba(35, 125, 84, 0.065);
+}
+
+.registry-browser__card--pending_approval {
+  --registry-accent: rgba(143, 83, 8, 0.64);
+  --registry-tint: rgba(214, 164, 74, 0.1);
+}
+
+.registry-browser__card--rejected {
+  --registry-accent: rgba(157, 53, 46, 0.65);
+  --registry-tint: rgba(157, 53, 46, 0.075);
+}
+
+.registry-browser__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.registry-browser__header .workspace-panel__title {
   margin: 0;
 }
 
-.registry-list__item h3 {
-  color: #0f2640;
-  font-size: 1rem;
+.registry-browser__header p {
+  margin: 0.24rem 0 0;
+  color: #536171;
+  font-size: 0.82rem;
 }
 
-.registry-list__item p {
-  margin-top: 0.35rem;
+.registry-browser__badge,
+.registry-browser__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.registry-browser__badge {
+  background: rgba(30, 79, 137, 0.08);
+  color: #1e4f89;
+}
+
+.registry-browser__status {
+  border: 1px solid color-mix(in srgb, var(--registry-accent), transparent 58%);
+  background: color-mix(in srgb, var(--registry-accent), transparent 87%);
+  color: #0f2640;
+}
+
+.registry-browser__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem 1rem;
+}
+
+.registry-browser__context span {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 8rem;
+}
+
+.registry-browser__context small,
+.registry-browser__notes small {
+  color: #8f5308;
+  font-size: 0.63rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.registry-browser__context strong {
+  color: #0f2640;
+  font-size: 0.84rem;
+}
+
+.registry-browser__details {
+  padding-top: 0.15rem;
+}
+
+.registry-browser__details summary {
+  width: max-content;
+  max-width: 100%;
+  color: #1e4f89;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.registry-browser__details dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.55rem;
+  margin: 0.75rem 0 0;
+}
+
+.registry-browser__details dl div,
+.registry-browser__notes {
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(24, 36, 55, 0.08);
+  border-radius: 0.65rem;
+  background: rgba(248, 242, 233, 0.62);
+}
+
+.registry-browser__details dt {
+  color: #8f5308;
+  font-size: 0.63rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.registry-browser__details dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+  color: #0f2640;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.registry-browser__notes {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.55rem;
   color: #536171;
-  font-size: 0.88rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .registry-approval-card__actions {
@@ -3620,7 +3741,8 @@
 
   .audit-toolbar,
   .admin-directory-toolbar,
-  .audit-card__header {
+  .audit-card__header,
+  .registry-browser__header {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -3795,8 +3917,7 @@
 
   .registry-form__footer,
   .registry-form__actions,
-  .registry-list__actions,
-  .registry-list__item,
+  .registry-browser__header,
   .registry-approval-card__actions {
     align-items: stretch;
     flex-direction: column;

@@ -65,6 +65,9 @@ enum AuditEventType: string
     case MigrantRegistryCreated = 'migrant.registry.created';
     case MigrantRegistrySubmitted = 'migrant.registry.submitted';
     case MigrantRegistryUpdateRequested = 'migrant.registry.update.requested';
+    case MigrantRegistryReviewChallengeStarted = 'migrant.registry.review.challenge.started';
+    case MigrantRegistryReviewForwarded = 'migrant.registry.review.forwarded';
+    case MigrantRegistryReviewReturned = 'migrant.registry.review.returned';
     case MigrantRegistryApprovalChallengeStarted = 'migrant.registry.approval.challenge.started';
     case MigrantRegistryApproved = 'migrant.registry.approved';
     case MigrantRegistryRejected = 'migrant.registry.rejected';

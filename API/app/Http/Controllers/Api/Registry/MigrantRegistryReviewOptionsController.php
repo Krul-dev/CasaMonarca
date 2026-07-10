@@ -15,13 +15,12 @@ use App\Services\Security\SecurityChallengeIntentService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
-class MigrantRegistryApprovalOptionsController extends Controller
+class MigrantRegistryReviewOptionsController extends Controller
 {
-    public const INTENT_KEY = 'registry.migrants.approval.webauthn.intent';
+    public const INTENT_KEY = 'registry.migrants.review.webauthn.intent';
 
-    public const CHALLENGE_INTENT_ID_KEY = 'registry.migrants.approval.webauthn.challenge_intent_id';
+    public const CHALLENGE_INTENT_ID_KEY = 'registry.migrants.review.webauthn.challenge_intent_id';
 
     public function __construct(
         private readonly AuditEventService $auditEventService,
@@ -33,7 +32,6 @@ class MigrantRegistryApprovalOptionsController extends Controller
     public function __invoke(Request $request, MigrantRegistryEntry $migrantRegistryEntry): JsonResponse
     {
         $validated = $request->validate([
-            'decision' => ['required', 'string', Rule::in(['approve', 'reject'])],
             'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -44,28 +42,20 @@ class MigrantRegistryApprovalOptionsController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        if (! $this->canApprove($actor, $migrantRegistryEntry)) {
-            return response()->json([
-                'message' => 'This migrant registration cannot be approved by the current account.',
-            ], 403);
+        if (! $this->canReview($actor)) {
+            return response()->json(['message' => 'This account cannot review migrant registrations.'], 403);
         }
 
-        if ($migrantRegistryEntry->current_status !== MigrantRegistryService::STATUS_PENDING_APPROVAL) {
-            return response()->json([
-                'message' => 'This migrant registration is no longer pending approval.',
-            ], 409);
+        if ($migrantRegistryEntry->current_status !== MigrantRegistryService::STATUS_PENDING_REVIEW) {
+            return response()->json(['message' => 'This migrant registration is no longer pending review.'], 409);
         }
 
         $origin = $this->webauthnAssertionService->resolveRequestOrigin($request);
         $originHost = $this->webauthnAssertionService->resolveOriginHost($origin);
 
-        if ($originHost === null) {
-            return response()->json(['message' => 'WebAuthn approval origin is invalid.'], 422);
-        }
-
-        if ($this->webauthnAssertionService->isIpHost($originHost)) {
+        if ($originHost === null || $this->webauthnAssertionService->isIpHost($originHost)) {
             return response()->json([
-                'message' => 'Migrant approval requires localhost or a domain name. Use localhost instead of an IP address.',
+                'message' => 'Migrant review requires localhost or a domain name, not an IP address.',
             ], 422);
         }
 
@@ -73,25 +63,23 @@ class MigrantRegistryApprovalOptionsController extends Controller
 
         if ($credentials->isEmpty()) {
             return response()->json([
-                'message' => 'No registered security keys are available for migrant approvals.',
+                'message' => 'Register a security key before forwarding migrant registration reviews.',
             ], 422);
         }
 
         $issuedAt = CarbonImmutable::now('UTC');
         $expiresAt = $issuedAt->addMinute();
         $challenge = $this->base64UrlService->encode(random_bytes(32));
-        $decision = (string) $validated['decision'];
         $reason = trim((string) ($validated['reason'] ?? '')) ?: null;
-        $approvalPayload = $this->approvalPayload($migrantRegistryEntry);
-        $payloadHash = hash('sha256', json_encode($approvalPayload, JSON_THROW_ON_ERROR));
+        $payloadHash = hash('sha256', json_encode($this->reviewPayload($migrantRegistryEntry), JSON_THROW_ON_ERROR));
         $intent = [
             'version' => 1,
-            'purpose' => 'migrant-registry-approval',
+            'purpose' => 'migrant-registry-review',
             'actorUserId' => (int) $actor->getKey(),
             'entryId' => (int) $migrantRegistryEntry->getKey(),
             'entryStatus' => (string) $migrantRegistryEntry->current_status,
             'payloadHash' => $payloadHash,
-            'decision' => $decision,
+            'decision' => 'forward',
             'reason' => $reason,
             'challenge' => $challenge,
             'origin' => $origin,
@@ -100,17 +88,13 @@ class MigrantRegistryApprovalOptionsController extends Controller
             'expiresAt' => $expiresAt->toIso8601String(),
         ];
         $challengeIntent = $this->securityChallengeIntentService->create(
-            purpose: 'migrant.registry.approval',
+            purpose: 'migrant.registry.review',
             challenge: $challenge,
             actor: $actor,
             origin: $origin,
             rpId: $originHost,
             expiresAt: $expiresAt,
-            payload: [
-                ...$intent,
-                'challenge' => null,
-                'challengeRedacted' => true,
-            ],
+            payload: [...$intent, 'challenge' => null, 'challengeRedacted' => true],
             targetType: 'migrant_registry_entry',
             targetId: $migrantRegistryEntry->getKey(),
         );
@@ -123,38 +107,24 @@ class MigrantRegistryApprovalOptionsController extends Controller
 
         $this->auditEventService->success(
             $request,
-            AuditEventType::MigrantRegistryApprovalChallengeStarted,
+            AuditEventType::MigrantRegistryReviewChallengeStarted,
             $actor,
             ['type' => MigrantRegistryEntry::class, 'id' => $migrantRegistryEntry->getKey()],
-            [
-                'challengeIntentId' => $challengeIntent->getKey(),
-                'decision' => $decision,
-                'reason' => $reason,
-                'rpId' => $originHost,
-            ],
+            ['challengeIntentId' => $challengeIntent->getKey(), 'reason' => $reason, 'rpId' => $originHost],
         );
 
         return response()->json([
-            'message' => 'Migrant registration approval challenge created.',
+            'message' => 'Migrant registration review challenge created.',
             'options' => [
                 'challenge' => $challenge,
                 'rpId' => $originHost,
                 'timeout' => 60000,
                 'userVerification' => 'preferred',
-                'allowCredentials' => $credentials
-                    ->map(fn ($credential) => [
-                        'id' => $credential->credential_id,
-                        'type' => 'public-key',
-                        'transports' => $credential->transports,
-                    ])
-                    ->values(),
-            ],
-            'approvalTarget' => [
-                'entryId' => $migrantRegistryEntry->getKey(),
-                'decision' => $decision,
-                'pendingAction' => $migrantRegistryEntry->pending_action,
-                'payloadHash' => $payloadHash,
-                'expiresAt' => $expiresAt->toIso8601String(),
+                'allowCredentials' => $credentials->map(fn ($credential) => [
+                    'id' => $credential->credential_id,
+                    'type' => 'public-key',
+                    'transports' => $credential->transports,
+                ])->values(),
             ],
             'challengeIntent' => [
                 'id' => $challengeIntent->getKey(),
@@ -165,26 +135,19 @@ class MigrantRegistryApprovalOptionsController extends Controller
         ]);
     }
 
-    private function canApprove(User $actor, MigrantRegistryEntry $entry): bool
+    private function canReview(User $actor): bool
     {
-        $role = $actor->role ?? UserRole::default();
-
-        if (! in_array($role, [UserRole::Admin, UserRole::Coordinator], true)) {
-            return false;
-        }
-
-        return true;
+        return in_array($actor->role ?? UserRole::default(), [
+            UserRole::Admin,
+            UserRole::Coordinator,
+            UserRole::NonCoordinator,
+        ], true);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function approvalPayload(MigrantRegistryEntry $entry): array
+    /** @return array<string, mixed> */
+    private function reviewPayload(MigrantRegistryEntry $entry): array
     {
-        if (
-            $entry->pending_action === MigrantRegistryService::ACTION_UPDATE &&
-            is_array($entry->pending_payload_json)
-        ) {
+        if ($entry->pending_action === MigrantRegistryService::ACTION_UPDATE && is_array($entry->pending_payload_json)) {
             return $entry->pending_payload_json;
         }
 

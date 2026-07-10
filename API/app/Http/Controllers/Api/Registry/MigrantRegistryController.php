@@ -38,6 +38,29 @@ class MigrantRegistryController extends Controller
         ]);
     }
 
+    public function pendingReview(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data' => MigrantRegistryEntry::query()
+                ->with(['creator:id,name,email,role', 'signatures', 'statusHistory'])
+                ->where('current_status', MigrantRegistryService::STATUS_PENDING_REVIEW)
+                ->latest()
+                ->get(),
+        ]);
+    }
+
+    public function corrections(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data' => MigrantRegistryEntry::query()
+                ->with(['creator:id,name,email,role', 'signatures', 'statusHistory'])
+                ->where('current_status', MigrantRegistryService::STATUS_CHANGES_REQUESTED)
+                ->where('created_by', $request->user()?->getKey())
+                ->latest()
+                ->get(),
+        ]);
+    }
+
     public function store(StoreMigrantRegistryRequest $request): JsonResponse
     {
         $entry = $this->service->create(

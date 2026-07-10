@@ -13,7 +13,11 @@ use Illuminate\Support\Facades\DB;
 
 class MigrantRegistryService
 {
+    public const STATUS_PENDING_REVIEW = 'pending_review';
+
     public const STATUS_PENDING_APPROVAL = 'pending_approval';
+
+    public const STATUS_CHANGES_REQUESTED = 'changes_requested';
 
     public const STATUS_APPROVED = 'approved';
 
@@ -36,8 +40,8 @@ class MigrantRegistryService
             $entry = MigrantRegistryEntry::create([
                 'created_by' => $user->id,
                 'created_by_role' => $user->role?->value ?? 'volunteer',
-                'current_status' => self::STATUS_PENDING_APPROVAL,
-                'current_assignee_role' => 'coordinator',
+                'current_status' => self::STATUS_PENDING_REVIEW,
+                'current_assignee_role' => 'non_coordinator',
                 'pending_action' => self::ACTION_CREATE,
                 'pending_requested_by' => $user->id,
                 'pending_requested_by_role' => $user->role?->value ?? 'volunteer',
@@ -47,10 +51,10 @@ class MigrantRegistryService
             MigrantRegistryStatusHistory::create([
                 'registry_entry_id' => $entry->id,
                 'from_status' => null,
-                'to_status' => self::STATUS_PENDING_APPROVAL,
+                'to_status' => self::STATUS_PENDING_REVIEW,
                 'changed_by' => $user->id,
                 'changed_by_role' => $user->role?->value ?? 'volunteer',
-                'reason' => 'Registration submitted for coordinator/admin approval',
+                'reason' => 'Registration submitted for non-coordinator review',
             ]);
 
             $this->auditService->success(
@@ -73,19 +77,26 @@ class MigrantRegistryService
         array $payloadJson,
     ): MigrantRegistryEntry {
         return DB::transaction(function () use ($user, $entry, $payloadJson) {
-            if ($entry->current_status === self::STATUS_PENDING_APPROVAL) {
-                abort(409, 'This migrant registration is already pending approval.');
+            if (in_array($entry->current_status, [self::STATUS_PENDING_REVIEW, self::STATUS_PENDING_APPROVAL], true)) {
+                abort(409, 'This migrant registration is already awaiting review or approval.');
             }
 
             if ($entry->current_status === self::STATUS_DELETED) {
                 abort(409, 'Deleted migrant registrations cannot be modified.');
             }
 
+            if (
+                $entry->current_status === self::STATUS_CHANGES_REQUESTED &&
+                (int) $entry->created_by !== (int) $user->getKey()
+            ) {
+                abort(403, 'Only the original submitter can correct this migrant registration.');
+            }
+
             $fromStatus = (string) $entry->current_status;
 
             $entry->forceFill([
-                'current_status' => self::STATUS_PENDING_APPROVAL,
-                'current_assignee_role' => 'coordinator',
+                'current_status' => self::STATUS_PENDING_REVIEW,
+                'current_assignee_role' => 'non_coordinator',
                 'pending_action' => self::ACTION_UPDATE,
                 'pending_requested_by' => $user->id,
                 'pending_requested_by_role' => $user->role?->value ?? 'volunteer',
@@ -95,10 +106,10 @@ class MigrantRegistryService
             MigrantRegistryStatusHistory::create([
                 'registry_entry_id' => $entry->id,
                 'from_status' => $fromStatus,
-                'to_status' => self::STATUS_PENDING_APPROVAL,
+                'to_status' => self::STATUS_PENDING_REVIEW,
                 'changed_by' => $user->id,
                 'changed_by_role' => $user->role?->value ?? 'volunteer',
-                'reason' => 'Registration modification submitted for coordinator/admin approval',
+                'reason' => 'Registration modification submitted for non-coordinator review',
             ]);
 
             $this->auditService->success(
@@ -111,8 +122,88 @@ class MigrantRegistryService
                 ],
                 metadata: [
                     'previousStatus' => $fromStatus,
-                    'status' => self::STATUS_PENDING_APPROVAL,
+                    'status' => self::STATUS_PENDING_REVIEW,
                 ],
+            );
+
+            return $entry->fresh(['creator:id,name,email,role', 'signatures', 'statusHistory']) ?? $entry;
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $signatureData
+     */
+    public function forwardReview(
+        User $user,
+        MigrantRegistryEntry $entry,
+        ?string $reason,
+        array $signatureData,
+    ): MigrantRegistryEntry {
+        return DB::transaction(function () use ($user, $entry, $reason, $signatureData) {
+            $signature = MigrantRegistrySignature::create([
+                'registry_entry_id' => $entry->id,
+                'actor_user_id' => $user->id,
+                'actor_role' => $user->role?->value ?? 'non_coordinator',
+                'action_type' => 'review_forward',
+                'algorithm' => 'webauthn-passkey',
+                'signature_payload' => json_encode($signatureData, JSON_THROW_ON_ERROR),
+                'public_key_ref' => (string) ($signatureData['credentialId'] ?? ''),
+                'verified_at' => now(),
+            ]);
+
+            $entry->forceFill([
+                'current_status' => self::STATUS_PENDING_APPROVAL,
+                'current_assignee_role' => 'coordinator',
+            ])->save();
+
+            MigrantRegistryStatusHistory::create([
+                'registry_entry_id' => $entry->id,
+                'from_status' => self::STATUS_PENDING_REVIEW,
+                'to_status' => self::STATUS_PENDING_APPROVAL,
+                'changed_by' => $user->id,
+                'changed_by_role' => $user->role?->value ?? 'non_coordinator',
+                'reason' => $reason,
+                'signature_id' => $signature->id,
+            ]);
+
+            $this->auditService->success(
+                $this->request,
+                AuditEventType::MigrantRegistryReviewForwarded,
+                $user,
+                resource: ['type' => MigrantRegistryEntry::class, 'id' => $entry->id],
+                metadata: ['reason' => $reason, 'status' => self::STATUS_PENDING_APPROVAL],
+            );
+
+            return $entry->fresh(['creator:id,name,email,role', 'signatures', 'statusHistory']) ?? $entry;
+        });
+    }
+
+    public function returnForCorrections(
+        User $user,
+        MigrantRegistryEntry $entry,
+        string $reason,
+    ): MigrantRegistryEntry {
+        return DB::transaction(function () use ($user, $entry, $reason) {
+            $entry->forceFill([
+                'current_status' => self::STATUS_CHANGES_REQUESTED,
+                'current_assignee_role' => 'volunteer',
+            ])->save();
+
+            MigrantRegistryStatusHistory::create([
+                'registry_entry_id' => $entry->id,
+                'from_status' => self::STATUS_PENDING_REVIEW,
+                'to_status' => self::STATUS_CHANGES_REQUESTED,
+                'changed_by' => $user->id,
+                'changed_by_role' => $user->role?->value ?? 'non_coordinator',
+                'reason' => $reason,
+            ]);
+
+            $this->auditService->success(
+                $this->request,
+                AuditEventType::MigrantRegistryReviewReturned,
+                $user,
+                resource: ['type' => MigrantRegistryEntry::class, 'id' => $entry->id],
+                metadata: ['reason' => $reason, 'status' => self::STATUS_CHANGES_REQUESTED],
             );
 
             return $entry->fresh(['creator:id,name,email,role', 'signatures', 'statusHistory']) ?? $entry;
@@ -260,17 +351,17 @@ class MigrantRegistryService
             ]);
 
             $entry->update([
-                'current_status' => 'submitted_by_volunteer',
-                'current_assignee_role' => 'operator',
+                'current_status' => self::STATUS_PENDING_REVIEW,
+                'current_assignee_role' => 'non_coordinator',
             ]);
 
             MigrantRegistryStatusHistory::create([
                 'registry_entry_id' => $entry->id,
                 'from_status' => 'draft',
-                'to_status' => 'submitted_by_volunteer',
+                'to_status' => self::STATUS_PENDING_REVIEW,
                 'changed_by' => $user->id,
                 'changed_by_role' => $user->role ?? 'volunteer',
-                'reason' => 'Submitted by volunteer',
+                'reason' => 'Submitted for non-coordinator review',
                 'signature_id' => $signature->id,
             ]);
 

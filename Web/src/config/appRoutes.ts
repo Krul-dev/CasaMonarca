@@ -14,6 +14,7 @@ export const APP_INVITES_PATH = '/app/invites'
 export const APP_LOGGING_PATH = '/app/logging'
 export const APP_ADMIN_PATH = '/app/admin'
 export const APP_MIGRANT_REGISTRY_PATH = '/app/migrants/registry'
+export const APP_MIGRANT_REGISTRATIONS_PATH = '/app/migrants/registrations'
 export const APP_MIGRANT_APPROVALS_PATH = '/app/migrants/approvals'
 export const APP_MIGRANT_ARCO_PATH = '/app/migrants/arco'
 export const FORBIDDEN_PATH = '/403'
@@ -90,12 +91,21 @@ export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
     workspace: 'migrant',
   },
   {
-    path: APP_MIGRANT_APPROVALS_PATH,
-    label: 'Pending Approvals',
-    kicker: 'Migrant validation',
-    copy: 'Passkey-backed coordinator/admin review for submitted migrant registrations.',
+    path: APP_MIGRANT_REGISTRATIONS_PATH,
+    label: 'Current Registrations',
+    kicker: 'Migrant directory',
+    copy: 'Search, filter, and review current migrant registrations across the shared registry.',
     requiredModule: 'dashboard',
-    allowedRoles: ['admin', 'coordinator'],
+    allowedRoles: ['admin', 'coordinator', 'non_coordinator'],
+    workspace: 'migrant',
+  },
+  {
+    path: APP_MIGRANT_APPROVALS_PATH,
+    label: 'Review & Approval',
+    kicker: 'Migrant validation',
+    copy: 'Non-coordinator review followed by passkey-backed coordinator approval for migrant registrations.',
+    requiredModule: 'dashboard',
+    allowedRoles: ['admin', 'coordinator', 'non_coordinator'],
     workspace: 'migrant',
   },
   {

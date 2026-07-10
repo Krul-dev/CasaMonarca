@@ -6,6 +6,7 @@ type Props = {
   onCancel?: () => void
   onSubmit: (payload: MigrantRegistrationPayload) => Promise<void>
   submitLabel?: string
+  successMessage?: string
 }
 
 type FormState = Omit<MigrantRegistrationPayload, 'fullName'>
@@ -58,6 +59,7 @@ export function MigrantRegistryForm({
   onCancel,
   onSubmit,
   submitLabel = 'Submit registration',
+  successMessage = 'Registration submitted for review.',
 }: Props) {
   const [form, setForm] = useState<FormState>(() => formStateFromPayload(initialPayload))
   const [submitting, setSubmitting] = useState(false)
@@ -88,7 +90,7 @@ export function MigrantRegistryForm({
       })
 
       setForm(formStateFromPayload(initialPayload))
-      setMessage('Registration submitted for coordinator/admin approval.')
+      setMessage(successMessage)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to submit the registration.')
     } finally {

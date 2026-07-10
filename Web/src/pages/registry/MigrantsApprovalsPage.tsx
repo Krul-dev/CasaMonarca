@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
+
 import { AppIcon } from '../../components/ui/AppIcon'
 import type { AuthenticatedUser } from '../../lib/auth'
 import {
   ApiRequestError,
   getPendingRegistryApprovals,
+  getPendingRegistryReviews,
+  returnRegistryForCorrections,
   startRegistryApproval,
-  verifyRegistryApproval,
+  startRegistryReview,
   type RegistryApprovalDecision,
   type RegistryEntry,
+  verifyRegistryApproval,
+  verifyRegistryReview,
 } from '../../lib/registry'
 import { cancelSecurityChallenge } from '../../lib/securityChallenges'
 import { getWebauthnAssertion, isIpHostname } from '../../lib/webauthn'
@@ -17,10 +22,15 @@ type MigrantsApprovalsPageProps = {
   user: AuthenticatedUser
 }
 
-type ApprovalState = {
+type QueueAction = 'approve' | 'forward' | 'reject' | 'return'
+
+type ActionState = {
   entryId: number
-  decision: RegistryApprovalDecision
+  action: QueueAction
 } | null
+
+const canApprove = (role: AuthenticatedUser['role']) =>
+  role === 'admin' || role === 'coordinator'
 
 const formatEntryName = (entry: RegistryEntry) =>
   String(entry.payload_json.fullName || entry.payload_json.full_name || `Registration #${entry.id}`)
@@ -29,107 +39,203 @@ const formatEntrySubtitle = (entry: RegistryEntry) => {
   const payload = entry.pending_action === 'update' && entry.pending_payload_json
     ? entry.pending_payload_json
     : entry.payload_json
-  const country = payload.countryOfOrigin
-    ? String(payload.countryOfOrigin)
-    : 'Country unavailable'
-  const group = payload.populationGroup
-    ? String(payload.populationGroup)
-    : 'Population group unavailable'
+  const country = payload.countryOfOrigin ? String(payload.countryOfOrigin) : 'Country unavailable'
+  const group = payload.populationGroup ? String(payload.populationGroup) : 'Population group unavailable'
 
   return `${country} · ${group}`
 }
 
-export function MigrantsApprovalsPage({
-  onSessionExpired,
-  user,
-}: MigrantsApprovalsPageProps) {
-  const [entries, setEntries] = useState<RegistryEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
-  const [approvalState, setApprovalState] = useState<ApprovalState>(null)
+const ensurePasskeySupport = () => {
+  if (!window.isSecureContext || !('PublicKeyCredential' in window)) {
+    return 'A passkey action requires a secure context and supported browser.'
+  }
 
-  const loadEntries = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  if (isIpHostname(window.location.hostname)) {
+    return 'Passkey actions require localhost or a domain name, not an IP address.'
+  }
+
+  return null
+}
+
+export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprovalsPageProps) {
+  const [reviewEntries, setReviewEntries] = useState<RegistryEntry[]>([])
+  const [approvalEntries, setApprovalEntries] = useState<RegistryEntry[]>([])
+  const [isReviewsLoading, setIsReviewsLoading] = useState(true)
+  const [isApprovalsLoading, setIsApprovalsLoading] = useState(canApprove(user.role))
+  const [reviewError, setReviewError] = useState<string | null>(null)
+  const [approvalError, setApprovalError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [actionState, setActionState] = useState<ActionState>(null)
+
+  const loadReviews = useCallback(async () => {
+    setIsReviewsLoading(true)
+    setReviewError(null)
 
     try {
-      const response = await getPendingRegistryApprovals()
-      setEntries(response.data)
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 401) {
+      const response = await getPendingRegistryReviews()
+      setReviewEntries(response.data)
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
         onSessionExpired?.()
         return
       }
 
-      setError(err instanceof Error ? err.message : 'Unable to load pending registrations.')
+      setReviewError(error instanceof Error ? error.message : 'Unable to load pending migrant reviews.')
     } finally {
-      setLoading(false)
+      setIsReviewsLoading(false)
     }
   }, [onSessionExpired])
 
+  const loadApprovals = useCallback(async () => {
+    if (!canApprove(user.role)) {
+      setApprovalEntries([])
+      setIsApprovalsLoading(false)
+      return
+    }
+
+    setIsApprovalsLoading(true)
+    setApprovalError(null)
+
+    try {
+      const response = await getPendingRegistryApprovals()
+      setApprovalEntries(response.data)
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      setApprovalError(error instanceof Error ? error.message : 'Unable to load pending migrant approvals.')
+    } finally {
+      setIsApprovalsLoading(false)
+    }
+  }, [onSessionExpired, user.role])
+
+  const refreshQueues = useCallback(async () => {
+    await Promise.all([loadReviews(), loadApprovals()])
+  }, [loadApprovals, loadReviews])
+
   useEffect(() => {
-    void loadEntries()
-  }, [loadEntries])
+    void refreshQueues()
+  }, [refreshQueues])
 
-  const handleDecision = async (
-    entry: RegistryEntry,
-    decision: RegistryApprovalDecision,
-  ) => {
-    if (!window.isSecureContext || !('PublicKeyCredential' in window)) {
-      setError('Passkey approval requires a secure context and supported browser.')
+  const handleReviewForward = async (entry: RegistryEntry) => {
+    const supportError = ensurePasskeySupport()
+
+    if (supportError) {
+      setReviewError(supportError)
       return
     }
 
-    if (isIpHostname(window.location.hostname)) {
-      setError('Passkey approval requires localhost or a domain name, not an IP address.')
+    setActionState({ entryId: entry.id, action: 'forward' })
+    setReviewError(null)
+    setMessage(null)
+    let challengeIntentId: string | null = null
+
+    try {
+      const reason = window.prompt('Optional review note')?.trim() || undefined
+      const optionsResponse = await startRegistryReview(entry.id, { reason })
+      challengeIntentId = optionsResponse.challengeIntent.id
+      const assertion = await getWebauthnAssertion(optionsResponse.options)
+      const response = await verifyRegistryReview(entry.id, assertion)
+
+      setMessage(response.message)
+      await refreshQueues()
+    } catch (error) {
+      if (challengeIntentId && error instanceof DOMException && error.name === 'NotAllowedError') {
+        await cancelSecurityChallenge(challengeIntentId)
+      }
+
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      setReviewError(
+        error instanceof Error && error.name === 'NotAllowedError'
+          ? 'Passkey review was cancelled.'
+          : error instanceof Error
+            ? error.message
+            : 'Unable to forward the migrant registration for approval.',
+      )
+    } finally {
+      setActionState(null)
+    }
+  }
+
+  const handleReviewReturn = async (entry: RegistryEntry) => {
+    const reason = window.prompt('Required correction notes')?.trim()
+
+    if (!reason) {
       return
     }
 
-    const reason =
-      decision === 'reject'
-        ? window.prompt('Rejection reason')?.trim()
-        : undefined
+    setActionState({ entryId: entry.id, action: 'return' })
+    setReviewError(null)
+    setMessage(null)
+
+    try {
+      const response = await returnRegistryForCorrections(entry.id, reason)
+      setMessage(response.message)
+      await refreshQueues()
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      setReviewError(error instanceof Error ? error.message : 'Unable to return the registration for corrections.')
+    } finally {
+      setActionState(null)
+    }
+  }
+
+  const handleApprovalDecision = async (entry: RegistryEntry, decision: RegistryApprovalDecision) => {
+    const supportError = ensurePasskeySupport()
+
+    if (supportError) {
+      setApprovalError(supportError)
+      return
+    }
+
+    const reason = decision === 'reject' ? window.prompt('Rejection reason')?.trim() : undefined
 
     if (decision === 'reject' && !reason) {
       return
     }
 
-    setApprovalState({ entryId: entry.id, decision })
-    setError(null)
+    setActionState({ entryId: entry.id, action: decision })
+    setApprovalError(null)
     setMessage(null)
     let challengeIntentId: string | null = null
 
     try {
-      const optionsResponse = await startRegistryApproval(entry.id, {
-        decision,
-        reason,
-      })
+      const optionsResponse = await startRegistryApproval(entry.id, { decision, reason })
       challengeIntentId = optionsResponse.challengeIntent.id
       const assertion = await getWebauthnAssertion(optionsResponse.options)
-      const verifyResponse = await verifyRegistryApproval(entry.id, assertion)
+      const response = await verifyRegistryApproval(entry.id, assertion)
 
-      setMessage(verifyResponse.message)
-      await loadEntries()
-    } catch (err) {
-      if (challengeIntentId && err instanceof DOMException && err.name === 'NotAllowedError') {
+      setMessage(response.message)
+      await refreshQueues()
+    } catch (error) {
+      if (challengeIntentId && error instanceof DOMException && error.name === 'NotAllowedError') {
         await cancelSecurityChallenge(challengeIntentId)
       }
 
-      if (err instanceof ApiRequestError && err.status === 401) {
+      if (error instanceof ApiRequestError && error.status === 401) {
         onSessionExpired?.()
         return
       }
 
-      setError(
-        err instanceof Error
-          ? err.name === 'NotAllowedError'
-            ? 'Passkey approval was cancelled.'
-            : err.message
-          : 'Unable to complete the approval decision.',
+      setApprovalError(
+        error instanceof Error && error.name === 'NotAllowedError'
+          ? 'Passkey approval was cancelled.'
+          : error instanceof Error
+            ? error.message
+            : 'Unable to complete the approval decision.',
       )
     } finally {
-      setApprovalState(null)
+      setActionState(null)
     }
   }
 
@@ -138,72 +244,42 @@ export function MigrantsApprovalsPage({
       <section className="workspace-panel dashboard-signature-queue">
         <div className="dashboard-signature-queue__header">
           <div>
-            <h2 className="workspace-panel__title">Migrant registrations pending approval</h2>
+            <h2 className="workspace-panel__title">Registrations pending review</h2>
             <p className="workspace-panel__copy">
-              Coordinator/admin approval requires the reviewer passkey.
+              Forward reviewed registrations with your passkey, or return them to the original submitter for correction.
             </p>
           </div>
-          <button
-            className="session-action session-action--quiet"
-            disabled={loading}
-            onClick={() => void loadEntries()}
-            type="button"
-          >
+          <button className="session-action session-action--quiet" disabled={isReviewsLoading} onClick={() => void refreshQueues()} type="button">
             <AppIcon name="refresh" />
-            {loading ? 'Refreshing...' : 'Refresh'}
+            {isReviewsLoading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
 
-        {error ? <div className="login-feedback login-feedback--error">{error}</div> : null}
+        {reviewError ? <div className="login-feedback login-feedback--error">{reviewError}</div> : null}
         {message ? <div className="login-feedback login-feedback--success">{message}</div> : null}
-
-        {!loading && entries.length === 0 && !error ? (
-          <p className="workspace-panel__copy">There are no migrant registrations pending approval.</p>
+        {!isReviewsLoading && reviewEntries.length === 0 && !reviewError ? (
+          <p className="workspace-panel__copy">There are no migrant registrations pending review.</p>
         ) : null}
 
         <div className="signature-queue-list">
-          {entries.map((entry) => {
-            const isOwnCoordinatorSubmission =
-              user.role === 'coordinator' &&
-              (entry.pending_requested_by ?? entry.created_by) === user.id
-            const isBusy = approvalState?.entryId === entry.id
+          {reviewEntries.map((entry) => {
+            const isBusy = actionState?.entryId === entry.id
 
             return (
               <article className="signature-queue-card registry-approval-card" key={entry.id}>
                 <div>
                   <strong>{formatEntryName(entry)}</strong>
                   <span>{formatEntrySubtitle(entry)}</span>
-                  <span>
-                    {entry.pending_action === 'update'
-                      ? 'Modification approval'
-                      : 'New registration approval'}
-                  </span>
-                  <small>
-                    Submitted {new Date(entry.created_at).toLocaleString()} by{' '}
-                    {entry.creator?.email ?? entry.created_by_role}
-                  </small>
-                  {isOwnCoordinatorSubmission ? (
-                    <small>Coordinators cannot approve their own submissions.</small>
-                  ) : null}
+                  <small>Submitted {new Date(entry.created_at).toLocaleString()} by {entry.creator?.email ?? entry.created_by_role}</small>
                 </div>
                 <div className="registry-approval-card__actions">
-                  <button
-                    className="session-action session-action--quiet"
-                    disabled={isBusy || isOwnCoordinatorSubmission}
-                    onClick={() => void handleDecision(entry, 'reject')}
-                    type="button"
-                  >
-                    <AppIcon name="delete" />
-                    {isBusy && approvalState?.decision === 'reject' ? 'Rejecting...' : 'Reject'}
+                  <button className="session-action session-action--quiet" disabled={isBusy} onClick={() => void handleReviewReturn(entry)} type="button">
+                    <AppIcon name="document" />
+                    {isBusy && actionState?.action === 'return' ? 'Returning...' : 'Request corrections'}
                   </button>
-                  <button
-                    className="session-action"
-                    disabled={isBusy || isOwnCoordinatorSubmission}
-                    onClick={() => void handleDecision(entry, 'approve')}
-                    type="button"
-                  >
+                  <button className="session-action" disabled={isBusy} onClick={() => void handleReviewForward(entry)} type="button">
                     <AppIcon name="verify" />
-                    {isBusy && approvalState?.decision === 'approve' ? 'Approving...' : 'Approve'}
+                    {isBusy && actionState?.action === 'forward' ? 'Forwarding...' : 'Forward to approval'}
                   </button>
                 </div>
               </article>
@@ -211,6 +287,52 @@ export function MigrantsApprovalsPage({
           })}
         </div>
       </section>
+
+      {canApprove(user.role) ? (
+        <section className="workspace-panel dashboard-signature-queue">
+          <div className="dashboard-signature-queue__header">
+            <div>
+              <h2 className="workspace-panel__title">Registrations pending final approval</h2>
+              <p className="workspace-panel__copy">Coordinator/admin decisions require the reviewer passkey.</p>
+            </div>
+            <button className="session-action session-action--quiet" disabled={isApprovalsLoading} onClick={() => void refreshQueues()} type="button">
+              <AppIcon name="refresh" />
+              {isApprovalsLoading ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
+
+          {approvalError ? <div className="login-feedback login-feedback--error">{approvalError}</div> : null}
+          {!isApprovalsLoading && approvalEntries.length === 0 && !approvalError ? (
+            <p className="workspace-panel__copy">There are no migrant registrations pending final approval.</p>
+          ) : null}
+
+          <div className="signature-queue-list">
+            {approvalEntries.map((entry) => {
+              const isBusy = actionState?.entryId === entry.id
+
+              return (
+                <article className="signature-queue-card registry-approval-card" key={entry.id}>
+                  <div>
+                    <strong>{formatEntryName(entry)}</strong>
+                    <span>{formatEntrySubtitle(entry)}</span>
+                    <small>Submitted {new Date(entry.created_at).toLocaleString()} by {entry.creator?.email ?? entry.created_by_role}</small>
+                  </div>
+                  <div className="registry-approval-card__actions">
+                    <button className="session-action session-action--quiet" disabled={isBusy} onClick={() => void handleApprovalDecision(entry, 'reject')} type="button">
+                      <AppIcon name="delete" />
+                      {isBusy && actionState?.action === 'reject' ? 'Rejecting...' : 'Reject'}
+                    </button>
+                    <button className="session-action" disabled={isBusy} onClick={() => void handleApprovalDecision(entry, 'approve')} type="button">
+                      <AppIcon name="verify" />
+                      {isBusy && actionState?.action === 'approve' ? 'Approving...' : 'Approve'}
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      ) : null}
     </section>
   )
 }

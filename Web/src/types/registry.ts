@@ -4,7 +4,9 @@ export type RegistryRole = UserRole
 
 export type RegistryStatus =
   | 'draft'
+  | 'pending_review'
   | 'pending_approval'
+  | 'changes_requested'
   | 'approved'
   | 'rejected'
   | 'deleted_by_admin'
@@ -57,6 +59,7 @@ export type RegistryEntry = {
   pending_requested_by?: number | null
   pending_requested_by_role?: RegistryRole | null
   payload_json: Partial<MigrantRegistrationPayload> & Record<string, unknown>
+  status_history?: RegistryStatusHistory[]
   updated_at: string
 }
 
@@ -71,4 +74,14 @@ export type RegistrySignature = {
   registry_entry_id: number
   signature_payload: string
   verified_at?: string | null
+}
+
+export type RegistryStatusHistory = {
+  changed_by: number
+  changed_by_role: RegistryRole
+  created_at: string
+  from_status?: RegistryStatus | null
+  id: number
+  reason?: string | null
+  to_status: RegistryStatus
 }
