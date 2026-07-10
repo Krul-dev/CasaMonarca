@@ -243,6 +243,18 @@ async function mockAdminApi(page: Page) {
     })
   })
 
+  await page.route('**/api/admin/document-approvals?**', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        documents: [],
+        message: 'Document approvals loaded.',
+        signingRoles: ['admin', 'coordinator'],
+        signingUsers: [],
+      },
+    })
+  })
+
   await page.route('**/api/admin/verification-package-signing-key', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
