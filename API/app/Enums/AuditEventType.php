@@ -73,5 +73,11 @@ enum AuditEventType: string
     case MigrantRegistryRejected = 'migrant.registry.rejected';
     case MigrantRegistryDeleted = 'migrant.registry.deleted';
     case MigrantArcoRequested = 'migrant.arco.requested';
+    case MigrantArcoChallengeStarted = 'migrant.arco.challenge.started';
     case MigrantArcoResolved = 'migrant.arco.resolved';
+    case MigrantArcoRectificationApplied = 'migrant.arco.rectification.applied';
+    case MigrantArcoAccessDocumentGenerated = 'migrant.arco.access_document.generated';
+    case MigrantArcoAccessDocumentDownloaded = 'migrant.arco.access_document.downloaded';
+    case MigrantArcoCancellationExecuted = 'migrant.arco.cancellation.executed';
+    case MigrantArcoArtifactsPurged = 'migrant.arco.artifacts.purged';
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAccountActive;
+use App\Http\Middleware\RequireFeatureEnabled;
 use App\Http\Middleware\RequireRole;
 use App\Http\Middleware\RequireSecurityEnrollment;
 use App\Http\Middleware\TrustConfiguredProxies;
@@ -9,8 +10,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Session\TokenMismatchException;
+use Illuminate\Support\Facades\Cookie;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -43,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'requireActiveAccount' => EnsureAccountActive::class,
+            'requireFeature' => RequireFeatureEnabled::class,
             'requireRole' => RequireRole::class,
             'requireSecurityEnrollment' => RequireSecurityEnrollment::class,
         ]);

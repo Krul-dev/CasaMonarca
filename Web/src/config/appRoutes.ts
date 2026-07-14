@@ -3,6 +3,7 @@ import type {
   SessionModuleCapabilities,
   UserRole,
 } from '../lib/auth'
+import { arcoEnabled } from './env'
 
 export const LOGIN_PATH = '/login'
 export const REGISTER_PATH = '/register'
@@ -28,6 +29,7 @@ export type AppRouteConfig = {
   path: string
   requiredModule: keyof SessionModuleCapabilities
   allowedRoles?: UserRole[]
+  enabled?: boolean
   hidden?: boolean
   workspace: AppWorkspace
 }
@@ -112,10 +114,10 @@ export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
     path: APP_MIGRANT_ARCO_PATH,
     label: 'ARCO Requests',
     kicker: 'Privacy rights',
-    copy: 'ARCO request capture and resolution foundations for migrant records.',
+    copy: 'Signed privacy-rights requests, review, resolution, and evidence for migrant records.',
     requiredModule: 'dashboard',
-    allowedRoles: ['admin', 'coordinator', 'non_coordinator', 'volunteer'],
-    hidden: true,
+    allowedRoles: ['admin', 'coordinator', 'non_coordinator'],
+    enabled: arcoEnabled,
     workspace: 'migrant',
   },
 ]
@@ -152,7 +154,7 @@ export const canAccessRoute = (user: AuthenticatedUser, pathname: string) => {
   const route = getRouteConfig(pathname)
   const requiredModule = route?.requiredModule ?? null
 
-  if (!route || !requiredModule) {
+  if (!route || !requiredModule || route.enabled === false) {
     return false
   }
 
@@ -164,7 +166,7 @@ export const canAccessRoute = (user: AuthenticatedUser, pathname: string) => {
 
 export const getVisibleRoutesForUser = (user: AuthenticatedUser) =>
   APP_ROUTE_CONFIG
-    .filter((route) => !route.hidden && canAccessRoute(user, route.path))
+    .filter((route) => route.enabled !== false && !route.hidden && canAccessRoute(user, route.path))
     .map((route) => getRouteConfigForUser(route.path, user) ?? route)
 
 export const getRoleLabel = (role: UserRole) => {

@@ -26,9 +26,9 @@ export type RegistryStatus =
 export type MigrantRegistrationPayload = {
   attentionDate: string
   birthDate: string
-  civilStatus?: string
+  civilStatus: string
   countryOfOrigin: string
-  departmentState?: string
+  departmentState: string
   firstLastName: string
   firstName: string
   fullName: string
@@ -36,7 +36,7 @@ export type MigrantRegistrationPayload = {
   notes?: string
   phone?: string
   populationGroup: string
-  secondLastName?: string
+  secondLastName: string
 }
 
 export type RegistryActor = {

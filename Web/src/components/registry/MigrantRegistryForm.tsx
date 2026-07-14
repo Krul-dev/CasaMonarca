@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { MigrantRegistrationPayload } from '../../lib/registry'
+
+import {
+  CIVIL_STATUS_OPTIONS,
+  COUNTRY_OPTIONS,
+  GENDER_OPTIONS,
+  POPULATION_GROUP_OPTIONS,
+} from '../../config/registryFormOptions'
+import { ApiRequestError, type MigrantRegistrationPayload } from '../../lib/registry'
 
 type Props = {
   initialPayload?: Partial<MigrantRegistrationPayload> | null
@@ -11,8 +18,34 @@ type Props = {
 
 type FormState = Omit<MigrantRegistrationPayload, 'fullName'>
 
+const localToday = () => {
+  const now = new Date()
+  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+
+  return localDate.toISOString().slice(0, 10)
+}
+
+const calculateAge = (birthDateValue: string, attentionDateValue: string) => {
+  const birthDate = new Date(`${birthDateValue}T00:00:00`)
+  const attentionDate = new Date(`${attentionDateValue}T00:00:00`)
+
+  if (Number.isNaN(birthDate.getTime()) || Number.isNaN(attentionDate.getTime()) || birthDate > attentionDate) {
+    return null
+  }
+
+  let age = attentionDate.getFullYear() - birthDate.getFullYear()
+  const birthdayHasOccurred = attentionDate.getMonth() > birthDate.getMonth() ||
+    (attentionDate.getMonth() === birthDate.getMonth() && attentionDate.getDate() >= birthDate.getDate())
+
+  if (!birthdayHasOccurred) {
+    age -= 1
+  }
+
+  return age >= 0 && age <= 120 ? age : null
+}
+
 const initialState: FormState = {
-  attentionDate: new Date().toISOString().slice(0, 10),
+  attentionDate: localToday(),
   birthDate: '',
   civilStatus: '',
   countryOfOrigin: '',
@@ -27,32 +60,90 @@ const initialState: FormState = {
 }
 
 const buildFullName = (state: FormState) =>
-  [
-    state.firstName,
-    state.firstLastName,
-    state.secondLastName,
-  ]
-    .map((part) => part?.trim() ?? '')
+  [state.firstName, state.firstLastName, state.secondLastName]
+    .map((part) => part.trim())
     .filter(Boolean)
     .join(' ')
 
+const normalizeGender = (gender?: string) => {
+  if (gender === 'woman') return 'female'
+  if (gender === 'man') return 'male'
+
+  return gender ?? ''
+}
+
+const normalizeCivilStatus = (civilStatus?: string) =>
+  civilStatus === 'union' ? 'common_law_union' : civilStatus ?? ''
+
 const formStateFromPayload = (
   payload?: Partial<MigrantRegistrationPayload> | null,
-): FormState => ({
-  ...initialState,
-  attentionDate: payload?.attentionDate ?? initialState.attentionDate,
-  birthDate: payload?.birthDate ?? '',
-  civilStatus: payload?.civilStatus ?? '',
-  countryOfOrigin: payload?.countryOfOrigin ?? '',
-  departmentState: payload?.departmentState ?? '',
-  firstLastName: payload?.firstLastName ?? '',
-  firstName: payload?.firstName ?? '',
-  gender: payload?.gender ?? '',
-  notes: payload?.notes ?? '',
-  phone: payload?.phone ?? '',
-  populationGroup: payload?.populationGroup ?? '',
-  secondLastName: payload?.secondLastName ?? '',
-})
+): FormState => {
+  const attentionDate = payload?.attentionDate ?? initialState.attentionDate
+  const birthDate = payload?.birthDate ?? ''
+  return {
+    ...initialState,
+    attentionDate,
+    birthDate,
+    civilStatus: normalizeCivilStatus(payload?.civilStatus),
+    countryOfOrigin: payload?.countryOfOrigin ?? '',
+    departmentState: payload?.departmentState ?? '',
+    firstLastName: payload?.firstLastName ?? '',
+    firstName: payload?.firstName ?? '',
+    gender: normalizeGender(payload?.gender),
+    notes: payload?.notes ?? '',
+    phone: payload?.phone ?? '',
+    populationGroup: payload?.populationGroup ?? '',
+    secondLastName: payload?.secondLastName ?? '',
+  }
+}
+
+const validatePopulationGroup = (populationGroup: string, age: number) => {
+  if (populationGroup === 'adult') return age >= 18 && age <= 59
+  if (populationGroup === 'older_adult') return age >= 60
+  if (populationGroup === 'accompanied_girl' || populationGroup === 'accompanied_boy') return age <= 11
+  if (populationGroup === 'accompanied_adolescent_boy' || populationGroup === 'accompanied_adolescent_girl') return age >= 12 && age <= 17
+  if (populationGroup === 'unaccompanied_minor') return age <= 17
+
+  return false
+}
+
+const validateName = (label: string, value: string, required = true) => {
+  const normalizedValue = value.trim()
+
+  if (!normalizedValue) {
+    return required ? `${label} is required.` : null
+  }
+
+  return /^[\p{L}\p{M}][\p{L}\p{M} .'-]*$/u.test(normalizedValue)
+    ? null
+    : `${label} may contain only letters, spaces, apostrophes, periods, and hyphens.`
+}
+
+const validateForm = (form: FormState) => {
+  const nameError = validateName('First name', form.firstName)
+    ?? validateName('First last name', form.firstLastName)
+    ?? validateName('Second last name', form.secondLastName, false)
+
+  if (nameError) {
+    return nameError
+  }
+
+  const calculatedAge = calculateAge(form.birthDate, form.attentionDate)
+
+  if (calculatedAge === null) {
+    return 'Birth date must be on or before the attention date and cannot imply an age over 120.'
+  }
+
+  if (!validatePopulationGroup(form.populationGroup, calculatedAge)) {
+    return 'Population group is not consistent with the calculated age.'
+  }
+
+  if (form.phone && !/^\+?[0-9][0-9 ()-]{6,24}$/.test(form.phone.trim())) {
+    return 'Phone must contain 7 to 25 digits or common telephone separators.'
+  }
+
+  return null
+}
 
 export function MigrantRegistryForm({
   initialPayload,
@@ -64,7 +155,10 @@ export function MigrantRegistryForm({
   const [form, setForm] = useState<FormState>(() => formStateFromPayload(initialPayload))
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [messageTone, setMessageTone] = useState<'error' | 'success'>('success')
   const fullName = useMemo(() => buildFullName(form), [form])
+  const hasLegacyCountry = form.countryOfOrigin !== '' && !COUNTRY_OPTIONS.includes(form.countryOfOrigin)
+  const hasLegacyCivilStatus = form.civilStatus !== '' && !CIVIL_STATUS_OPTIONS.some(({ value }) => value === form.civilStatus)
 
   useEffect(() => {
     setForm(formStateFromPayload(initialPayload))
@@ -72,16 +166,26 @@ export function MigrantRegistryForm({
   }, [initialPayload])
 
   const updateField = (field: keyof FormState, value: string) => {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }))
+    setForm((current) => {
+      const next = { ...current, [field]: value }
+
+      return next
+    })
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setSubmitting(true)
     setMessage(null)
+
+    const validationMessage = validateForm(form)
+
+    if (validationMessage) {
+      setMessageTone('error')
+      setMessage(validationMessage)
+      return
+    }
+
+    setSubmitting(true)
 
     try {
       await onSubmit({
@@ -90,9 +194,20 @@ export function MigrantRegistryForm({
       })
 
       setForm(formStateFromPayload(initialPayload))
+      setMessageTone('success')
       setMessage(successMessage)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to submit the registration.')
+      setMessageTone('error')
+      const fieldErrors = error instanceof ApiRequestError && error.errors
+        ? Object.values(error.errors).flat().filter(Boolean)
+        : []
+      setMessage(
+        fieldErrors.length > 0
+          ? fieldErrors.join(' ')
+          : error instanceof Error
+            ? error.message
+            : 'Unable to submit the registration.',
+      )
     } finally {
       setSubmitting(false)
     }
@@ -104,144 +219,147 @@ export function MigrantRegistryForm({
         <label>
           Attention date
           <input
-            max={new Date().toISOString().slice(0, 10)}
+            max={localToday()}
+            onChange={(event) => updateField('attentionDate', event.target.value)}
             required
             type="date"
             value={form.attentionDate}
-            onChange={(event) => updateField('attentionDate', event.target.value)}
           />
         </label>
 
         <label>
-          First name
+          First name (without surnames)
           <input
+            autoComplete="given-name"
+            maxLength={120}
+            onChange={(event) => updateField('firstName', event.target.value)}
             required
             value={form.firstName}
-            onChange={(event) => updateField('firstName', event.target.value)}
           />
         </label>
 
         <label>
           First last name
           <input
+            autoComplete="family-name"
+            maxLength={120}
+            onChange={(event) => updateField('firstLastName', event.target.value)}
             required
             value={form.firstLastName}
-            onChange={(event) => updateField('firstLastName', event.target.value)}
           />
         </label>
 
         <label>
-          Second last name
+          Second last name (optional)
           <input
-            value={form.secondLastName}
+            maxLength={120}
             onChange={(event) => updateField('secondLastName', event.target.value)}
+            value={form.secondLastName}
           />
         </label>
 
         <label>
-          Phone
+          Contact phone number
           <input
+            autoComplete="tel"
             inputMode="tel"
-            value={form.phone}
+            maxLength={25}
             onChange={(event) => updateField('phone', event.target.value)}
+            pattern="\+?[0-9][0-9 ()-]{6,24}"
+            value={form.phone}
           />
         </label>
+
+        <fieldset className="registry-form__choice-group">
+          <legend>Gender</legend>
+          {GENDER_OPTIONS.map((option) => (
+            <label key={option.value}>
+              <input
+                checked={form.gender === option.value}
+                name="gender"
+                onChange={() => updateField('gender', option.value)}
+                required
+                type="radio"
+                value={option.value}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </fieldset>
 
         <label>
           Country of origin
-          <input
+          <select
+            aria-label="Country of origin"
+            autoComplete="country-name"
+            onChange={(event) => updateField('countryOfOrigin', event.target.value)}
             required
             value={form.countryOfOrigin}
-            onChange={(event) => updateField('countryOfOrigin', event.target.value)}
-          />
+          >
+            <option value="">Select a country</option>
+            {hasLegacyCountry ? <option value={form.countryOfOrigin}>{form.countryOfOrigin} (existing value)</option> : null}
+            {COUNTRY_OPTIONS.map((country) => <option key={country} value={country}>{country}</option>)}
+          </select>
         </label>
 
         <label>
           Department / state
           <input
-            value={form.departmentState}
+            maxLength={120}
             onChange={(event) => updateField('departmentState', event.target.value)}
+            required
+            value={form.departmentState}
           />
         </label>
 
         <label>
           Civil status
           <select
-            value={form.civilStatus}
+            aria-label="Civil status"
             onChange={(event) => updateField('civilStatus', event.target.value)}
+            required
+            value={form.civilStatus}
           >
             <option value="">Select one</option>
-            <option value="single">Single</option>
-            <option value="married">Married</option>
-            <option value="union">Union</option>
-            <option value="divorced">Divorced</option>
-            <option value="widowed">Widowed</option>
+            {hasLegacyCivilStatus ? <option value={form.civilStatus}>{form.civilStatus.replace(/_/g, ' ')} (existing value)</option> : null}
+            {CIVIL_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </label>
 
         <label>
           Birth date
           <input
-            max={new Date().toISOString().slice(0, 10)}
+            max={form.attentionDate || localToday()}
+            onChange={(event) => updateField('birthDate', event.target.value)}
             required
             type="date"
             value={form.birthDate}
-            onChange={(event) => updateField('birthDate', event.target.value)}
           />
         </label>
 
-        <label>
-          Gender
-          <select
-            required
-            value={form.gender}
-            onChange={(event) => updateField('gender', event.target.value)}
-          >
-            <option value="">Select one</option>
-            <option value="woman">Woman</option>
-            <option value="man">Man</option>
-            <option value="non_binary">Non-binary</option>
-            <option value="prefer_not_to_say">Prefer not to say</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-
-        <label>
-          Population group
-          <select
-            required
-            value={form.populationGroup}
-            onChange={(event) => updateField('populationGroup', event.target.value)}
-          >
-            <option value="">Select one</option>
-            <option value="migrant">Migrant</option>
-            <option value="refugee">Refugee</option>
-            <option value="asylum_seeker">Asylum seeker</option>
-            <option value="returnee">Returnee</option>
-            <option value="displaced">Displaced person</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
+        <fieldset className="registry-form__choice-group registry-form__choice-group--wide">
+          <legend>Population group</legend>
+          {POPULATION_GROUP_OPTIONS.map((option) => (
+            <label key={option.value}>
+              <input
+                checked={form.populationGroup === option.value}
+                name="populationGroup"
+                onChange={() => updateField('populationGroup', option.value)}
+                required
+                type="radio"
+                value={option.value}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </fieldset>
       </div>
-
-      <label>
-        Notes
-        <textarea
-          value={form.notes}
-          onChange={(event) => updateField('notes', event.target.value)}
-        />
-      </label>
 
       <div className="registry-form__footer">
         <span>Record: {fullName || 'Incomplete name'}</span>
         <div className="registry-form__actions">
           {onCancel ? (
-            <button
-              className="session-action session-action--quiet"
-              disabled={submitting}
-              onClick={onCancel}
-              type="button"
-            >
+            <button className="session-action session-action--quiet" disabled={submitting} onClick={onCancel} type="button">
               Cancel
             </button>
           ) : null}
@@ -251,7 +369,9 @@ export function MigrantRegistryForm({
         </div>
       </div>
 
-      {message ? <p className="workspace-panel__copy">{message}</p> : null}
+      {message ? (
+        <div className={`login-feedback login-feedback--${messageTone}`}>{message}</div>
+      ) : null}
     </form>
   )
 }

@@ -16,6 +16,166 @@
   color: #fffcf7;
 }
 
+.arco-page__heading,
+.arco-create__header,
+.arco-item__header,
+.arco-item__actions {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.arco-create {
+  border-bottom: 1px solid rgba(24, 36, 55, 0.14);
+  border-top: 1px solid rgba(24, 36, 55, 0.14);
+  margin-top: 1.5rem;
+  padding: 1.5rem 0;
+}
+
+.arco-create h2,
+.arco-create h3,
+.arco-section h2,
+.arco-item h3,
+.arco-item h4 {
+  margin: 0;
+}
+
+.arco-create__header p,
+.arco-item p {
+  color: #5a6b7e;
+}
+
+.arco-create__fields {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.35fr);
+  margin: 1.25rem 0;
+}
+
+.arco-create__fields label {
+  color: #18314f;
+  display: grid;
+  font-size: 0.86rem;
+  font-weight: 700;
+  gap: 0.4rem;
+}
+
+.arco-create__fields select,
+.arco-create__fields textarea {
+  background: #fffdf9;
+  border: 1px solid rgba(24, 36, 55, 0.18);
+  border-radius: 7px;
+  color: #18314f;
+  font: inherit;
+  min-height: 44px;
+  padding: 0.7rem;
+}
+
+.arco-create__reason {
+  grid-column: 1 / -1;
+}
+
+.arco-create__reason textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.arco-create__rectification {
+  border-top: 1px dashed rgba(24, 36, 55, 0.18);
+  margin-top: 1rem;
+  padding-top: 1.25rem;
+}
+
+.arco-section {
+  margin-top: 2rem;
+}
+
+.arco-list {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.arco-item {
+  background: #f8f5ee;
+  border: 1px solid rgba(24, 36, 55, 0.14);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.arco-item__type {
+  color: #955000;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.arco-item small {
+  color: #5a6b7e;
+}
+
+.arco-status {
+  border: 1px solid rgba(24, 36, 55, 0.16);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.35rem 0.55rem;
+  white-space: nowrap;
+}
+
+.arco-status--completed { color: #1d7447; }
+.arco-status--rejected { color: #a6292e; }
+.arco-status--pending_admin { color: #8c4d00; }
+
+.arco-diff,
+.arco-signatures {
+  border-top: 1px solid rgba(24, 36, 55, 0.14);
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.arco-diff > div {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(130px, 0.5fr) 1fr 1fr;
+}
+
+.arco-diff > div span:last-child {
+  color: #1d7447;
+  font-weight: 700;
+}
+
+.arco-signatures span {
+  color: #5a6b7e;
+  font-size: 0.82rem;
+}
+
+.arco-item__actions {
+  justify-content: flex-start;
+  margin-top: 1rem;
+}
+
+.arco-item__actions a {
+  text-decoration: none;
+}
+
+@media (max-width: 760px) {
+  .arco-page__heading,
+  .arco-item__header,
+  .arco-item__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .arco-create__fields,
+  .arco-diff > div {
+    grid-template-columns: 1fr;
+  }
+}
+
 .environment-badge__dot {
   width: 0.55rem;
   height: 0.55rem;
@@ -32,7 +192,7 @@
 }
 
 .dev-role-switcher {
-  position: fixed;
+  position: absolute;
   top: 4rem;
   right: 1rem;
   z-index: 20;
@@ -2444,6 +2604,13 @@
   font-weight: 760;
 }
 
+.registry-form label small {
+  color: #687586;
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
 .registry-form input,
 .registry-form select,
 .registry-form textarea {
@@ -2466,6 +2633,56 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.9rem;
+}
+
+.registry-form__choice-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 0.55rem 0.8rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.78rem 0.85rem 0.85rem;
+  border: 1px solid rgba(24, 36, 55, 0.14);
+  border-radius: 0.85rem;
+  background: rgba(255, 253, 248, 0.72);
+}
+
+.registry-form__choice-group--wide {
+  grid-column: 1 / -1;
+}
+
+.registry-form__choice-group legend {
+  padding: 0 0.3rem;
+  color: #0f2640;
+  font-size: 0.83rem;
+  font-weight: 760;
+}
+
+.registry-form__choice-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.48rem;
+  min-height: 1.8rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.registry-form__choice-group input[type='radio'] {
+  flex: 0 0 auto;
+  width: 1rem;
+  min-height: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  accent-color: #1e4f89;
+  cursor: pointer;
+}
+
+.registry-form__choice-group label span {
+  min-width: 0;
 }
 
 .registry-form__footer {
@@ -2575,6 +2792,11 @@
   gap: 0.38rem 1rem;
 }
 
+.registry-browser__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .registry-browser__context span {
   display: grid;
   gap: 0.12rem;
@@ -2654,6 +2876,94 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.55rem;
+}
+
+.registry-approval-filters {
+  grid-template-columns: repeat(3, minmax(9rem, 1fr)) auto;
+  margin-top: 0;
+}
+
+.registry-bulk-approval-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 3.4rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(24, 36, 55, 0.1);
+  border-radius: 0.75rem;
+  background: rgba(238, 247, 251, 0.74);
+}
+
+.registry-bulk-approval-toolbar__select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #173b62;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.registry-bulk-approval-toolbar__select-all input,
+.registry-approval-card__selector input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: #1e4f89;
+  cursor: pointer;
+}
+
+.registry-bulk-approval-toolbar__select-all input:disabled,
+.registry-approval-card__selector input:disabled {
+  cursor: not-allowed;
+}
+
+.registry-bulk-approval-toolbar__count {
+  margin-left: auto;
+  color: #536171;
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.registry-approval-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.registry-approval-card--selected {
+  border-color: rgba(30, 79, 137, 0.34);
+  background: rgba(229, 240, 249, 0.82);
+}
+
+.registry-approval-card__selector {
+  display: inline-grid;
+  place-items: center;
+  align-self: stretch;
+  min-width: 1.5rem;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .registry-approval-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .registry-bulk-approval-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .registry-bulk-approval-toolbar__count {
+    margin-left: 0;
+  }
+
+  .registry-approval-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .registry-approval-card__actions {
+    grid-column: 1 / -1;
+  }
 }
 
 .totp-enrollment__qr {
@@ -3724,6 +4034,10 @@
 }
 
 @media (max-width: 980px) {
+  body:has(.dev-role-switcher) .workspace-shell {
+    padding-top: 7.75rem;
+  }
+
   .workspace-shell {
     grid-template-columns: 1fr;
   }

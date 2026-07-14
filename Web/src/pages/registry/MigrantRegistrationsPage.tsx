@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { AppIcon } from '../../components/ui/AppIcon'
+import { APP_MIGRANT_REGISTRY_PATH } from '../../config/appRoutes'
+import type { AuthenticatedUser } from '../../lib/auth'
 import {
   ApiRequestError,
   getRegistryEntries,
@@ -8,7 +10,9 @@ import {
 } from '../../lib/registry'
 
 type MigrantRegistrationsPageProps = {
+  onNavigate?: (to: string) => void
   onSessionExpired?: () => void
+  user: AuthenticatedUser
 }
 
 type RegistrationsFilterState = {
@@ -149,7 +153,7 @@ const getUniqueValues = (entries: RegistryEntry[], getValue: (entry: RegistryEnt
   [...new Set(entries.map(getValue).filter((value) => value !== 'Not available'))]
     .sort((first, second) => first.localeCompare(second))
 
-export function MigrantRegistrationsPage({ onSessionExpired }: MigrantRegistrationsPageProps) {
+export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }: MigrantRegistrationsPageProps) {
   const [initialFilters] = useState<RegistrationsFilterState>(() => readStoredFilters())
   const [entries, setEntries] = useState<RegistryEntry[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -399,6 +403,19 @@ export function MigrantRegistrationsPage({ onSessionExpired }: MigrantRegistrati
                   <span className="registry-browser__status">{formatStatus(entry.current_status)}</span>
                 </div>
               </div>
+
+              {user.role === 'non_coordinator' && entry.current_status === 'approved' ? (
+                <div className="registry-browser__actions">
+                  <button
+                    className="session-action session-action--quiet session-action--inline"
+                    onClick={() => onNavigate?.(`${APP_MIGRANT_REGISTRY_PATH}?mode=edit&entryId=${entry.id}`)}
+                    type="button"
+                  >
+                    <AppIcon name="document" />
+                    Request edit
+                  </button>
+                </div>
+              ) : null}
 
               <div className="registry-browser__context">
                 <span><small>Origin</small><strong>{getEntryCountry(entry)}</strong></span>

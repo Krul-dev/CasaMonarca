@@ -54,10 +54,17 @@ use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalOptionsController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalVerifyController;
 use App\Http\Controllers\Api\Registry\MigrantArcoController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryBulkApprovalOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryBulkApprovalVerifyController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryReviewReturnController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryReviewOptionsController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryReviewVerifyController;
+use App\Http\Controllers\Api\Registry\MigrantArcoAccessDocumentController;
+use App\Http\Controllers\Api\Registry\MigrantArcoCreateOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantArcoCreateVerifyController;
+use App\Http\Controllers\Api\Registry\MigrantArcoDecisionOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantArcoDecisionVerifyController;
 use App\Http\Controllers\Api\SecurityChallengeCancelController;
 use Illuminate\Support\Facades\Route;
 
@@ -141,10 +148,16 @@ Route::middleware('web')->group(function (): void {
         Route::post('/', [MigrantRegistryController::class, 'store']);
         Route::get('/corrections', [MigrantRegistryController::class, 'corrections']);
 
-        Route::prefix('arco')->group(function (): void {
+        Route::prefix('arco')->middleware(['requireFeature:arco', 'requireRole:admin,coordinator,non_coordinator'])->group(function (): void {
             Route::get('/', [MigrantArcoController::class, 'index']);
-            Route::post('/', [MigrantArcoController::class, 'store']);
-            Route::post('/{migrantArcoRequest}/resolve', [MigrantArcoController::class, 'resolve']);
+            Route::post('/create/options', MigrantArcoCreateOptionsController::class);
+            Route::post('/create/verify', MigrantArcoCreateVerifyController::class);
+            Route::get('/{migrantArcoRequest}', [MigrantArcoController::class, 'show']);
+            Route::get('/{migrantArcoRequest}/access-document', MigrantArcoAccessDocumentController::class);
+            Route::post('/{migrantArcoRequest}/coordinator-decision/options', [MigrantArcoDecisionOptionsController::class, 'coordinator']);
+            Route::post('/{migrantArcoRequest}/coordinator-decision/verify', [MigrantArcoDecisionVerifyController::class, 'coordinator']);
+            Route::post('/{migrantArcoRequest}/admin-decision/options', [MigrantArcoDecisionOptionsController::class, 'admin']);
+            Route::post('/{migrantArcoRequest}/admin-decision/verify', [MigrantArcoDecisionVerifyController::class, 'admin']);
         });
 
         Route::middleware('requireRole:admin,coordinator,non_coordinator')->group(function (): void {
@@ -156,6 +169,8 @@ Route::middleware('web')->group(function (): void {
 
         Route::middleware('requireRole:admin,coordinator')->group(function (): void {
             Route::get('/pending-approval', [MigrantRegistryController::class, 'pendingApproval']);
+            Route::post('/bulk-approval/options', MigrantRegistryBulkApprovalOptionsController::class);
+            Route::post('/bulk-approval/verify', MigrantRegistryBulkApprovalVerifyController::class);
             Route::post('/{migrantRegistryEntry}/approval/options', MigrantRegistryApprovalOptionsController::class);
             Route::post('/{migrantRegistryEntry}/approval/verify', MigrantRegistryApprovalVerifyController::class);
         });

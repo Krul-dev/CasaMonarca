@@ -2,50 +2,38 @@
 
 namespace App\Http\Controllers\Api\Registry;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\CreateArcoRequest;
-use App\Http\Requests\ResolveArcoRequest;
 use App\Models\MigrantArcoRequest;
-use App\Services\Registry\MigrantArcoService;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class MigrantArcoController extends Controller
 {
-    public function __construct(
-        private readonly MigrantArcoService $service,
-    ) {}
-
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json([
-            'data' => MigrantArcoRequest::latest()->get(),
-        ]);
+        $actor = $request->user();
+        $query = MigrantArcoRequest::query()
+            ->whereIn('request_type', config('features.arco_types', ['access']))
+            ->with(['registryEntry', 'requester:id,name,email,role', 'signatures', 'statusHistory', 'artifact'])
+            ->latest();
+        if ($actor instanceof User && $actor->role === UserRole::NonCoordinator) {
+            $query->where('requested_by', $actor->id);
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
-    public function store(CreateArcoRequest $request): JsonResponse
+    public function show(Request $request, MigrantArcoRequest $migrantArcoRequest): JsonResponse
     {
-        $arcoRequest = $this->service->create(
-            $request->user(),
-            $request->validated(),
-        );
+        abort_unless(in_array($migrantArcoRequest->request_type, config('features.arco_types', ['access']), true), 404);
 
-        return response()->json([
-            'data' => $arcoRequest,
-        ], 201);
-    }
+        $actor = $request->user();
+        if ($actor instanceof User && $actor->role === UserRole::NonCoordinator && (int) $actor->id !== (int) $migrantArcoRequest->requested_by) {
+            abort(403);
+        }
 
-    public function resolve(
-        ResolveArcoRequest $request,
-        MigrantArcoRequest $migrantArcoRequest,
-    ): JsonResponse {
-        $resolved = $this->service->resolve(
-            $request->user(),
-            $migrantArcoRequest,
-            $request->validated(),
-        );
-
-        return response()->json([
-            'data' => $resolved,
-        ]);
+        return response()->json(['data' => $migrantArcoRequest->load(['registryEntry', 'requester:id,name,email,role', 'signatures', 'statusHistory', 'artifact'])]);
     }
 }

@@ -63,6 +63,25 @@ export type RegistryApprovalVerifyResponse = {
   message: string
 }
 
+export type RegistryBulkApprovalOptionsResponse = {
+  approvalTarget: {
+    decision: 'approve'
+    entryCount: number
+    entryIds: number[]
+    expiresAt: string
+  }
+  challengeIntent: SecurityChallengeSummary
+  message: string
+  options: WebauthnLoginOptions
+}
+
+export type RegistryBulkApprovalVerifyResponse = {
+  approvedCount: number
+  challengeIntent: SecurityChallengeSummary | null
+  data: RegistryEntry[]
+  message: string
+}
+
 export type RegistryReviewOptionsPayload = {
   reason?: string
 }
@@ -190,6 +209,38 @@ export async function verifyRegistryApproval(
 
   return apiFetch<RegistryApprovalVerifyResponse>(
     `/registry/migrants/${id}/approval/verify`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export async function startRegistryBulkApproval(entryIds: number[]) {
+  const { csrfToken } = await getCsrfToken()
+
+  return apiFetch<RegistryBulkApprovalOptionsResponse>(
+    '/registry/migrants/bulk-approval/options',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: JSON.stringify({ entry_ids: entryIds }),
+    },
+  )
+}
+
+export async function verifyRegistryBulkApproval(payload: WebauthnLoginAssertionPayload) {
+  const { csrfToken } = await getCsrfToken()
+
+  return apiFetch<RegistryBulkApprovalVerifyResponse>(
+    '/registry/migrants/bulk-approval/verify',
     {
       method: 'POST',
       headers: {

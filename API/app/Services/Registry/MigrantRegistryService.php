@@ -3,12 +3,14 @@
 namespace App\Services\Registry;
 
 use App\Enums\AuditEventType;
+use App\Enums\UserRole;
 use App\Models\MigrantRegistryEntry;
 use App\Models\MigrantRegistrySignature;
 use App\Models\MigrantRegistryStatusHistory;
 use App\Models\User;
 use App\Services\Audit\AuditEventService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class MigrantRegistryService
@@ -90,6 +92,20 @@ class MigrantRegistryService
                 (int) $entry->created_by !== (int) $user->getKey()
             ) {
                 abort(403, 'Only the original submitter can correct this migrant registration.');
+            }
+
+            if (
+                $entry->current_status !== self::STATUS_CHANGES_REQUESTED &&
+                $entry->current_status !== self::STATUS_APPROVED
+            ) {
+                abort(409, 'Only approved migrant registrations can receive a new modification request.');
+            }
+
+            if (
+                $entry->current_status === self::STATUS_APPROVED &&
+                ($user->role ?? UserRole::default()) !== UserRole::NonCoordinator
+            ) {
+                abort(403, 'Only non-coordinators can start a registration modification request.');
             }
 
             $fromStatus = (string) $entry->current_status;
@@ -220,76 +236,145 @@ class MigrantRegistryService
         ?string $reason,
         array $signatureData,
     ): MigrantRegistryEntry {
-        return DB::transaction(function () use ($user, $entry, $decision, $reason, $signatureData) {
-            $fromStatus = (string) $entry->current_status;
-            $pendingAction = (string) ($entry->pending_action ?? self::ACTION_CREATE);
-            $pendingPayload = $entry->pending_payload_json;
-            $toStatus = match (true) {
-                $decision === 'approve' => self::STATUS_APPROVED,
-                $pendingAction === self::ACTION_UPDATE => self::STATUS_APPROVED,
-                default => self::STATUS_REJECTED,
-            };
+        return DB::transaction(fn (): MigrantRegistryEntry => $this->resolveApprovalRecord(
+            $user,
+            $entry,
+            $decision,
+            $reason,
+            $signatureData,
+        ));
+    }
 
-            $signature = MigrantRegistrySignature::create([
-                'registry_entry_id' => $entry->id,
-                'actor_user_id' => $user->id,
-                'actor_role' => $user->role?->value ?? 'coordinator',
-                'action_type' => $decision === 'approve' ? 'approve' : 'reject',
-                'algorithm' => 'webauthn-passkey',
-                'signature_payload' => json_encode($signatureData, JSON_THROW_ON_ERROR),
-                'public_key_ref' => (string) ($signatureData['credentialId'] ?? ''),
-                'verified_at' => now(),
-            ]);
+    /**
+     * @param  list<array{id: int, payloadHash: string}>  $targets
+     * @param  array<string, mixed>  $signatureData
+     * @return Collection<int, MigrantRegistryEntry>
+     */
+    public function resolveBulkApproval(User $user, array $targets, array $signatureData): Collection
+    {
+        return DB::transaction(function () use ($user, $targets, $signatureData): Collection {
+            $targetsById = collect($targets)->keyBy(fn (array $target): int => (int) $target['id']);
+            $entries = MigrantRegistryEntry::query()
+                ->whereKey($targetsById->keys()->all())
+                ->lockForUpdate()
+                ->get()
+                ->keyBy(fn (MigrantRegistryEntry $entry): int => (int) $entry->getKey());
 
-            $entryUpdates = [
-                'current_status' => $toStatus,
-                'current_assignee_role' => null,
-                'pending_action' => null,
-                'pending_requested_by' => null,
-                'pending_requested_by_role' => null,
-                'pending_payload_json' => null,
-            ];
-
-            if ($decision === 'approve' && $pendingAction === self::ACTION_UPDATE && is_array($pendingPayload)) {
-                $entryUpdates = [
-                    ...$entryUpdates,
-                    'payload_json' => $pendingPayload,
-                ];
+            if ($entries->count() !== $targetsById->count()) {
+                abort(409, 'One or more registrations are no longer available for approval.');
             }
 
-            $entry->forceFill($entryUpdates)->save();
+            foreach ($targetsById as $entryId => $target) {
+                $entry = $entries->get((int) $entryId);
 
-            MigrantRegistryStatusHistory::create([
-                'registry_entry_id' => $entry->id,
-                'from_status' => $fromStatus,
-                'to_status' => $toStatus,
-                'changed_by' => $user->id,
-                'changed_by_role' => $user->role?->value ?? 'coordinator',
-                'reason' => $reason,
-                'signature_id' => $signature->id,
-            ]);
+                if (
+                    ! $entry instanceof MigrantRegistryEntry ||
+                    $entry->current_status !== self::STATUS_PENDING_APPROVAL ||
+                    ! hash_equals((string) $target['payloadHash'], $this->approvalPayloadHash($entry))
+                ) {
+                    abort(409, 'One or more registrations changed after bulk approval started. Reload and try again.');
+                }
+            }
 
-            $this->auditService->success(
-                $this->request,
-                $decision === 'approve'
-                    ? AuditEventType::MigrantRegistryApproved
-                    : AuditEventType::MigrantRegistryRejected,
-                $user,
-                resource: [
-                    'type' => MigrantRegistryEntry::class,
-                    'id' => $entry->id,
-                ],
-                metadata: [
-                    'decision' => $decision,
-                    'reason' => $reason,
-                    'previousStatus' => $fromStatus,
-                    'status' => $toStatus,
-                    'pendingAction' => $pendingAction,
-                ],
-            );
-
-            return $entry->fresh(['creator:id,name,email,role', 'signatures', 'statusHistory']) ?? $entry;
+            return $entries
+                ->sortBy(fn (MigrantRegistryEntry $entry): int => (int) $entry->getKey())
+                ->values()
+                ->map(fn (MigrantRegistryEntry $entry): MigrantRegistryEntry => $this->resolveApprovalRecord(
+                    $user,
+                    $entry,
+                    'approve',
+                    null,
+                    $signatureData,
+                ));
         });
+    }
+
+    public function approvalPayloadHash(MigrantRegistryEntry $entry): string
+    {
+        $payload = $entry->pending_action === self::ACTION_UPDATE && is_array($entry->pending_payload_json)
+            ? $entry->pending_payload_json
+            : $entry->payload_json;
+
+        return hash('sha256', json_encode(is_array($payload) ? $payload : [], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @param  array<string, mixed>  $signatureData
+     */
+    private function resolveApprovalRecord(
+        User $user,
+        MigrantRegistryEntry $entry,
+        string $decision,
+        ?string $reason,
+        array $signatureData,
+    ): MigrantRegistryEntry {
+        $fromStatus = (string) $entry->current_status;
+        $pendingAction = (string) ($entry->pending_action ?? self::ACTION_CREATE);
+        $pendingPayload = $entry->pending_payload_json;
+        $toStatus = $decision === 'approve'
+            ? self::STATUS_APPROVED
+            : self::STATUS_REJECTED;
+
+        $signature = MigrantRegistrySignature::create([
+            'registry_entry_id' => $entry->id,
+            'actor_user_id' => $user->id,
+            'actor_role' => $user->role?->value ?? 'coordinator',
+            'action_type' => $decision === 'approve' ? 'approve' : 'reject',
+            'algorithm' => 'webauthn-passkey',
+            'signature_payload' => json_encode($signatureData, JSON_THROW_ON_ERROR),
+            'public_key_ref' => (string) ($signatureData['credentialId'] ?? ''),
+            'verified_at' => now(),
+        ]);
+
+        $entryUpdates = [
+            'current_status' => $toStatus,
+            'current_assignee_role' => null,
+            'pending_action' => null,
+            'pending_requested_by' => null,
+            'pending_requested_by_role' => null,
+            'pending_payload_json' => null,
+        ];
+
+        if ($decision === 'approve' && $pendingAction === self::ACTION_UPDATE && is_array($pendingPayload)) {
+            $entryUpdates = [
+                ...$entryUpdates,
+                'payload_json' => $pendingPayload,
+            ];
+        }
+
+        $entry->forceFill($entryUpdates)->save();
+
+        MigrantRegistryStatusHistory::create([
+            'registry_entry_id' => $entry->id,
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'changed_by' => $user->id,
+            'changed_by_role' => $user->role?->value ?? 'coordinator',
+            'reason' => $reason,
+            'signature_id' => $signature->id,
+        ]);
+
+        $this->auditService->success(
+            $this->request,
+            $decision === 'approve'
+                ? AuditEventType::MigrantRegistryApproved
+                : AuditEventType::MigrantRegistryRejected,
+            $user,
+            resource: [
+                'type' => MigrantRegistryEntry::class,
+                'id' => $entry->id,
+            ],
+            metadata: [
+                'decision' => $decision,
+                'reason' => $reason,
+                'previousStatus' => $fromStatus,
+                'status' => $toStatus,
+                'pendingAction' => $pendingAction,
+                'bulkApproval' => (bool) ($signatureData['bulkApproval'] ?? false),
+            ],
+        );
+
+        return $entry->fresh(['creator:id,name,email,role', 'signatures', 'statusHistory']) ?? $entry;
     }
 
     public function delete(User $user, MigrantRegistryEntry $entry): void
@@ -326,6 +411,8 @@ class MigrantRegistryService
                 metadata: [
                     'previousStatus' => $fromStatus,
                     'status' => self::STATUS_DELETED,
+                    'processType' => 'normal',
+                    'actionLabel' => 'Eliminación por Administrador',
                 ],
             );
 

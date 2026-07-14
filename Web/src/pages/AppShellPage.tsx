@@ -99,7 +99,13 @@ function renderModule(
         />
       )
     case APP_MIGRANT_REGISTRATIONS_PATH:
-      return <MigrantRegistrationsPage onSessionExpired={onSessionExpired} />
+      return (
+        <MigrantRegistrationsPage
+          onNavigate={onNavigate}
+          onSessionExpired={onSessionExpired}
+          user={user}
+        />
+      )
     case APP_MIGRANT_APPROVALS_PATH:
       return (
         <MigrantsApprovalsPage
@@ -108,7 +114,7 @@ function renderModule(
         />
       )
     case APP_MIGRANT_ARCO_PATH:
-      return <MigrantsArcoPage onSessionExpired={onSessionExpired} />
+      return <MigrantsArcoPage onSessionExpired={onSessionExpired} user={user} />
     default:
       return (
         <SessionPage

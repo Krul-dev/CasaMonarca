@@ -17,6 +17,7 @@ class MigrantRegistryStatusHistory extends Model
         'changed_by_role',
         'reason',
         'signature_id',
+        'arco_request_id',
     ];
 
     public function registryEntry(): BelongsTo

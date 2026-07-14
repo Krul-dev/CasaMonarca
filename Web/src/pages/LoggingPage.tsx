@@ -145,6 +145,7 @@ const classifyClearance = (event: AuditEventSummary): AuditClearance => {
 
   if (
     eventType.includes('.delete') ||
+    eventType.includes('cancellation.executed') ||
     eventType.includes('.disabled') ||
     eventType.includes('.passkeys_revoked') ||
     action === 'delete' ||
@@ -358,6 +359,14 @@ const buildMetadataPreview = (event: AuditEventSummary) => {
     previewEntries.push({ label: 'Action', value: metadata.action })
   }
 
+  if (typeof metadata.actionLabel === 'string') {
+    previewEntries.push({ label: 'Action', value: metadata.actionLabel })
+  }
+
+  if (typeof metadata.requestType === 'string') {
+    previewEntries.push({ label: 'ARCO right', value: metadata.requestType })
+  }
+
   if (typeof metadata.purpose === 'string') {
     previewEntries.push({ label: 'Challenge purpose', value: metadata.purpose })
   }
@@ -389,6 +398,8 @@ const buildMetadataPreview = (event: AuditEventSummary) => {
 
   if (typeof metadata.previousStatus === 'string' && typeof metadata.newStatus === 'string') {
     previewEntries.push({ label: 'Status change', value: `${metadata.previousStatus} -> ${metadata.newStatus}` })
+  } else if (typeof metadata.previousStatus === 'string' && typeof metadata.status === 'string') {
+    previewEntries.push({ label: 'Status change', value: `${metadata.previousStatus} -> ${metadata.status}` })
   } else if (typeof metadata.previousStatus === 'string' && typeof metadata.action === 'string') {
     previewEntries.push({ label: 'Requested status action', value: `${metadata.action} from ${metadata.previousStatus}` })
   }

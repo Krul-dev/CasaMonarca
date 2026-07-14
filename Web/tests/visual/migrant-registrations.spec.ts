@@ -41,11 +41,12 @@ const registrations = [
       departmentState: 'Cortes',
       firstLastName: 'Lopez',
       firstName: 'Ana',
-      fullName: 'Ana Lopez',
-      gender: 'woman',
+      fullName: 'Ana Lopez X',
+      gender: 'female',
       notes: 'Needs follow-up on temporary housing.',
       phone: '+52 81 0000 0000',
-      populationGroup: 'refugee',
+      populationGroup: 'adult',
+      secondLastName: 'X',
     },
     updated_at: '2026-07-10T14:25:00.000Z',
   },
@@ -85,11 +86,19 @@ async function openRegistrations(page: Page) {
   await expect(page.getByRole('heading', { name: 'Current migrant registrations' })).toBeVisible()
 }
 
+const nonCoordinatorUser = {
+  ...user,
+  email: 'reviewer@casamonarca.local',
+  id: 6,
+  name: 'Registry reviewer',
+  role: 'non_coordinator',
+}
+
 test('filters and expands current migrant registrations', async ({ page }, testInfo) => {
   await page.setViewportSize({ height: 1000, width: 1440 })
   await openRegistrations(page)
 
-  await expect(page.getByText('Ana Lopez', { exact: true })).toBeVisible()
+  await expect(page.getByText('Ana Lopez X', { exact: true })).toBeVisible()
   await expect(page.getByText('Diego Perez', { exact: true })).toBeVisible()
 
   await page.getByLabel('Search').fill('Ana')
@@ -102,7 +111,7 @@ test('filters and expands current migrant registrations', async ({ page }, testI
 
   await page.getByLabel('Search').fill('')
   await page.getByLabel('Status').selectOption('pending_approval')
-  await expect(page.getByText('Ana Lopez', { exact: true })).toBeHidden()
+  await expect(page.getByText('Ana Lopez X', { exact: true })).toBeHidden()
   await expect(page.getByText('Diego Perez', { exact: true })).toBeVisible()
 
   await page.screenshot({
@@ -126,5 +135,48 @@ test('keeps current registrations inside the mobile viewport', async ({ page }, 
   await page.screenshot({
     fullPage: true,
     path: testInfo.outputPath('migrant-registrations-mobile.png'),
+  })
+})
+
+test('non-coordinator starts an edit request from an approved registration', async ({ page }) => {
+  let submittedPayload: Record<string, unknown> | null = null
+
+  await page.route('**/api/me', async (route) => {
+    await route.fulfill({ contentType: 'application/json', json: { message: 'Current user loaded.', user: nonCoordinatorUser } })
+  })
+  await page.route('**/api/csrf-token', async (route) => {
+    await route.fulfill({ contentType: 'application/json', json: { csrfToken: 'visual-test-token' } })
+  })
+  await page.route('**/api/registry/migrants/31', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      submittedPayload = route.request().postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        contentType: 'application/json',
+        json: { data: { ...registrations[0], current_status: 'pending_review' } },
+      })
+      return
+    }
+
+    await route.fulfill({ contentType: 'application/json', json: { data: registrations[0] } })
+  })
+  await page.route('**/api/registry/migrants', async (route) => {
+    await route.fulfill({ contentType: 'application/json', json: { data: registrations } })
+  })
+
+  await page.goto('/app/migrants/registrations')
+  await expect(page.getByRole('button', { name: 'Request edit' })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Request edit' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Request registration edit' })).toBeVisible()
+  await expect(page.getByLabel('First name (without surnames)')).toHaveValue('Ana')
+  await page.getByLabel('Department / state').fill('Atlantida')
+  await page.getByRole('button', { name: 'Submit edit request' }).click()
+
+  await expect(page).toHaveURL(/\/app\/migrants\/registrations$/)
+  expect(submittedPayload).toMatchObject({
+    payload_json: {
+      departmentState: 'Atlantida',
+      fullName: 'Ana Lopez X',
+    },
   })
 })
