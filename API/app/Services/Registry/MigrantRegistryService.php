@@ -298,6 +298,26 @@ class MigrantRegistryService
         return hash('sha256', json_encode(is_array($payload) ? $payload : [], JSON_THROW_ON_ERROR));
     }
 
+    public static function approvalTargetsHash(mixed $targets): string
+    {
+        return hash('sha256', json_encode(self::canonicalize($targets), JSON_THROW_ON_ERROR));
+    }
+
+    private static function canonicalize(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if (array_is_list($value)) {
+            return array_map(fn (mixed $item): mixed => self::canonicalize($item), $value);
+        }
+
+        ksort($value, SORT_STRING);
+
+        return array_map(fn (mixed $item): mixed => self::canonicalize($item), $value);
+    }
+
     /**
      * @param  array<string, mixed>  $signatureData
      */

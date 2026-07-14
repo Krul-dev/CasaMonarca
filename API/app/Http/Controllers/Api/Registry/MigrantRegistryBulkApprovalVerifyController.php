@@ -33,30 +33,34 @@ class MigrantRegistryBulkApprovalVerifyController extends Controller
         $intent = $request->session()->get(MigrantRegistryBulkApprovalOptionsController::INTENT_KEY);
 
         if (! $this->isValidIntent($intent)) {
-            return response()->json(['message' => 'Bulk migrant approval challenge was not initiated.'], 401);
+            return response()->json(['message' => 'Bulk migrant approval challenge was not initiated.'], 409);
         }
 
         try {
             $expiresAt = CarbonImmutable::parse((string) $intent['expiresAt']);
         } catch (\Throwable) {
-            return response()->json(['message' => 'Bulk migrant approval challenge is invalid.'], 401);
+            return response()->json(['message' => 'Bulk migrant approval challenge is invalid.'], 409);
         }
 
         if ($expiresAt->isPast()) {
             $this->forgetChallenge($request);
 
-            return response()->json(['message' => 'Bulk migrant approval challenge expired. Request a new challenge.'], 401);
+            return response()->json(['message' => 'Bulk migrant approval challenge expired. Request a new challenge.'], 409);
         }
 
         /** @var User|null $actor */
         $actor = $request->user();
 
-        if (
-            ! $actor instanceof User ||
-            (int) $actor->getKey() !== (int) $intent['actorUserId'] ||
-            ! in_array($actor->role ?? UserRole::default(), [UserRole::Admin, UserRole::Coordinator], true)
-        ) {
-            return response()->json(['message' => 'Bulk approval challenge does not match the authenticated session.'], 401);
+        if (! $actor instanceof User) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        if ((int) $actor->getKey() !== (int) $intent['actorUserId']) {
+            return response()->json(['message' => 'Bulk approval challenge does not match the authenticated session.'], 409);
+        }
+
+        if (! in_array($actor->role ?? UserRole::default(), [UserRole::Admin, UserRole::Coordinator], true)) {
+            return response()->json(['message' => 'This account cannot approve migrant registrations.'], 403);
         }
 
         $challengeIntent = $this->pendingChallengeIntent($request, $actor);
@@ -71,15 +75,15 @@ class MigrantRegistryBulkApprovalVerifyController extends Controller
                 ! hash_equals($challengeIntent->challenge_hash, $this->securityChallengeIntentService->hashChallenge((string) $intent['challenge'])) ||
                 (string) data_get($challengeIntent->payload, 'decision') !== 'approve' ||
                 ! hash_equals(
-                    hash('sha256', json_encode(data_get($challengeIntent->payload, 'targets'), JSON_THROW_ON_ERROR)),
-                    hash('sha256', json_encode($intent['targets'], JSON_THROW_ON_ERROR)),
+                    MigrantRegistryService::approvalTargetsHash(data_get($challengeIntent->payload, 'targets')),
+                    MigrantRegistryService::approvalTargetsHash($intent['targets']),
                 )
             )
         ) {
             $this->failChallenge($challengeIntent, 'intent_payload_mismatch');
             $this->forgetChallenge($request);
 
-            return response()->json(['message' => 'Bulk migrant approval challenge is invalid.'], 401);
+            return response()->json(['message' => 'Bulk migrant approval challenge is invalid.'], 409);
         }
 
         $targets = collect($intent['targets'])->map(fn (array $target): array => [
@@ -243,14 +247,14 @@ class MigrantRegistryBulkApprovalVerifyController extends Controller
         if (! $challengeIntent instanceof SecurityChallengeIntent) {
             $this->forgetChallenge($request);
 
-            return response()->json(['message' => 'Bulk migrant approval challenge is no longer pending.'], 401);
+            return response()->json(['message' => 'Bulk migrant approval challenge is no longer pending.'], 409);
         }
 
         if ($challengeIntent->expires_at?->isPast()) {
             $this->securityChallengeIntentService->markExpired($challengeIntent, $request);
             $this->forgetChallenge($request);
 
-            return response()->json(['message' => 'Bulk migrant approval challenge expired. Request a new challenge.'], 401);
+            return response()->json(['message' => 'Bulk migrant approval challenge expired. Request a new challenge.'], 409);
         }
 
         return $challengeIntent;
