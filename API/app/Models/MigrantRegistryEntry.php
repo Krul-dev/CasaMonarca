@@ -47,4 +47,9 @@ class MigrantRegistryEntry extends Model
     {
         return $this->hasMany(MigrantArcoRequest::class, 'registry_entry_id');
     }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(MigrantRegistryDocument::class, 'registry_entry_id');
+    }
 }

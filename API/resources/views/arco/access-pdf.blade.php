@@ -17,6 +17,12 @@
 <table>@foreach(($arco->registryEntry?->payload_json ?? $arco->original_payload_json ?? []) as $key => $value)<tr><th>{{ str($key)->headline() }}</th><td>{{ is_scalar($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE) }}</td></tr>@endforeach</table>
 <h2>Procedencia</h2>
 <table><tr><th>Identificador del registro</th><td>{{ $arco->registry_entry_id }}</td></tr><tr><th>Fecha de creación</th><td>{{ $arco->registryEntry?->created_at }}</td></tr><tr><th>Estado</th><td>{{ $arco->registryEntry?->current_status }}</td></tr><tr><th>Solicitado por</th><td>{{ $arco->requester?->name }} ({{ $arco->requested_by_role }})</td></tr></table>
+<h2>Documentos adjuntos</h2>
+@if(($arco->registryEntry?->documents?->count() ?? 0) > 0)
+<table><tr><th>Archivo</th><th>Tipo</th><th>SHA-256</th><th>Cargado por</th></tr>@foreach($arco->registryEntry->documents as $document)<tr><td>{{ $document->label ? $document->label.' — '.$document->original_file_name : $document->original_file_name }}</td><td>{{ $document->mime_type ?? 'n/d' }}</td><td>{{ $document->sha256 }}</td><td>{{ $document->uploaded_by_role }} · {{ $document->created_at }}</td></tr>@endforeach</table>
+@else
+<p class="meta">Este registro no tiene documentos adjuntos.</p>
+@endif
 <h2>Cadena de firmas</h2>
 <table><tr><th>Acción</th><th>Rol</th><th>Fecha</th></tr>@foreach($arco->signatures as $signature)<tr><td>{{ $signature->action_type }}</td><td>{{ $signature->actor_role }}</td><td>{{ $signature->verified_at }}</td></tr>@endforeach</table>
 <h2>Historial de la solicitud</h2>

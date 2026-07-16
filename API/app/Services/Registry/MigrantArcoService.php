@@ -7,6 +7,7 @@ use App\Models\MigrantArcoArtifact;
 use App\Models\MigrantArcoRequest;
 use App\Models\MigrantArcoSignature;
 use App\Models\MigrantArcoStatusHistory;
+use App\Models\MigrantRegistryDocument;
 use App\Models\MigrantRegistryEntry;
 use App\Models\MigrantRegistryStatusHistory;
 use App\Models\User;
@@ -188,6 +189,18 @@ class MigrantArcoService
             $artifact->forceFill(['storage_disk' => null, 'storage_path' => null, 'purged_at' => now()])->save();
         }
 
+        $documents = MigrantRegistryDocument::query()->where('registry_entry_id', $entry->id)->whereNull('purged_at')->get();
+
+        foreach ($documents as $document) {
+            if ($document->storage_disk && $document->storage_path) {
+                Storage::disk($document->storage_disk)->delete($document->storage_path);
+            }
+            $document->forceFill(['storage_disk' => null, 'storage_path' => null, 'purged_at' => now()])->save();
+            if (! $document->trashed()) {
+                $document->delete();
+            }
+        }
+
         MigrantArcoRequest::query()->where('registry_entry_id', $entry->id)->update([
             'original_payload_json' => null,
             'proposed_payload_json' => null,
@@ -213,12 +226,12 @@ class MigrantArcoService
         if (! $entry->trashed()) {
             $entry->delete();
         }
-        $this->audit(AuditEventType::MigrantArcoArtifactsPurged, $actor, $request, $from, 'deleted_by_admin_arco', null, ['artifactCount' => $artifacts->count()]);
+        $this->audit(AuditEventType::MigrantArcoArtifactsPurged, $actor, $request, $from, 'deleted_by_admin_arco', null, ['artifactCount' => $artifacts->count(), 'documentCount' => $documents->count()]);
     }
 
     private function generateAccessPdf(User $actor, MigrantArcoRequest $request): string
     {
-        $request->loadMissing(['registryEntry', 'requester', 'signatures', 'statusHistory']);
+        $request->loadMissing(['registryEntry', 'registryEntry.documents' => fn ($query) => $query->whereNull('purged_at'), 'requester', 'signatures', 'statusHistory']);
         $options = new Options;
         $options->set('defaultFont', 'DejaVu Sans');
         $dompdf = new Dompdf($options);

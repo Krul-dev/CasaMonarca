@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { MigrantDocumentsPanel } from '../../components/registry/MigrantDocumentsPanel'
 import { MigrantRegistryForm } from '../../components/registry/MigrantRegistryForm'
 import { APP_HOME_PATH, APP_MIGRANT_REGISTRATIONS_PATH } from '../../config/appRoutes'
 import type { AuthenticatedUser } from '../../lib/auth'
@@ -9,8 +10,35 @@ import {
   getRegistryEntryById,
   type MigrantRegistrationPayload,
   type RegistryEntry,
+  type RegistryStatus,
   updateRegistryEntry,
 } from '../../lib/registry'
+
+const DOCUMENT_PRE_APPROVAL_STATUSES: RegistryStatus[] = [
+  'pending_review',
+  'pending_approval',
+  'changes_requested',
+]
+
+const DOCUMENT_VOLUNTEER_STATUSES: RegistryStatus[] = ['pending_review', 'changes_requested']
+
+const getDocumentPermissions = (user: AuthenticatedUser, entry: RegistryEntry) => {
+  const status = entry.current_status
+  const role = user.role
+  const owns = entry.created_by === user.id
+  const isReviewer = role === 'admin' || role === 'coordinator' || role === 'non_coordinator'
+  const preApproval = DOCUMENT_PRE_APPROVAL_STATUSES.includes(status)
+  const volunteerCanTouch = role === 'volunteer' && owns && DOCUMENT_VOLUNTEER_STATUSES.includes(status)
+
+  return {
+    canDelete: (preApproval && isReviewer) || volunteerCanTouch,
+    canUpload:
+      (preApproval && isReviewer) ||
+      volunteerCanTouch ||
+      (status === 'approved' && (role === 'admin' || role === 'coordinator')),
+    canView: role !== 'volunteer',
+  }
+}
 
 type MigrantsRegistryPageProps = {
   locationSearch?: string
@@ -45,6 +73,7 @@ export function MigrantsRegistryPage({
   const requestedEntryId = entryFormRequest?.entryId ?? null
   const formMode = entryFormRequest?.mode ?? null
   const [requestedEntry, setRequestedEntry] = useState<RegistryEntry | null>(null)
+  const [createdEntry, setCreatedEntry] = useState<RegistryEntry | null>(null)
   const [loadError, setLoadError] = useState<{ entryId: number, message: string } | null>(null)
 
   useEffect(() => {
@@ -104,7 +133,8 @@ export function MigrantsRegistryPage({
   }, [formMode, onSessionExpired, requestedEntryId, user.id, user.role])
 
   const handleCreate = async (payload_json: MigrantRegistrationPayload) => {
-    await createRegistryEntry({ payload_json })
+    const response = await createRegistryEntry({ payload_json })
+    setCreatedEntry(response.data)
   }
 
   const handleUpdateRequest = async (payload_json: MigrantRegistrationPayload) => {
@@ -155,6 +185,22 @@ export function MigrantsRegistryPage({
           />
         ) : null}
       </section>
+
+      {isRequestedEntryReady && requestedEntry ? (
+        <MigrantDocumentsPanel
+          entryId={requestedEntry.id}
+          onSessionExpired={onSessionExpired}
+          {...getDocumentPermissions(user, requestedEntry)}
+        />
+      ) : null}
+
+      {!requestedEntryId && createdEntry ? (
+        <MigrantDocumentsPanel
+          entryId={createdEntry.id}
+          onSessionExpired={onSessionExpired}
+          {...getDocumentPermissions(user, createdEntry)}
+        />
+      ) : null}
     </section>
   )
 }

@@ -57,6 +57,7 @@ use App\Http\Controllers\Api\Registry\MigrantArcoController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryBulkApprovalOptionsController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryBulkApprovalVerifyController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryDocumentController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryReviewReturnController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryReviewOptionsController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryReviewVerifyController;
@@ -158,6 +159,16 @@ Route::middleware('web')->group(function (): void {
             Route::post('/{migrantArcoRequest}/coordinator-decision/verify', [MigrantArcoDecisionVerifyController::class, 'coordinator']);
             Route::post('/{migrantArcoRequest}/admin-decision/options', [MigrantArcoDecisionOptionsController::class, 'admin']);
             Route::post('/{migrantArcoRequest}/admin-decision/verify', [MigrantArcoDecisionVerifyController::class, 'admin']);
+        });
+
+        Route::prefix('{migrantRegistryEntry}/documents')->middleware('requireFeature:migrant_documents')->group(function (): void {
+            Route::post('/', [MigrantRegistryDocumentController::class, 'store']);
+            Route::delete('/{migrantRegistryDocument}', [MigrantRegistryDocumentController::class, 'destroy']);
+
+            Route::middleware('requireRole:admin,coordinator,non_coordinator')->group(function (): void {
+                Route::get('/', [MigrantRegistryDocumentController::class, 'index']);
+                Route::get('/{migrantRegistryDocument}/download', [MigrantRegistryDocumentController::class, 'download']);
+            });
         });
 
         Route::middleware('requireRole:admin,coordinator,non_coordinator')->group(function (): void {

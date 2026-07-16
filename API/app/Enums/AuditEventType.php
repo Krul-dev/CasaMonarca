@@ -80,4 +80,8 @@ enum AuditEventType: string
     case MigrantArcoAccessDocumentDownloaded = 'migrant.arco.access_document.downloaded';
     case MigrantArcoCancellationExecuted = 'migrant.arco.cancellation.executed';
     case MigrantArcoArtifactsPurged = 'migrant.arco.artifacts.purged';
+    case MigrantDocumentUploaded = 'migrant.registry.document.uploaded';
+    case MigrantDocumentDownloaded = 'migrant.registry.document.downloaded';
+    case MigrantDocumentDeleted = 'migrant.registry.document.deleted';
+    case MigrantDocumentsPurged = 'migrant.registry.documents.purged';
 }

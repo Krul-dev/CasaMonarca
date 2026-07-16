@@ -80,6 +80,7 @@ class MigrantRegistryController extends Controller
                 'creator:id,name,email,role',
                 'signatures',
                 'statusHistory',
+                'documents' => fn ($query) => $query->whereNull('purged_at')->with('uploader:id,name,email,role'),
             ]),
         ]);
     }
