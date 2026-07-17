@@ -8,9 +8,23 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./Web:/app
-      - ./Web/.env.dev:/app/.env:ro
-      - web-node-modules:/app/node_modules
+      - type: bind
+        source: ./Web
+        target: /app
+        bind:
+          create_host_path: false
+
+      - type: bind
+        source: ./Web/.env.dev
+        target: /app/.env
+        read_only: true
+        bind:
+          create_host_path: false
+
+      - type: volume
+        source: web-node-modules
+        target: /app/node_modules
+
     depends_on:
       - api
 
@@ -21,9 +35,23 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./API:/var/www/html
-      - ./API/.env.dev:/var/www/html/.env:ro
-      - api-vendor:/var/www/html/vendor
+      - type: bind
+        source: ./API
+        target: /var/www/html
+        bind:
+          create_host_path: false
+
+      - type: bind
+        source: ./API/.env.dev
+        target: /var/www/html/.env
+        read_only: true
+        bind:
+          create_host_path: false
+
+      - type: volume
+        source: api-vendor
+        target: /var/www/html/vendor
+
     depends_on:
       db:
         condition: service_healthy
@@ -36,7 +64,9 @@ services:
       MYSQL_PASSWORD: local_password
       MYSQL_ROOT_PASSWORD: local_root_password
     volumes:
-      - db-data:/var/lib/mysql
+      - type: volume
+        source: db-data
+        target: /var/lib/mysql
     healthcheck:
       test:
         [
