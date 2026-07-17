@@ -2871,6 +2871,94 @@
   white-space: pre-wrap;
 }
 
+.registry-browser__documents {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(24, 36, 55, 0.1);
+}
+
+.registry-browser__documents h4 {
+  margin: 0;
+  color: #0f2640;
+  font-size: 0.85rem;
+}
+
+.arco-create__documents,
+.arco-item__documents {
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(24, 36, 55, 0.1);
+}
+
+.arco-create__documents h3 {
+  margin: 0;
+  color: #0f2640;
+  font-size: 0.9rem;
+}
+
+.arco-item__documents summary {
+  width: max-content;
+  max-width: 100%;
+  color: #1e4f89;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.arco-item__document-resolution {
+  margin: 0;
+  color: #536171;
+  font-size: 0.82rem;
+}
+
+.confirmation-modal {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(12, 22, 34, 0.58);
+}
+
+.confirmation-modal__surface {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 31rem);
+  padding: 1.15rem;
+  border: 1px solid rgba(24, 36, 55, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1.1rem 3rem rgba(12, 22, 34, 0.24);
+}
+
+.confirmation-modal__surface h3,
+.confirmation-modal__surface p {
+  margin: 0;
+}
+
+.confirmation-modal__surface h3 {
+  color: #0f2640;
+  font-size: 1rem;
+}
+
+.confirmation-modal__surface p {
+  margin-top: 0.55rem;
+  color: #536171;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.confirmation-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
 .registry-approval-card__actions {
   display: flex;
   flex-wrap: wrap;
@@ -4277,8 +4365,41 @@
   }
 }
 
-.migrant-documents__form {
-  margin-bottom: 1.25rem;
+.registry-form__documents {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.9rem;
+  border: 1px solid rgba(24, 36, 55, 0.14);
+  border-radius: 8px;
+}
+
+.registry-form__documents legend {
+  padding: 0 0.3rem;
+  color: #0f2640;
+  font-size: 0.85rem;
+  font-weight: 760;
+}
+
+.registry-form__document-picker,
+.registry-form__document-details {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.registry-form__document-details {
+  flex: 1 1 auto;
+}
+
+.registry-form__document-details strong {
+  overflow-wrap: anywhere;
+}
+
+.migrant-documents--embedded {
+  display: grid;
+  gap: 0.65rem;
+  padding-top: 0.25rem;
 }
 
 .migrant-documents__list {

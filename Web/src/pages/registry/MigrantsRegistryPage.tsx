@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 
-import { MigrantDocumentsPanel } from '../../components/registry/MigrantDocumentsPanel'
 import { MigrantRegistryForm } from '../../components/registry/MigrantRegistryForm'
 import { APP_HOME_PATH, APP_MIGRANT_REGISTRATIONS_PATH } from '../../config/appRoutes'
+import { migrantDocumentsEnabled } from '../../config/env'
 import type { AuthenticatedUser } from '../../lib/auth'
+import type { PendingMigrantDocument } from '../../lib/migrantDocuments'
 import {
   ApiRequestError,
   createRegistryEntry,
@@ -32,10 +33,11 @@ const getDocumentPermissions = (user: AuthenticatedUser, entry: RegistryEntry) =
 
   return {
     canDelete: (preApproval && isReviewer) || volunteerCanTouch,
+    canDownload: role === 'admin' || role === 'coordinator',
     canUpload:
       (preApproval && isReviewer) ||
       volunteerCanTouch ||
-      (status === 'approved' && (role === 'admin' || role === 'coordinator')),
+      (status === 'approved' && (role === 'admin' || role === 'coordinator' || role === 'non_coordinator')),
     canView: role !== 'volunteer',
   }
 }
@@ -73,12 +75,10 @@ export function MigrantsRegistryPage({
   const requestedEntryId = entryFormRequest?.entryId ?? null
   const formMode = entryFormRequest?.mode ?? null
   const [requestedEntry, setRequestedEntry] = useState<RegistryEntry | null>(null)
-  const [createdEntry, setCreatedEntry] = useState<RegistryEntry | null>(null)
   const [loadError, setLoadError] = useState<{ entryId: number, message: string } | null>(null)
 
   useEffect(() => {
     if (requestedEntryId === null || formMode === null) {
-      setRequestedEntry(null)
       return
     }
 
@@ -132,17 +132,22 @@ export function MigrantsRegistryPage({
     }
   }, [formMode, onSessionExpired, requestedEntryId, user.id, user.role])
 
-  const handleCreate = async (payload_json: MigrantRegistrationPayload) => {
-    const response = await createRegistryEntry({ payload_json })
-    setCreatedEntry(response.data)
+  const handleCreate = async (
+    payload_json: MigrantRegistrationPayload,
+    documents: PendingMigrantDocument[],
+  ) => {
+    await createRegistryEntry({ payload_json }, documents)
   }
 
-  const handleUpdateRequest = async (payload_json: MigrantRegistrationPayload) => {
+  const handleUpdateRequest = async (
+    payload_json: MigrantRegistrationPayload,
+    documents: PendingMigrantDocument[],
+  ) => {
     if (!requestedEntry) {
       return
     }
 
-    await updateRegistryEntry(requestedEntry.id, { payload_json })
+    await updateRegistryEntry(requestedEntry.id, { payload_json }, documents)
     onNavigate?.(formMode === 'edit' ? APP_MIGRANT_REGISTRATIONS_PATH : APP_HOME_PATH)
   }
 
@@ -171,6 +176,17 @@ export function MigrantsRegistryPage({
 
         {!isLoadingEntry && (!requestedEntryId || isRequestedEntryReady) ? (
           <MigrantRegistryForm
+            documentContext={isRequestedEntryReady && requestedEntry
+              ? {
+                  canDelete: getDocumentPermissions(user, requestedEntry).canDelete,
+                  canDownload: getDocumentPermissions(user, requestedEntry).canDownload,
+                  canUpload: getDocumentPermissions(user, requestedEntry).canUpload,
+                  canView: getDocumentPermissions(user, requestedEntry).canView,
+                  entryId: requestedEntry.id,
+                  onSessionExpired,
+                }
+              : null}
+            documentsEnabled={migrantDocumentsEnabled}
             initialPayload={requestedEntry?.payload_json ?? null}
             onCancel={isRequestedEntryReady
               ? () => onNavigate?.(isEditRequest ? APP_MIGRANT_REGISTRATIONS_PATH : APP_HOME_PATH)
@@ -185,22 +201,6 @@ export function MigrantsRegistryPage({
           />
         ) : null}
       </section>
-
-      {isRequestedEntryReady && requestedEntry ? (
-        <MigrantDocumentsPanel
-          entryId={requestedEntry.id}
-          onSessionExpired={onSessionExpired}
-          {...getDocumentPermissions(user, requestedEntry)}
-        />
-      ) : null}
-
-      {!requestedEntryId && createdEntry ? (
-        <MigrantDocumentsPanel
-          entryId={createdEntry.id}
-          onSessionExpired={onSessionExpired}
-          {...getDocumentPermissions(user, createdEntry)}
-        />
-      ) : null}
     </section>
   )
 }

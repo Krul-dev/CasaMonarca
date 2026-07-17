@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { MigrantDocumentsPanel } from '../../components/registry/MigrantDocumentsPanel'
 import { AppIcon } from '../../components/ui/AppIcon'
 import { APP_MIGRANT_REGISTRY_PATH } from '../../config/appRoutes'
+import { migrantDocumentsEnabled } from '../../config/env'
 import type { AuthenticatedUser } from '../../lib/auth'
 import {
   ApiRequestError,
@@ -166,6 +168,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
   const [searchInput, setSearchInput] = useState(initialFilters.search)
   const [debouncedSearch, setDebouncedSearch] = useState(initialFilters.search)
   const [reloadToken, setReloadToken] = useState(0)
+  const [documentEntryIds, setDocumentEntryIds] = useState<Set<number>>(() => new Set())
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -265,6 +268,16 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
     setSearchInput('')
     setDebouncedSearch('')
     setPage(1)
+  }
+
+  const revealDocuments = (entryId: number) => {
+    setDocumentEntryIds((current) => {
+      if (current.has(entryId)) {
+        return current
+      }
+
+      return new Set(current).add(entryId)
+    })
   }
 
   return (
@@ -424,7 +437,14 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
                 <span><small>Submitted by</small><strong>{entry.creator?.email ?? formatValue(entry.created_by_role)}</strong></span>
               </div>
 
-              <details className="registry-browser__details">
+              <details
+                className="registry-browser__details"
+                onToggle={(event) => {
+                  if (event.currentTarget.open) {
+                    revealDocuments(entry.id)
+                  }
+                }}
+              >
                 <summary>View registration details</summary>
                 <dl>
                   <div><dt>First name</dt><dd>{formatValue(entry.payload_json.firstName)}</dd></div>
@@ -438,6 +458,19 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
                 </dl>
                 {typeof entry.payload_json.notes === 'string' && entry.payload_json.notes.trim() ? (
                   <p className="registry-browser__notes"><small>Notes</small>{entry.payload_json.notes}</p>
+                ) : null}
+                {migrantDocumentsEnabled && user.role !== 'volunteer' && documentEntryIds.has(entry.id) ? (
+                  <section className="registry-browser__documents">
+                    <h4>Supporting documents</h4>
+                    <MigrantDocumentsPanel
+                      canDelete={false}
+                      canDownload={user.role === 'admin' || user.role === 'coordinator'}
+                      canView
+                      embedded
+                      entryId={entry.id}
+                      onSessionExpired={onSessionExpired}
+                    />
+                  </section>
                 ) : null}
               </details>
             </article>

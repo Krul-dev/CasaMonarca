@@ -63,6 +63,26 @@ abstract class MigrantRegistryPayloadRequest extends FormRequest
         ];
     }
 
+    /** @return array<string, list<mixed>> */
+    protected function documentRules(): array
+    {
+        if (! config('features.migrant_documents', false)) {
+            return [
+                'documents' => ['prohibited'],
+                'document_labels' => ['prohibited'],
+            ];
+        }
+
+        $mimeTypes = implode(',', config('features.migrant_documents_allowed_mime_types', []));
+
+        return [
+            'documents' => ['nullable', 'array', 'max:'.config('features.migrant_documents_max_per_entry', 10)],
+            'documents.*' => ['file', 'max:16384', "mimetypes:{$mimeTypes}"],
+            'document_labels' => ['nullable', 'array'],
+            'document_labels.*' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
     /** @return array<string, string> */
     public function messages(): array
     {
@@ -90,6 +110,14 @@ abstract class MigrantRegistryPayloadRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $payload = $this->input('payload_json');
+
+        if (is_string($payload)) {
+            try {
+                $payload = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                return;
+            }
+        }
 
         if (! is_array($payload)) {
             return;

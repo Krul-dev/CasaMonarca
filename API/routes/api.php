@@ -1,24 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\Auth\AdminAuthorizationCheckController;
-use App\Http\Controllers\Api\Auth\AccountInvitePreviewController;
-use App\Http\Controllers\Api\Auth\AccountInviteRedeemController;
-use App\Http\Controllers\Api\Auth\CsrfTokenController;
-use App\Http\Controllers\Api\Auth\CurrentUserController;
-use App\Http\Controllers\Api\Auth\LoginController;
-use App\Http\Controllers\Api\Auth\LogoutController;
-use App\Http\Controllers\Api\Auth\PasswordResetCompleteController;
-use App\Http\Controllers\Api\Auth\TotpLoginController;
-use App\Http\Controllers\Api\Auth\TotpEnrollmentOptionsController;
-use App\Http\Controllers\Api\Auth\TotpEnrollmentVerifyController;
-use App\Http\Controllers\Api\Auth\WebauthnCredentialDeleteController;
-use App\Http\Controllers\Api\Auth\WebauthnCredentialListController;
-use App\Http\Controllers\Api\Auth\WebauthnLoginOptionsController;
-use App\Http\Controllers\Api\Auth\WebauthnLoginVerifyController;
-use App\Http\Controllers\Api\Auth\WebauthnRegistrationOptionsController;
-use App\Http\Controllers\Api\Auth\WebauthnRegistrationVerifyController;
-use App\Http\Controllers\Api\Admin\AccountInviteIssueLinkController;
 use App\Http\Controllers\Api\Admin\AccountInviteIndexController;
+use App\Http\Controllers\Api\Admin\AccountInviteIssueLinkController;
 use App\Http\Controllers\Api\Admin\AccountInviteRevokeController;
 use App\Http\Controllers\Api\Admin\AccountInviteStoreController;
 use App\Http\Controllers\Api\Admin\AccountInviteVerifyOutOfBandController;
@@ -37,35 +20,54 @@ use App\Http\Controllers\Api\Admin\VerificationPackageSigningKeyController;
 use App\Http\Controllers\Api\Admin\VerificationPackageSigningKeyRotationOptionsController;
 use App\Http\Controllers\Api\Admin\VerificationPackageSigningKeyRotationVerifyController;
 use App\Http\Controllers\Api\Audit\AuditEventIndexController;
-use App\Http\Controllers\Api\Documents\DocumentDownloadController;
+use App\Http\Controllers\Api\Auth\AccountInvitePreviewController;
+use App\Http\Controllers\Api\Auth\AccountInviteRedeemController;
+use App\Http\Controllers\Api\Auth\AdminAuthorizationCheckController;
+use App\Http\Controllers\Api\Auth\CsrfTokenController;
+use App\Http\Controllers\Api\Auth\CurrentUserController;
+use App\Http\Controllers\Api\Auth\LoginController;
+use App\Http\Controllers\Api\Auth\LogoutController;
+use App\Http\Controllers\Api\Auth\PasswordResetCompleteController;
+use App\Http\Controllers\Api\Auth\TotpEnrollmentOptionsController;
+use App\Http\Controllers\Api\Auth\TotpEnrollmentVerifyController;
+use App\Http\Controllers\Api\Auth\TotpLoginController;
+use App\Http\Controllers\Api\Auth\WebauthnCredentialDeleteController;
+use App\Http\Controllers\Api\Auth\WebauthnCredentialListController;
+use App\Http\Controllers\Api\Auth\WebauthnLoginOptionsController;
+use App\Http\Controllers\Api\Auth\WebauthnLoginVerifyController;
+use App\Http\Controllers\Api\Auth\WebauthnRegistrationOptionsController;
+use App\Http\Controllers\Api\Auth\WebauthnRegistrationVerifyController;
 use App\Http\Controllers\Api\Documents\DocumentDeleteOptionsController;
 use App\Http\Controllers\Api\Documents\DocumentDeleteVerifyController;
+use App\Http\Controllers\Api\Documents\DocumentDownloadController;
 use App\Http\Controllers\Api\Documents\DocumentIndexController;
 use App\Http\Controllers\Api\Documents\DocumentRevisionUpdateOptionsController;
 use App\Http\Controllers\Api\Documents\DocumentRevisionUpdateVerifyController;
+use App\Http\Controllers\Api\Documents\DocumentShowController;
 use App\Http\Controllers\Api\Documents\DocumentSignOptionsController;
 use App\Http\Controllers\Api\Documents\DocumentSignVerifyController;
-use App\Http\Controllers\Api\Documents\DocumentShowController;
 use App\Http\Controllers\Api\Documents\DocumentStoreController;
 use App\Http\Controllers\Api\Documents\DocumentVerificationBundleController;
 use App\Http\Controllers\Api\Documents\DocumentVerificationController;
 use App\Http\Controllers\Api\Documents\DocumentVerificationPackageController;
 use App\Http\Controllers\Api\HealthController;
-use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalOptionsController;
-use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalVerifyController;
-use App\Http\Controllers\Api\Registry\MigrantArcoController;
-use App\Http\Controllers\Api\Registry\MigrantRegistryBulkApprovalOptionsController;
-use App\Http\Controllers\Api\Registry\MigrantRegistryBulkApprovalVerifyController;
-use App\Http\Controllers\Api\Registry\MigrantRegistryController;
-use App\Http\Controllers\Api\Registry\MigrantRegistryDocumentController;
-use App\Http\Controllers\Api\Registry\MigrantRegistryReviewReturnController;
-use App\Http\Controllers\Api\Registry\MigrantRegistryReviewOptionsController;
-use App\Http\Controllers\Api\Registry\MigrantRegistryReviewVerifyController;
 use App\Http\Controllers\Api\Registry\MigrantArcoAccessDocumentController;
+use App\Http\Controllers\Api\Registry\MigrantArcoController;
 use App\Http\Controllers\Api\Registry\MigrantArcoCreateOptionsController;
 use App\Http\Controllers\Api\Registry\MigrantArcoCreateVerifyController;
 use App\Http\Controllers\Api\Registry\MigrantArcoDecisionOptionsController;
 use App\Http\Controllers\Api\Registry\MigrantArcoDecisionVerifyController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryApprovalVerifyController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryBulkApprovalOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryBulkApprovalVerifyController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryDocumentController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryDocumentDownloadOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryDocumentDownloadVerifyController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryReviewOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryReviewReturnController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryReviewVerifyController;
 use App\Http\Controllers\Api\SecurityChallengeCancelController;
 use Illuminate\Support\Facades\Route;
 
@@ -167,7 +169,11 @@ Route::middleware('web')->group(function (): void {
 
             Route::middleware('requireRole:admin,coordinator,non_coordinator')->group(function (): void {
                 Route::get('/', [MigrantRegistryDocumentController::class, 'index']);
-                Route::get('/{migrantRegistryDocument}/download', [MigrantRegistryDocumentController::class, 'download']);
+            });
+
+            Route::middleware('requireRole:admin,coordinator')->group(function (): void {
+                Route::post('/{migrantRegistryDocument}/download/options', MigrantRegistryDocumentDownloadOptionsController::class);
+                Route::post('/{migrantRegistryDocument}/download/verify', MigrantRegistryDocumentDownloadVerifyController::class);
             });
         });
 

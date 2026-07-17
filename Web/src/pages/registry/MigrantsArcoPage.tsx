@@ -28,9 +28,9 @@ export function MigrantsArcoPage({ onSessionExpired, user }: Props) {
   }
 
   return <section className="workspace-stack"><section className="workspace-panel"><div className="arco-page__heading"><div><h2 className="workspace-panel__title">ARCO rights workspace</h2><p className="workspace-panel__copy">Signed Access, Rectification, Cancellation, and Opposition requests.</p></div><button className="session-action session-action--quiet session-action--inline" onClick={() => void load()} type="button">Refresh</button></div>
-    <ArcoRequestForm entries={entries} onCreated={load} />
+    <ArcoRequestForm entries={entries} onCreated={load} onSessionExpired={onSessionExpired} user={user} />
     {message ? <div className="login-feedback login-feedback--success">{message}</div> : null}{error ? <div className="login-feedback login-feedback--error">{error}</div> : null}
-    <section className="arco-section"><h2>Pending action</h2>{loading ? <p>Loading requests...</p> : <ArcoRequestList busyId={busyId} onDecision={(request, stage, decision) => void decide(request, stage, decision)} requests={pending} user={user} />}</section>
-    <section className="arco-section"><h2>Resolved requests</h2><ArcoRequestList busyId={busyId} onDecision={(request, stage, decision) => void decide(request, stage, decision)} requests={resolved} user={user} /></section>
+    <section className="arco-section"><h2>Pending action</h2>{loading ? <p>Loading requests...</p> : <ArcoRequestList busyId={busyId} onDecision={(request, stage, decision) => void decide(request, stage, decision)} onSessionExpired={onSessionExpired} requests={pending} user={user} />}</section>
+    <section className="arco-section"><h2>Resolved requests</h2><ArcoRequestList busyId={busyId} onDecision={(request, stage, decision) => void decide(request, stage, decision)} onSessionExpired={onSessionExpired} requests={resolved} user={user} /></section>
   </section></section>
 }

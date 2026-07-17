@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Audit\AuditEventService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -36,22 +37,25 @@ class MigrantRegistryDocumentService
 
     public function store(User $actor, MigrantRegistryEntry $entry, UploadedFile $file, ?string $label): MigrantRegistryDocument
     {
-        $this->assertCanUpload($actor, $entry);
-
-        $max = (int) config('features.migrant_documents_max_per_entry', 10);
-
-        if ($entry->documents()->whereNull('purged_at')->count() >= $max) {
-            abort(422, "This registration already has the maximum of {$max} documents.");
-        }
-
         $originalFileName = basename($file->getClientOriginalName());
         $storedPath = null;
 
         try {
             $document = DB::transaction(function () use ($actor, $entry, $file, $label, $originalFileName, &$storedPath): MigrantRegistryDocument {
+                $lockedEntry = MigrantRegistryEntry::query()
+                    ->whereKey($entry->getKey())
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $this->assertCanUpload($actor, $lockedEntry);
+                $max = (int) config('features.migrant_documents_max_per_entry', 10);
+
+                if ($lockedEntry->documents()->whereNull('purged_at')->count() >= $max) {
+                    abort(422, "This registration already has the maximum of {$max} documents.");
+                }
+
                 $storedPath = sprintf(
                     'migrant-registry/%d/documents/%s-%s',
-                    $entry->getKey(),
+                    $lockedEntry->getKey(),
                     Str::uuid()->toString(),
                     $originalFileName,
                 );
@@ -67,7 +71,7 @@ class MigrantRegistryDocumentService
                 }
 
                 return MigrantRegistryDocument::query()->create([
-                    'registry_entry_id' => $entry->getKey(),
+                    'registry_entry_id' => $lockedEntry->getKey(),
                     'label' => $label !== null && trim($label) !== '' ? trim($label) : null,
                     'original_file_name' => $originalFileName,
                     'mime_type' => $file->getClientMimeType(),
@@ -109,11 +113,9 @@ class MigrantRegistryDocumentService
     {
         $this->assertCanDelete($actor, $entry);
 
-        DB::transaction(function () use ($document): void {
-            if ($document->storage_disk && $document->storage_path) {
-                Storage::disk($document->storage_disk)->delete($document->storage_path);
-            }
+        $this->deleteStoredFileOrFail($document);
 
+        DB::transaction(function () use ($document): void {
             $document->forceFill([
                 'storage_disk' => null,
                 'storage_path' => null,
@@ -133,6 +135,29 @@ class MigrantRegistryDocumentService
                 'sha256' => $document->sha256,
             ],
         );
+    }
+
+    /** @param Collection<int, MigrantRegistryDocument> $documents */
+    public function cleanupStoredFiles(Collection $documents): void
+    {
+        $documents->each(function (MigrantRegistryDocument $document): void {
+            if ($document->storage_disk && $document->storage_path) {
+                Storage::disk($document->storage_disk)->delete($document->storage_path);
+            }
+        });
+    }
+
+    public function deleteStoredFileOrFail(MigrantRegistryDocument $document): void
+    {
+        if (! $document->storage_disk || ! $document->storage_path) {
+            return;
+        }
+
+        $disk = Storage::disk($document->storage_disk);
+
+        if ($disk->exists($document->storage_path) && ! $disk->delete($document->storage_path)) {
+            throw new RuntimeException('The migrant document file could not be deleted.');
+        }
     }
 
     private function assertCanUpload(User $actor, MigrantRegistryEntry $entry): void

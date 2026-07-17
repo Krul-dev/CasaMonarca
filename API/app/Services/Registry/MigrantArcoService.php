@@ -33,6 +33,7 @@ class MigrantArcoService
     public function __construct(
         private readonly AuditEventService $auditService,
         private readonly Request $httpRequest,
+        private readonly MigrantRegistryDocumentService $documentService,
     ) {}
 
     /** @param array<string, mixed>|null $proposal @param array<string, mixed> $signatureData */
@@ -184,17 +185,25 @@ class MigrantArcoService
 
         foreach ($artifacts as $artifact) {
             if ($artifact->storage_disk && $artifact->storage_path) {
-                Storage::disk($artifact->storage_disk)->delete($artifact->storage_path);
+                $disk = Storage::disk($artifact->storage_disk);
+
+                if ($disk->exists($artifact->storage_path) && ! $disk->delete($artifact->storage_path)) {
+                    throw new \RuntimeException('An ARCO artifact could not be purged.');
+                }
             }
-            $artifact->forceFill(['storage_disk' => null, 'storage_path' => null, 'purged_at' => now()])->save();
         }
 
         $documents = MigrantRegistryDocument::query()->where('registry_entry_id', $entry->id)->whereNull('purged_at')->get();
 
         foreach ($documents as $document) {
-            if ($document->storage_disk && $document->storage_path) {
-                Storage::disk($document->storage_disk)->delete($document->storage_path);
-            }
+            $this->documentService->deleteStoredFileOrFail($document);
+        }
+
+        foreach ($artifacts as $artifact) {
+            $artifact->forceFill(['storage_disk' => null, 'storage_path' => null, 'purged_at' => now()])->save();
+        }
+
+        foreach ($documents as $document) {
             $document->forceFill(['storage_disk' => null, 'storage_path' => null, 'purged_at' => now()])->save();
             if (! $document->trashed()) {
                 $document->delete();

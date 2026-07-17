@@ -1,12 +1,17 @@
+import { useState } from 'react'
+
+import { migrantDocumentsEnabled } from '../../config/env'
 import type { AuthenticatedUser } from '../../lib/auth'
 import { getArcoAccessDocumentUrl } from '../../lib/arco'
 import type { ArcoDecision, ArcoRequest } from '../../types/arco'
+import { MigrantDocumentsPanel } from '../registry/MigrantDocumentsPanel'
 import { AppIcon } from '../ui/AppIcon'
 
-type Props = { busyId: number | null; onDecision: (request: ArcoRequest, stage: 'coordinator' | 'admin', decision: ArcoDecision) => void; requests: ArcoRequest[]; user: AuthenticatedUser }
+type Props = { busyId: number | null; onDecision: (request: ArcoRequest, stage: 'coordinator' | 'admin', decision: ArcoDecision) => void; onSessionExpired?: () => void; requests: ArcoRequest[]; user: AuthenticatedUser }
 const label = (value: string) => value.replace(/_/g, ' ').replace(/^./, (letter) => letter.toUpperCase())
 
-export function ArcoRequestList({ busyId, onDecision, requests, user }: Props) {
+export function ArcoRequestList({ busyId, onDecision, onSessionExpired, requests, user }: Props) {
+  const [documentRequestIds, setDocumentRequestIds] = useState<Set<number>>(() => new Set())
   if (requests.length === 0) return <p className="workspace-panel__copy">No ARCO requests have been submitted.</p>
   return <div className="arco-list">{requests.map((request) => {
     const canCoordinator = request.status === 'pending_coordinator' && (user.role === 'coordinator' || user.role === 'admin')
@@ -22,6 +27,30 @@ export function ArcoRequestList({ busyId, onDecision, requests, user }: Props) {
         {(canCoordinator || canAdmin) ? <><button className="session-action session-action--inline" disabled={busyId === request.id} onClick={() => onDecision(request, canAdmin ? 'admin' : 'coordinator', 'approve')} type="button"><AppIcon name="verify" />Approve</button><button className="session-action session-action--quiet session-action--inline" disabled={busyId === request.id} onClick={() => onDecision(request, canAdmin ? 'admin' : 'coordinator', 'reject')} type="button">Reject</button></> : null}
         {request.request_type === 'access' && request.status === 'completed' && request.artifact && !request.artifact.purged_at ? <a className="session-action session-action--quiet session-action--inline" href={getArcoAccessDocumentUrl(request.id)}><AppIcon name="download" />Download Access PDF</a> : null}
       </div>
+      {migrantDocumentsEnabled && request.registry_entry ? (
+        <details
+          className="arco-item__documents"
+          onToggle={(event) => {
+            if (event.currentTarget.open) {
+              setDocumentRequestIds((current) => new Set(current).add(request.id))
+            }
+          }}
+        >
+          <summary>View documents covered by this request</summary>
+          {documentRequestIds.has(request.id) ? (
+            <MigrantDocumentsPanel
+              canDelete={false}
+              canDownload={user.role === 'admin' || user.role === 'coordinator'}
+              canView
+              embedded
+              entryId={request.registry_entry_id}
+              onSessionExpired={onSessionExpired}
+            />
+          ) : null}
+        </details>
+      ) : request.request_type === 'cancellation' && request.status === 'completed' ? (
+        <p className="arco-item__document-resolution">Attached documents were permanently purged with the registration.</p>
+      ) : null}
       {request.resolution_reason ? <p className="arco-item__resolution"><strong>Resolution:</strong> {request.resolution_reason}</p> : null}
     </article>
   })}</div>

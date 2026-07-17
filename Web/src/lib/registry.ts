@@ -1,6 +1,7 @@
 import { apiFetch, ApiRequestError } from './api'
 import type { WebauthnLoginAssertionPayload, WebauthnLoginOptions } from './auth'
 import { getCsrfToken } from './csrf'
+import type { PendingMigrantDocument } from './migrantDocuments'
 import type { SecurityChallengeSummary } from './securityChallenges'
 import type {
   MigrantRegistrationPayload,
@@ -126,8 +127,29 @@ export async function getRegistryEntryById(id: number) {
   return apiFetch<RegistryDetailResponse>(`/registry/migrants/${id}`)
 }
 
-export async function createRegistryEntry(payload: CreateRegistryEntryPayload) {
+export async function createRegistryEntry(
+  payload: CreateRegistryEntryPayload,
+  documents: PendingMigrantDocument[] = [],
+) {
   const { csrfToken } = await getCsrfToken()
+
+  if (documents.length > 0) {
+    const formData = new FormData()
+
+    formData.set('payload_json', JSON.stringify(payload.payload_json))
+    documents.forEach(({ file, label }) => {
+      formData.append('documents[]', file)
+      formData.append('document_labels[]', label.trim())
+    })
+
+    return apiFetch<RegistryDetailResponse>('/registry/migrants', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: formData,
+    })
+  }
 
   return apiFetch<RegistryDetailResponse>('/registry/migrants', {
     method: 'POST',
@@ -142,8 +164,28 @@ export async function createRegistryEntry(payload: CreateRegistryEntryPayload) {
 export async function updateRegistryEntry(
   id: number,
   payload: UpdateRegistryEntryPayload,
+  documents: PendingMigrantDocument[] = [],
 ) {
   const { csrfToken } = await getCsrfToken()
+
+  if (documents.length > 0) {
+    const formData = new FormData()
+
+    formData.set('_method', 'PATCH')
+    formData.set('payload_json', JSON.stringify(payload.payload_json))
+    documents.forEach(({ file, label }) => {
+      formData.append('documents[]', file)
+      formData.append('document_labels[]', label.trim())
+    })
+
+    return apiFetch<RegistryDetailResponse>(`/registry/migrants/${id}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: formData,
+    })
+  }
 
   return apiFetch<RegistryDetailResponse>(`/registry/migrants/${id}`, {
     method: 'PATCH',

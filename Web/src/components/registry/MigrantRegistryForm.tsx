@@ -6,12 +6,39 @@ import {
   GENDER_OPTIONS,
   POPULATION_GROUP_OPTIONS,
 } from '../../config/registryFormOptions'
+import { AppIcon } from '../ui/AppIcon'
+import type { PendingMigrantDocument } from '../../lib/migrantDocuments'
 import { ApiRequestError, type MigrantRegistrationPayload } from '../../lib/registry'
+import { MigrantDocumentsPanel } from './MigrantDocumentsPanel'
+
+const MAX_DOCUMENTS = 10
+const MAX_UPLOAD_BYTES = 16 * 1024 * 1024
+const ACCEPTED_DOCUMENT_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]
+
+export type MigrantDocumentContext = {
+  canDelete: boolean
+  canDownload: boolean
+  canUpload: boolean
+  canView: boolean
+  entryId: number
+  onSessionExpired?: () => void
+}
 
 type Props = {
+  documentContext?: MigrantDocumentContext | null
+  documentsEnabled?: boolean
   initialPayload?: Partial<MigrantRegistrationPayload> | null
   onCancel?: () => void
-  onSubmit: (payload: MigrantRegistrationPayload) => Promise<void>
+  onSubmit: (
+    payload: MigrantRegistrationPayload,
+    documents: PendingMigrantDocument[],
+  ) => Promise<void>
   submitLabel?: string
   successMessage?: string
 }
@@ -146,6 +173,8 @@ const validateForm = (form: FormState) => {
 }
 
 export function MigrantRegistryForm({
+  documentContext,
+  documentsEnabled = true,
   initialPayload,
   onCancel,
   onSubmit,
@@ -156,6 +185,7 @@ export function MigrantRegistryForm({
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [messageTone, setMessageTone] = useState<'error' | 'success'>('success')
+  const [pendingDocuments, setPendingDocuments] = useState<PendingMigrantDocument[]>([])
   const fullName = useMemo(() => buildFullName(form), [form])
   const hasLegacyCountry = form.countryOfOrigin !== '' && !COUNTRY_OPTIONS.includes(form.countryOfOrigin)
   const hasLegacyCivilStatus = form.civilStatus !== '' && !CIVIL_STATUS_OPTIONS.some(({ value }) => value === form.civilStatus)
@@ -163,7 +193,36 @@ export function MigrantRegistryForm({
   useEffect(() => {
     setForm(formStateFromPayload(initialPayload))
     setMessage(null)
+    setPendingDocuments([])
   }, [initialPayload])
+
+  const handleDocumentSelection = (files: FileList | null) => {
+    if (!files) return
+
+    const selected = Array.from(files)
+
+    if (pendingDocuments.length + selected.length > MAX_DOCUMENTS) {
+      setMessageTone('error')
+      setMessage(`A registration can include up to ${MAX_DOCUMENTS} supporting documents.`)
+      return
+    }
+
+    const invalid = selected.find((file) =>
+      file.size > MAX_UPLOAD_BYTES || !ACCEPTED_DOCUMENT_TYPES.includes(file.type),
+    )
+
+    if (invalid) {
+      setMessageTone('error')
+      setMessage('Documents must be PDF, JPEG, PNG, DOC, or DOCX files no larger than 16 MB.')
+      return
+    }
+
+    setPendingDocuments((current) => [
+      ...current,
+      ...selected.map((file) => ({ file, label: '' })),
+    ])
+    setMessage(null)
+  }
 
   const updateField = (field: keyof FormState, value: string) => {
     setForm((current) => {
@@ -188,12 +247,16 @@ export function MigrantRegistryForm({
     setSubmitting(true)
 
     try {
-      await onSubmit({
-        ...form,
-        fullName,
-      })
+      await onSubmit(
+        {
+          ...form,
+          fullName,
+        },
+        pendingDocuments,
+      )
 
       setForm(formStateFromPayload(initialPayload))
+      setPendingDocuments([])
       setMessageTone('success')
       setMessage(successMessage)
     } catch (error) {
@@ -354,6 +417,80 @@ export function MigrantRegistryForm({
           ))}
         </fieldset>
       </div>
+
+      {documentsEnabled && (!documentContext || documentContext.canUpload) ? (
+        <fieldset className="registry-form__documents">
+          <legend>Supporting documents</legend>
+          <label className="registry-form__document-picker">
+            Supporting documents
+            <input
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+              disabled={submitting || pendingDocuments.length >= MAX_DOCUMENTS}
+              multiple
+              onChange={(event) => {
+                handleDocumentSelection(event.target.files)
+                event.target.value = ''
+              }}
+              type="file"
+            />
+          </label>
+
+          {pendingDocuments.length > 0 ? (
+            <ul className="migrant-documents__list">
+              {pendingDocuments.map((document, index) => (
+                <li className="migrant-documents__item" key={`${document.file.name}-${document.file.lastModified}-${index}`}>
+                  <div className="registry-form__document-details">
+                    <strong>{document.file.name}</strong>
+                    <input
+                      aria-label={`Label for ${document.file.name}`}
+                      disabled={submitting}
+                      maxLength={255}
+                      onChange={(event) => setPendingDocuments((current) => current.map((item, itemIndex) =>
+                        itemIndex === index ? { ...item, label: event.target.value } : item,
+                      ))}
+                      placeholder="Label (optional)"
+                      value={document.label}
+                    />
+                  </div>
+                  <button
+                    aria-label={`Remove ${document.file.name}`}
+                    className="session-action session-action--quiet session-action--inline"
+                    disabled={submitting}
+                    onClick={() => setPendingDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                    title="Remove document"
+                    type="button"
+                  >
+                    <AppIcon name="delete" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {documentContext?.canView ? (
+            <MigrantDocumentsPanel
+              canDelete={documentContext.canDelete}
+              canDownload={documentContext.canDownload}
+              canView
+              embedded
+              entryId={documentContext.entryId}
+              onSessionExpired={documentContext.onSessionExpired}
+            />
+          ) : null}
+        </fieldset>
+      ) : documentsEnabled && documentContext?.canView ? (
+        <fieldset className="registry-form__documents">
+          <legend>Supporting documents</legend>
+          <MigrantDocumentsPanel
+            canDelete={documentContext.canDelete}
+            canDownload={documentContext.canDownload}
+            canView
+            embedded
+            entryId={documentContext.entryId}
+            onSessionExpired={documentContext.onSessionExpired}
+          />
+        </fieldset>
+      ) : null}
 
       <div className="registry-form__footer">
         <span>Record: {fullName || 'Incomplete name'}</span>
