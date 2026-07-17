@@ -1,14 +1,17 @@
 <?php
 
 use App\Http\Middleware\EnsureAccountActive;
+use App\Http\Middleware\RequireFeatureEnabled;
 use App\Http\Middleware\RequireRole;
 use App\Http\Middleware\RequireSecurityEnrollment;
 use App\Http\Middleware\TrustConfiguredProxies;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
+use Illuminate\Support\Facades\Cookie;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -41,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'requireActiveAccount' => EnsureAccountActive::class,
+            'requireFeature' => RequireFeatureEnabled::class,
             'requireRole' => RequireRole::class,
             'requireSecurityEnrollment' => RequireSecurityEnrollment::class,
         ]);
@@ -59,6 +63,20 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'message' => 'CSRF token mismatch.',
             ], 419);
+        });
+
+        $exceptions->render(function (DecryptException $exception, Request $request) {
+            if (! $request->expectsJson()) {
+                return null;
+            }
+
+            return response()
+                ->json([
+                    'message' => 'Encrypted session or account security data could not be read. Refresh and sign in again; if this persists, reset the affected security enrollment or restore the original application key.',
+                ], 419)
+                ->withoutCookie(Cookie::forget('laravel-session'))
+                ->withoutCookie(Cookie::forget('XSRF-TOKEN'))
+                ->withoutCookie(Cookie::forget('cm_device_id'));
         });
 
         $exceptions->render(function (HttpExceptionInterface $exception, Request $request) {

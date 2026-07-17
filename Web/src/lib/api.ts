@@ -19,7 +19,7 @@ export class ApiRequestError extends Error {
   }
 }
 
-const buildApiUrl = (path: string) => {
+export const buildApiUrl = (path: string) => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
   return `${apiBaseUrl}${normalizedPath}`

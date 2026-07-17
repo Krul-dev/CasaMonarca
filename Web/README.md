@@ -14,6 +14,24 @@ This project uses `React + Vite + TypeScript` and is deployed as a static fronte
 - production target: HostGator shared hosting
 - backend target: Laravel API served separately
 
+Current auth payload includes canonical user roles:
+
+- `admin`
+- `coordinator`
+- `non_coordinator`
+- `volunteer`
+
+## Role Guard Scaffold
+
+Current role-gated routes:
+
+- `/app` (allowed roles: `admin`, `coordinator`, `non_coordinator`, `volunteer`)
+- `/app/admin` (allowed roles: `admin`)
+
+Current forbidden route:
+
+- `/403` (rendered when authenticated user role is not allowed for a protected route)
+
 ## Local Prerequisites
 
 Each frontend developer should install:
@@ -63,9 +81,26 @@ Default frontend env file:
 
 ```env
 VITE_APP_NAME="CasaMonarca Web"
+VITE_APP_CHANNEL=dev
 VITE_API_BASE_URL=/api
 API_PROXY_TARGET=http://127.0.0.1:8000
 ```
+
+## Dev Security Key Registration
+
+After signing in, the session screen now includes a **Security keys (dev preview)** section.
+Use it to register a FIDO2/WebAuthn key to the current account.
+The login screen also includes **Sign in with security key** for passkey-based login.
+
+Requirements:
+
+- secure context (`https` or localhost/loopback)
+- browser with WebAuthn support
+- browser support for `AuthenticatorAttestationResponse.getPublicKey()` and `getAuthenticatorData()` during registration
+
+Important for local registration:
+
+- use `http://localhost:5173`, not `http://127.0.0.1:5173`, because many passkey providers require a domain-style RP ID
 
 ## Staging Deploy
 

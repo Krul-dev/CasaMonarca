@@ -2,13 +2,29 @@ import { useEffect, useState } from 'react'
 
 import { LoginForm } from '../components/auth/LoginForm'
 import { getApiHealth } from '../lib/api'
+import type { AuthenticatedUser } from '../lib/auth'
 
 type HealthState = {
   status: 'checking' | 'online' | 'offline'
   message: string
 }
 
-export function LoginPage() {
+type SessionNotice = {
+  message: string
+  tone: 'online' | 'offline'
+}
+
+type LoginPageProps = {
+  initialEmail?: string | null
+  onAuthenticated?: (user: AuthenticatedUser) => void
+  sessionNotice?: SessionNotice | null
+}
+
+export function LoginPage({
+  initialEmail = null,
+  onAuthenticated,
+  sessionNotice = null,
+}: LoginPageProps) {
   const [healthState, setHealthState] = useState<HealthState>({
     status: 'checking',
     message: 'Checking backend availability...',
@@ -55,7 +71,16 @@ export function LoginPage() {
             </h2>
           </div>
 
-          <LoginForm />
+          <LoginForm
+            initialEmail={initialEmail ?? ''}
+            onAuthenticated={onAuthenticated}
+          />
+
+          {sessionNotice ? (
+            <div className={`route-status route-status--${sessionNotice.tone}`}>
+              {sessionNotice.message}
+            </div>
+          ) : null}
 
           <div className={`route-status route-status--${healthState.status}`}>
             {healthState.message}

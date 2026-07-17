@@ -62,4 +62,26 @@ enum AuditEventType: string
     case VcsEntryCreated = 'vcs.entry.created';
     case VcsEntryAmended = 'vcs.entry.amended';
     case VcsEntryDeleted = 'vcs.entry.deleted';
+    case MigrantRegistryCreated = 'migrant.registry.created';
+    case MigrantRegistrySubmitted = 'migrant.registry.submitted';
+    case MigrantRegistryUpdateRequested = 'migrant.registry.update.requested';
+    case MigrantRegistryReviewChallengeStarted = 'migrant.registry.review.challenge.started';
+    case MigrantRegistryReviewForwarded = 'migrant.registry.review.forwarded';
+    case MigrantRegistryReviewReturned = 'migrant.registry.review.returned';
+    case MigrantRegistryApprovalChallengeStarted = 'migrant.registry.approval.challenge.started';
+    case MigrantRegistryApproved = 'migrant.registry.approved';
+    case MigrantRegistryRejected = 'migrant.registry.rejected';
+    case MigrantRegistryDeleted = 'migrant.registry.deleted';
+    case MigrantArcoRequested = 'migrant.arco.requested';
+    case MigrantArcoChallengeStarted = 'migrant.arco.challenge.started';
+    case MigrantArcoResolved = 'migrant.arco.resolved';
+    case MigrantArcoRectificationApplied = 'migrant.arco.rectification.applied';
+    case MigrantArcoAccessDocumentGenerated = 'migrant.arco.access_document.generated';
+    case MigrantArcoAccessDocumentDownloaded = 'migrant.arco.access_document.downloaded';
+    case MigrantArcoCancellationExecuted = 'migrant.arco.cancellation.executed';
+    case MigrantArcoArtifactsPurged = 'migrant.arco.artifacts.purged';
+    case MigrantDocumentUploaded = 'migrant.registry.document.uploaded';
+    case MigrantDocumentDownloaded = 'migrant.registry.document.downloaded';
+    case MigrantDocumentDeleted = 'migrant.registry.document.deleted';
+    case MigrantDocumentsPurged = 'migrant.registry.documents.purged';
 }
