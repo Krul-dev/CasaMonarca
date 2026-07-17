@@ -3,6 +3,8 @@
 namespace Tests\Unit;
 
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\MigrantRegistryDemoSeeder;
+use RuntimeException;
 use Tests\TestCase;
 
 class DatabaseSeederTest extends TestCase
@@ -14,5 +16,15 @@ class DatabaseSeederTest extends TestCase
         (new DatabaseSeeder)->run();
 
         $this->addToAssertionCount(1);
+    }
+
+    public function test_migrant_demo_seeder_is_blocked_outside_local_environment(): void
+    {
+        $this->app->detectEnvironment(fn (): string => 'production');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('only in the local environment');
+
+        (new MigrantRegistryDemoSeeder)->run();
     }
 }
