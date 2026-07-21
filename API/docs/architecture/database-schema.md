@@ -267,12 +267,10 @@ erDiagram
     document_signatures ||--o| document_signature_requirements : fulfills
 ```
 
-## Approval Workflow Additions
+## Legacy Approval Columns
 
-- `documents.approved_at`, `documents.approved_by_user_id`, `documents.approval_note`, and `documents.signature_order_enforced` track admin approval state.
-- `document_signature_requirements` stores required signers by role or by specific signing-capable user.
-- `document_signature_requirements.sequence` defines required signing order when `documents.signature_order_enforced` is true.
-- `document_signature_requirements.fulfilled_by_signature_id` links a requirement to the document signature that satisfied it.
+- The document approval columns and `document_signature_requirements` table remain for migration compatibility and historical data.
+- The active workflow publishes new uploads directly to VCS and does not create admin approval or signature-requirement records.
 
 ## Notes
 

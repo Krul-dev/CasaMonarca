@@ -43,7 +43,7 @@ class MigrantArcoWorkflowTest extends TestCase
         $this->assertDatabaseHas('migrant_registry_status_history', ['registry_entry_id' => $entry->id, 'arco_request_id' => $arco->id]);
     }
 
-    public function test_access_approval_generates_a_private_pdf(): void
+    public function test_access_approval_generates_a_private_zip_bundle(): void
     {
         Storage::fake('local');
         [$operator, $coordinator, $entry] = $this->actorsAndEntry();
@@ -54,8 +54,19 @@ class MigrantArcoWorkflowTest extends TestCase
         $artifact = $resolved->artifact;
 
         $this->assertNotNull($artifact);
-        $this->assertSame('application/pdf', $artifact->mime_type);
-        $this->assertStringStartsWith('%PDF', Storage::disk('local')->get("arco/access/{$arco->id}/{$artifact->filename}"));
+        $this->assertSame('application/zip', $artifact->mime_type);
+        $this->assertStringEndsWith('.zip', $artifact->filename);
+        $contents = Storage::disk('local')->get("arco/access/{$arco->id}/{$artifact->filename}");
+        $this->assertStringStartsWith("PK\x03\x04", $contents);
+        $temporaryBasePath = tempnam(sys_get_temp_dir(), 'arco-access-test-');
+        $this->assertIsString($temporaryBasePath);
+        $temporaryPath = $temporaryBasePath.'.zip';
+        rename($temporaryBasePath, $temporaryPath);
+        file_put_contents($temporaryPath, $contents);
+        $archive = new \PharData($temporaryPath);
+        $this->assertStringStartsWith('%PDF', $archive['registro/registro-migrante.pdf']->getContent());
+        $this->assertSame('identity', $archive['documentos/01-identity.pdf']->getContent());
+        @unlink($temporaryPath);
         $html = view('arco.access-pdf', [
             'arco' => $resolved->load(['registryEntry.documents', 'requester', 'signatures', 'statusHistory']),
         ])->render();

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\Registry;
 
 use App\Enums\AuditEventType;
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\MigrantRegistryDocument;
 use App\Models\MigrantRegistryEntry;
@@ -12,6 +11,7 @@ use App\Models\User;
 use App\Models\WebauthnCredential;
 use App\Services\Audit\AuditEventService;
 use App\Services\Auth\WebauthnAssertionService;
+use App\Services\Registry\MigrantRegistryDocumentAccessService;
 use App\Services\Security\SecurityChallengeIntentService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +24,7 @@ class MigrantRegistryDocumentDownloadVerifyController extends Controller
 {
     public function __construct(
         private readonly AuditEventService $auditEventService,
+        private readonly MigrantRegistryDocumentAccessService $documentAccessService,
         private readonly MigrantRegistryDocumentDownloadOptionsController $optionsController,
         private readonly SecurityChallengeIntentService $securityChallengeIntentService,
         private readonly WebauthnAssertionService $webauthnAssertionService,
@@ -67,7 +68,7 @@ class MigrantRegistryDocumentDownloadVerifyController extends Controller
         }
 
         if (
-            ! $this->canDownload($actor) ||
+            ! $this->documentAccessService->canDownload($actor, $migrantRegistryDocument) ||
             $migrantRegistryDocument->registry_entry_id !== $migrantRegistryEntry->getKey() ||
             (int) $migrantRegistryEntry->getKey() !== (int) ($intent['entryId'] ?? 0) ||
             (int) $migrantRegistryDocument->getKey() !== (int) ($intent['documentId'] ?? 0) ||
@@ -184,11 +185,6 @@ class MigrantRegistryDocumentDownloadVerifyController extends Controller
         }
 
         return $intent;
-    }
-
-    private function canDownload(User $actor): bool
-    {
-        return in_array($actor->role ?? UserRole::default(), [UserRole::Admin, UserRole::Coordinator], true);
     }
 
     private function failChallenge(?SecurityChallengeIntent $intent, string $reason): void

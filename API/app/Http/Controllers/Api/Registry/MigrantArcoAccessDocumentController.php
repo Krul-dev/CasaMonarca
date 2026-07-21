@@ -26,10 +26,10 @@ class MigrantArcoAccessDocumentController extends Controller
         }
         $artifact = $migrantArcoRequest->artifact;
         if (! $artifact || ! $artifact->storage_disk || ! $artifact->storage_path || $artifact->purged_at || ! Storage::disk($artifact->storage_disk)->exists($artifact->storage_path)) {
-            abort(404, 'The Access PDF is unavailable or has been purged.');
+            abort(404, 'The Access bundle is unavailable or has been purged.');
         }
         $this->audit->success($request, AuditEventType::MigrantArcoAccessDocumentDownloaded, $actor, ['type' => MigrantArcoRequest::class, 'id' => $migrantArcoRequest->id], ['arcoProcess' => true, 'requestType' => 'access', 'sha256' => $artifact->sha256]);
 
-        return Storage::disk($artifact->storage_disk)->download($artifact->storage_path, $artifact->filename, ['Content-Type' => 'application/pdf']);
+        return Storage::disk($artifact->storage_disk)->download($artifact->storage_path, $artifact->filename, ['Content-Type' => $artifact->mime_type]);
     }
 }

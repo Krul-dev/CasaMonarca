@@ -97,6 +97,27 @@ class DocumentApiTest extends TestCase
         ]);
     }
 
+    public function test_admin_upload_is_immediately_available_in_vcs_without_approval(): void
+    {
+        Storage::fake('local');
+
+        $admin = $this->createEnrolledUser(UserRole::Admin);
+        $documentId = (int) $this->actingAs($admin)
+            ->post('/documents', [
+                'title' => 'Immediate VCS record',
+                'file' => UploadedFile::fake()->createWithContent('record.txt', 'content'),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('document.status', 'active')
+            ->json('document.id');
+
+        $this->actingAs($admin)
+            ->getJson('/documents')
+            ->assertOk()
+            ->assertJsonPath('documents.0.id', $documentId)
+            ->assertJsonPath('documents.0.capabilities.canSignCurrent', true);
+    }
+
     public function test_non_coordinator_can_load_document_index_and_current_document_material_but_not_old_history(): void
     {
         Storage::fake('local');

@@ -12,11 +12,13 @@ use App\Models\MigrantRegistryEntry;
 use App\Models\MigrantRegistryStatusHistory;
 use App\Models\User;
 use App\Services\Audit\AuditEventService;
+use App\Services\Documents\StoredZipArchiveService;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class MigrantArcoService
 {
@@ -34,6 +36,8 @@ class MigrantArcoService
         private readonly AuditEventService $auditService,
         private readonly Request $httpRequest,
         private readonly MigrantRegistryDocumentService $documentService,
+        private readonly MigrantQuestionnaireDefinitionService $questionnaireDefinitionService,
+        private readonly StoredZipArchiveService $zipArchiveService,
     ) {}
 
     /** @param array<string, mixed>|null $proposal @param array<string, mixed> $signatureData */
@@ -101,7 +105,7 @@ class MigrantArcoService
                     $this->finish($request, $actor, self::STATUS_COMPLETED, $reason, $signature);
 
                     if ($request->request_type === 'access') {
-                        $storedPath = $this->generateAccessPdf($actor, $request);
+                        $storedPath = $this->generateAccessBundle($actor, $request);
                     }
                 }
 
@@ -160,7 +164,7 @@ class MigrantArcoService
         $entry = MigrantRegistryEntry::withTrashed()->whereKey($request->registry_entry_id)->lockForUpdate()->firstOrFail();
         $proposal = $request->proposed_payload_json;
 
-        if (! is_array($proposal) || ! hash_equals((string) $request->proposed_payload_hash, $this->payloadHash($proposal))) {
+        if (! is_array($proposal) || ! $this->payloadMatchesHash($proposal, (string) $request->proposed_payload_hash)) {
             abort(409, 'The proposed rectification payload is missing or changed.');
         }
 
@@ -238,36 +242,90 @@ class MigrantArcoService
         $this->audit(AuditEventType::MigrantArcoArtifactsPurged, $actor, $request, $from, 'deleted_by_admin_arco', null, ['artifactCount' => $artifacts->count(), 'documentCount' => $documents->count()]);
     }
 
-    private function generateAccessPdf(User $actor, MigrantArcoRequest $request): string
+    private function generateAccessBundle(User $actor, MigrantArcoRequest $request): string
     {
         $request->loadMissing(['registryEntry', 'registryEntry.documents' => fn ($query) => $query->whereNull('purged_at'), 'requester', 'signatures', 'statusHistory']);
-        $options = new Options;
-        $options->set('defaultFont', 'DejaVu Sans');
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml(view('arco.access-pdf', ['arco' => $request])->render(), 'UTF-8');
-        $dompdf->setPaper('letter');
-        $dompdf->render();
-        $contents = $dompdf->output();
-        $filename = sprintf('solicitud-arco-acceso-%d.pdf', $request->id);
+        $files = [['name' => 'registro/registro-migrante.pdf', 'contents' => $this->renderAccessPdf($request)]];
+
+        foreach ($request->registryEntry?->documents ?? [] as $index => $document) {
+            if (! $document->storage_disk || ! $document->storage_path) {
+                throw new \RuntimeException('A supporting document covered by the ARCO Access request is unavailable.');
+            }
+
+            $disk = Storage::disk($document->storage_disk);
+
+            if (! $disk->exists($document->storage_path)) {
+                throw new \RuntimeException('A supporting document covered by the ARCO Access request is missing.');
+            }
+
+            $contents = $disk->get($document->storage_path);
+
+            if (! hash_equals((string) $document->sha256, hash('sha256', $contents))) {
+                throw new \RuntimeException('A supporting document covered by the ARCO Access request failed its integrity check.');
+            }
+
+            $files[] = [
+                'name' => sprintf('documentos/%02d-%s', $index + 1, $this->safeArchiveFilename($document->original_file_name, $document->id)),
+                'contents' => $contents,
+            ];
+        }
+
+        $contents = $this->zipArchiveService->build($files);
+        $filename = sprintf('solicitud-arco-acceso-%d.zip', $request->id);
         $path = sprintf('arco/access/%d/%s', $request->id, $filename);
 
         if (! Storage::disk('local')->put($path, $contents)) {
-            throw new \RuntimeException('The ARCO Access PDF could not be stored.');
+            throw new \RuntimeException('The ARCO Access bundle could not be stored.');
         }
 
-        MigrantArcoArtifact::query()->create([
-            'arco_request_id' => $request->id,
-            'storage_disk' => 'local',
-            'storage_path' => $path,
-            'filename' => $filename,
-            'mime_type' => 'application/pdf',
-            'byte_size' => strlen($contents),
-            'sha256' => hash('sha256', $contents),
-            'generated_at' => now(),
-        ]);
-        $this->audit(AuditEventType::MigrantArcoAccessDocumentGenerated, $actor, $request, null, self::STATUS_COMPLETED, null, ['sha256' => hash('sha256', $contents)]);
+        try {
+            $sha256 = hash('sha256', $contents);
+            MigrantArcoArtifact::query()->create([
+                'arco_request_id' => $request->id,
+                'storage_disk' => 'local',
+                'storage_path' => $path,
+                'filename' => $filename,
+                'mime_type' => 'application/zip',
+                'byte_size' => strlen($contents),
+                'sha256' => $sha256,
+                'generated_at' => now(),
+            ]);
+            $this->audit(AuditEventType::MigrantArcoAccessDocumentGenerated, $actor, $request, null, self::STATUS_COMPLETED, null, [
+                'sha256' => $sha256,
+                'documentCount' => count($files) - 1,
+                'bundleEntryCount' => count($files),
+            ]);
+        } catch (\Throwable $exception) {
+            Storage::disk('local')->delete($path);
+            throw $exception;
+        }
 
         return $path;
+    }
+
+    private function renderAccessPdf(MigrantArcoRequest $request): string
+    {
+        $options = new Options;
+        $options->set('defaultFont', 'DejaVu Sans');
+        $dompdf = new Dompdf($options);
+        $payload = $request->registryEntry?->payload_json ?? $request->original_payload_json ?? [];
+        $dompdf->loadHtml(view('arco.access-pdf', [
+            'arco' => $request,
+            'questionnaireSections' => $this->questionnaireDefinitionService->spanishAnswerSections(is_array($payload) ? $payload : []),
+        ])->render(), 'UTF-8');
+        $dompdf->setPaper('letter');
+        $dompdf->render();
+
+        return $dompdf->output();
+    }
+
+    private function safeArchiveFilename(string $originalFilename, int $documentId): string
+    {
+        $filename = Str::ascii(basename(str_replace('\\', '/', $originalFilename)));
+        $filename = preg_replace('/[^A-Za-z0-9._()-]+/', '-', $filename) ?? '';
+        $filename = trim(str_replace('..', '.', $filename), '.-');
+
+        return $filename !== '' ? $filename : "documento-{$documentId}";
     }
 
     private function finish(MigrantArcoRequest $request, User $actor, string $status, ?string $reason, MigrantArcoSignature $signature): void
@@ -336,6 +394,59 @@ class MigrantArcoService
     /** @param array<string, mixed> $payload */
     public function payloadHash(array $payload): string
     {
+        return hash('sha256', json_encode($this->canonicalizeForHash($payload), JSON_THROW_ON_ERROR));
+    }
+
+    /** @param array<string, mixed> $payload */
+    public function payloadMatchesHash(array $payload, string $expectedHash): bool
+    {
+        return hash_equals($expectedHash, $this->payloadHash($payload))
+            || hash_equals($expectedHash, $this->legacyPayloadHash($payload));
+    }
+
+    private function canonicalizeForHash(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if (array_is_list($value)) {
+            return array_map(fn (mixed $item): mixed => $this->canonicalizeForHash($item), $value);
+        }
+
+        ksort($value, SORT_STRING);
+
+        return array_map(fn (mixed $item): mixed => $this->canonicalizeForHash($item), $value);
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function legacyPayloadHash(array $payload): string
+    {
+        if (($payload['schemaVersion'] ?? null) === 2 && is_array(data_get($payload, 'questionnaire.answers'))) {
+            $answers = [];
+
+            foreach (data_get($payload, 'questionnaire.answers', []) as $questionId => $answer) {
+                if (! is_array($answer)) {
+                    $answers[$questionId] = $answer;
+
+                    continue;
+                }
+
+                $normalizedAnswer = ['value' => $answer['value'] ?? null];
+
+                if (array_key_exists('otherText', $answer)) {
+                    $normalizedAnswer['otherText'] = $answer['otherText'];
+                }
+
+                $answers[$questionId] = $normalizedAnswer;
+            }
+
+            $payload['questionnaire'] = [
+                'definitionId' => data_get($payload, 'questionnaire.definitionId'),
+                'answers' => $answers,
+            ];
+        }
+
         ksort($payload);
 
         return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));

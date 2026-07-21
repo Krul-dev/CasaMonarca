@@ -111,6 +111,57 @@ class MigrantRegistryDocumentApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_non_coordinator_downloads_document_covered_by_completed_arco_access(): void
+    {
+        Storage::fake('local');
+        $actor = User::factory()->create(['role' => UserRole::NonCoordinator->value]);
+        WebauthnCredential::query()->create([
+            'user_id' => $actor->id,
+            'credential_id' => 'credential-non-coordinator',
+            'public_key' => 'public-key',
+            'public_key_algorithm' => -7,
+            'name' => 'Non-coordinator key',
+            'sign_count' => 0,
+            'transports' => ['internal'],
+            'attestation_object' => 'attestation',
+            'client_data_json' => 'client-data',
+        ]);
+        $entry = $this->entry($actor);
+        $attributes = $this->documentAttributes($entry, $actor);
+        Storage::disk('local')->put($attributes['storage_path'], 'ARCO-approved document');
+        $document = MigrantRegistryDocument::query()->create($attributes);
+        $document->forceFill([
+            'created_at' => now()->subMinutes(2),
+            'updated_at' => now()->subMinutes(2),
+        ])->save();
+        MigrantArcoRequest::query()->create([
+            'registry_entry_id' => $entry->id,
+            'requested_by' => $actor->id,
+            'requested_by_role' => $actor->role?->value,
+            'request_type' => 'access',
+            'reason' => 'Approved supporting-document access',
+            'status' => 'completed',
+            'completed_at' => now()->subMinute(),
+        ]);
+
+        $this->actingAs($actor)
+            ->postJson("/registry/migrants/{$entry->id}/documents/{$document->id}/download/options")
+            ->assertOk()
+            ->assertJsonPath('challengeIntent.purpose', 'migrant.registry.document.download');
+
+        $this->mock(WebauthnAssertionService::class, function ($mock): void {
+            $mock->shouldReceive('verifyAssertionPayload')->once()->andReturn(4);
+        });
+
+        $response = $this->actingAs($actor)->postJson(
+            "/registry/migrants/{$entry->id}/documents/{$document->id}/download/verify",
+            $this->assertionPayload('credential-non-coordinator'),
+        );
+
+        $response->assertOk();
+        $this->assertSame('ARCO-approved document', $response->streamedContent());
+    }
+
     public function test_document_list_marks_only_files_covered_by_completed_access(): void
     {
         $actor = User::factory()->create(['role' => UserRole::Coordinator->value]);

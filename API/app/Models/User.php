@@ -96,6 +96,11 @@ class User extends Authenticatable
         return $this->hasMany(DocumentSignature::class, 'signed_by_user_id');
     }
 
+    public function migrantRegistrySignatures(): HasMany
+    {
+        return $this->hasMany(MigrantRegistrySignature::class, 'actor_user_id');
+    }
+
     public function createdInvites(): HasMany
     {
         return $this->hasMany(AccountInvite::class, 'invited_by_user_id');

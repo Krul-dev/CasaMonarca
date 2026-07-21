@@ -14,7 +14,9 @@ use App\Models\MigrantRegistrySignature;
 use App\Models\MigrantRegistryStatusHistory;
 use App\Models\SecurityChallengeIntent;
 use App\Models\User;
+use App\Services\Documents\StoredZipArchiveService;
 use App\Services\Registry\MigrantArcoService;
+use App\Services\Registry\MigrantQuestionnaireDefinitionService;
 use App\Services\Registry\MigrantRegistryService;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -194,13 +196,23 @@ class MigrantRegistryDemoSeeder extends Seeder
         $this->createArcoSignature($request, $coordinator, 'coordinator_approved', $completedAt);
         $this->createArcoHistory($request, MigrantArcoService::STATUS_PENDING_COORDINATOR, MigrantArcoService::STATUS_COMPLETED, $coordinator, 'Acceso autorizado.', $completedAt);
 
-        $contents = $this->pdf('Respuesta de Acceso ARCO - DEMO', [
+        $report = $this->pdf('Respuesta de Acceso ARCO - DEMO', [
             'Registro' => (string) $entry->id,
             'Persona' => (string) data_get($entry->payload_json, 'fullName'),
             'Documentos incluidos' => (string) $entry->documents()->count(),
             'Resultado' => 'Solicitud de acceso completada.',
         ]);
-        $filename = "solicitud-arco-acceso-{$request->id}.pdf";
+        $files = [['name' => 'registro/registro-migrante.pdf', 'contents' => $report]];
+
+        foreach ($entry->documents()->whereNull('purged_at')->get() as $index => $document) {
+            $files[] = [
+                'name' => sprintf('documentos/%02d-%s', $index + 1, basename($document->original_file_name)),
+                'contents' => Storage::disk((string) $document->storage_disk)->get((string) $document->storage_path),
+            ];
+        }
+
+        $contents = app(StoredZipArchiveService::class)->build($files);
+        $filename = "solicitud-arco-acceso-{$request->id}.zip";
         $path = "arco/access/{$request->id}/{$filename}";
         Storage::disk('local')->put($path, $contents);
         MigrantArcoArtifact::query()->create([
@@ -208,7 +220,7 @@ class MigrantRegistryDemoSeeder extends Seeder
             'storage_disk' => 'local',
             'storage_path' => $path,
             'filename' => $filename,
-            'mime_type' => 'application/pdf',
+            'mime_type' => 'application/zip',
             'byte_size' => strlen($contents),
             'sha256' => hash('sha256', $contents),
             'generated_at' => $completedAt,
@@ -419,7 +431,7 @@ class MigrantRegistryDemoSeeder extends Seeder
         array $documents,
     ): array {
         $parts = explode(' ', $fullName);
-        $payload = [
+        $legacyPayload = [
             'attentionDate' => now()->subDays($ageDays)->format('Y-m-d'),
             'birthDate' => $birthDate,
             'civilStatus' => $civilStatus,
@@ -435,6 +447,11 @@ class MigrantRegistryDemoSeeder extends Seeder
             'secondLastName' => $parts[count($parts) - 1],
         ];
 
+        $payload = $this->completeQuestionnaire($legacyPayload, abs(crc32($fullName)));
+        $pendingPayload = $pendingChanges
+            ? $this->completeQuestionnaire([...$legacyPayload, ...$pendingChanges], abs(crc32($fullName.'-pending')))
+            : null;
+
         return [
             'age_days' => $ageDays,
             'assignee_role' => $assigneeRole,
@@ -442,10 +459,75 @@ class MigrantRegistryDemoSeeder extends Seeder
             'documents' => $documents,
             'history' => $history,
             'pending_action' => $pendingAction,
-            'pending_payload' => $pendingChanges ? [...$payload, ...$pendingChanges] : null,
+            'pending_payload' => $pendingPayload,
             'payload' => $payload,
             'status' => $status,
             'updated_hours' => $updatedHours,
         ];
+    }
+
+    /** @param array<string, mixed> $legacy @return array<string, mixed> */
+    private function completeQuestionnaire(array $legacy, int $variant): array
+    {
+        $service = app(MigrantQuestionnaireDefinitionService::class);
+        $definition = $service->definition();
+        $payload = $service->upgradeLegacyPayload($legacy);
+        $answers = $payload['questionnaire']['answers'];
+        $questions = collect($definition['questions'])->keyBy('id');
+        $minor = in_array($legacy['populationGroup'] ?? null, [
+            'accompanied_girl',
+            'accompanied_boy',
+            'accompanied_adolescent_boy',
+            'accompanied_adolescent_girl',
+            'unaccompanied_minor',
+        ], true);
+
+        for ($iteration = 0; $iteration < 10; $iteration++) {
+            $changed = false;
+
+            foreach ($service->reachableQuestionIds($answers) as $questionId) {
+                if (isset($answers[$questionId])) {
+                    continue;
+                }
+
+                $question = $questions->get($questionId);
+
+                if (! is_array($question)) {
+                    continue;
+                }
+
+                if ($question['type'] === 'choice') {
+                    if (in_array($question['number'], [27, 46], true)) {
+                        $choice = $question['choices'][$minor ? 1 : 0];
+                    } else {
+                        $available = collect($question['choices'])->reject(fn (array $choice): bool => (bool) $choice['custom'])->values();
+                        $choice = $available[$variant % max(1, $available->count())] ?? $question['choices'][0];
+                    }
+
+                    $answers[$questionId] = ['value' => $question['multipleSelection'] ? [$choice['value']] : $choice['value']];
+                } elseif ($question['type'] === 'date') {
+                    $answers[$questionId] = ['value' => match ($question['number']) {
+                        32 => now()->subYears(1)->format('Y-m-d'),
+                        39 => now()->subMonths(4)->format('Y-m-d'),
+                        default => (string) ($legacy['attentionDate'] ?? now()->format('Y-m-d')),
+                    }];
+                } else {
+                    $answers[$questionId] = ['value' => $question['numeric']
+                        ? (string) (($variant % 3) + 1)
+                        : 'DEMO: respuesta ficticia en español para capacitación.'];
+                }
+
+                $changed = true;
+            }
+
+            if (! $changed) {
+                break;
+            }
+        }
+
+        return $service->normalizePayload([
+            'schemaVersion' => 2,
+            'questionnaire' => ['definitionId' => $definition['id'], 'answers' => $answers],
+        ], true);
     }
 }

@@ -26,4 +26,9 @@ class MigrantRegistrySignature extends Model
     {
         return $this->belongsTo(MigrantRegistryEntry::class, 'registry_entry_id');
     }
+
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_user_id');
+    }
 }

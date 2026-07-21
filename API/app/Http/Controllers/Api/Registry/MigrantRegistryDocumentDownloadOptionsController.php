@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\Registry;
 
 use App\Enums\AuditEventType;
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\MigrantRegistryDocument;
 use App\Models\MigrantRegistryEntry;
@@ -11,6 +10,7 @@ use App\Models\User;
 use App\Services\Audit\AuditEventService;
 use App\Services\Auth\Base64UrlService;
 use App\Services\Auth\WebauthnAssertionService;
+use App\Services\Registry\MigrantRegistryDocumentAccessService;
 use App\Services\Security\SecurityChallengeIntentService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +26,7 @@ class MigrantRegistryDocumentDownloadOptionsController extends Controller
     public function __construct(
         private readonly AuditEventService $auditEventService,
         private readonly Base64UrlService $base64UrlService,
+        private readonly MigrantRegistryDocumentAccessService $documentAccessService,
         private readonly SecurityChallengeIntentService $securityChallengeIntentService,
         private readonly WebauthnAssertionService $webauthnAssertionService,
     ) {}
@@ -40,7 +41,10 @@ class MigrantRegistryDocumentDownloadOptionsController extends Controller
         /** @var User|null $actor */
         $actor = $request->user();
 
-        abort_unless($actor instanceof User && $this->canDownload($actor), 403);
+        abort_unless(
+            $actor instanceof User && $this->documentAccessService->canDownload($actor, $migrantRegistryDocument),
+            403,
+        );
         $this->assertDocumentAvailable($migrantRegistryDocument);
 
         $origin = $this->webauthnAssertionService->resolveRequestOrigin($request);
@@ -141,11 +145,6 @@ class MigrantRegistryDocumentDownloadOptionsController extends Controller
     private function authorizeDocument(MigrantRegistryEntry $entry, MigrantRegistryDocument $document): void
     {
         abort_unless($document->registry_entry_id === $entry->getKey(), 404);
-    }
-
-    private function canDownload(User $actor): bool
-    {
-        return in_array($actor->role ?? UserRole::default(), [UserRole::Admin, UserRole::Coordinator], true);
     }
 
     private function assertDocumentAvailable(MigrantRegistryDocument $document): void

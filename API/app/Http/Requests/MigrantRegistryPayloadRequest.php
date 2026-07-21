@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Registry\MigrantQuestionnaireDefinitionService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -45,6 +46,10 @@ abstract class MigrantRegistryPayloadRequest extends FormRequest
      */
     public function rules(): array
     {
+        if ((int) data_get($this->input('payload_json'), 'schemaVersion') === 2) {
+            return ['payload_json' => ['required', 'array']];
+        }
+
         return [
             'payload_json' => ['required', 'array'],
             'payload_json.attentionDate' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
@@ -95,6 +100,10 @@ abstract class MigrantRegistryPayloadRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
+        if ((int) data_get($this->input('payload_json'), 'schemaVersion') === 2) {
+            return;
+        }
+
         $validator->after(function (Validator $validator): void {
             $payload = $this->input('payload_json');
 
@@ -120,6 +129,15 @@ abstract class MigrantRegistryPayloadRequest extends FormRequest
         }
 
         if (! is_array($payload)) {
+            return;
+        }
+
+        if ((int) ($payload['schemaVersion'] ?? 0) === 2) {
+            $this->merge([
+                'payload_json' => app(MigrantQuestionnaireDefinitionService::class)
+                    ->normalizePayload($payload, true),
+            ]);
+
             return;
         }
 

@@ -5,9 +5,7 @@ use App\Http\Controllers\Api\Admin\AccountInviteIssueLinkController;
 use App\Http\Controllers\Api\Admin\AccountInviteRevokeController;
 use App\Http\Controllers\Api\Admin\AccountInviteStoreController;
 use App\Http\Controllers\Api\Admin\AccountInviteVerifyOutOfBandController;
-use App\Http\Controllers\Api\Admin\DocumentApprovalApproveController;
-use App\Http\Controllers\Api\Admin\DocumentApprovalIndexController;
-use App\Http\Controllers\Api\Admin\DocumentApprovalRejectController;
+use App\Http\Controllers\Api\Admin\MigrantSigningLedgerController;
 use App\Http\Controllers\Api\Admin\SigningLedgerController;
 use App\Http\Controllers\Api\Admin\UserIndexController;
 use App\Http\Controllers\Api\Admin\UserRecoveryOptionsController;
@@ -95,10 +93,8 @@ Route::middleware('web')->group(function (): void {
     Route::middleware(['auth', 'requireActiveAccount', 'requireRole:admin'])->group(function (): void {
         Route::get('/admin/authorization-check', AdminAuthorizationCheckController::class);
         Route::get('/admin/users', UserIndexController::class);
-        Route::get('/admin/document-approvals', DocumentApprovalIndexController::class);
-        Route::post('/admin/document-approvals/{document}/approve', DocumentApprovalApproveController::class);
-        Route::post('/admin/document-approvals/{document}/reject', DocumentApprovalRejectController::class);
         Route::get('/admin/signing-ledger', SigningLedgerController::class);
+        Route::get('/admin/migrant-signing-ledger', MigrantSigningLedgerController::class);
         Route::post('/admin/users/{user}/recovery/options', UserRecoveryOptionsController::class)->middleware('throttle:30,1');
         Route::post('/admin/users/{user}/recovery/verify', UserRecoveryVerifyController::class)->middleware('throttle:30,1');
         Route::post('/admin/users/{user}/role/options', UserRoleUpdateOptionsController::class)->middleware('throttle:30,1');
@@ -150,6 +146,12 @@ Route::middleware('web')->group(function (): void {
         Route::get('/', [MigrantRegistryController::class, 'index']);
         Route::post('/', [MigrantRegistryController::class, 'store']);
         Route::get('/corrections', [MigrantRegistryController::class, 'corrections']);
+        Route::get('/questionnaires/current', [MigrantRegistryController::class, 'questionnaire']);
+        Route::get('/drafts', [MigrantRegistryController::class, 'drafts']);
+        Route::post('/drafts', [MigrantRegistryController::class, 'storeDraft']);
+        Route::patch('/drafts/{migrantRegistryEntry}', [MigrantRegistryController::class, 'updateDraft']);
+        Route::delete('/drafts/{migrantRegistryEntry}', [MigrantRegistryController::class, 'discardDraft']);
+        Route::post('/drafts/{migrantRegistryEntry}/submit', [MigrantRegistryController::class, 'submitDraft']);
 
         Route::prefix('arco')->middleware(['requireFeature:arco', 'requireRole:admin,coordinator,non_coordinator'])->group(function (): void {
             Route::get('/', [MigrantArcoController::class, 'index']);
@@ -171,7 +173,7 @@ Route::middleware('web')->group(function (): void {
                 Route::get('/', [MigrantRegistryDocumentController::class, 'index']);
             });
 
-            Route::middleware('requireRole:admin,coordinator')->group(function (): void {
+            Route::middleware('requireRole:admin,coordinator,non_coordinator')->group(function (): void {
                 Route::post('/{migrantRegistryDocument}/download/options', MigrantRegistryDocumentDownloadOptionsController::class);
                 Route::post('/{migrantRegistryDocument}/download/verify', MigrantRegistryDocumentDownloadVerifyController::class);
             });
@@ -197,6 +199,5 @@ Route::middleware('web')->group(function (): void {
 
         Route::get('/{migrantRegistryEntry}', [MigrantRegistryController::class, 'show']);
         Route::patch('/{migrantRegistryEntry}', [MigrantRegistryController::class, 'update']);
-        Route::post('/{migrantRegistryEntry}/submit', [MigrantRegistryController::class, 'submit']);
     });
 });

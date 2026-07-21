@@ -8,8 +8,8 @@ use App\Models\Document;
 use App\Models\DocumentRevision;
 use App\Models\User;
 use App\Services\Audit\AuditEventService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class DocumentAuthorizationService
@@ -155,8 +155,7 @@ class DocumentAuthorizationService
         string $action,
         ?Document $document = null,
         ?DocumentRevision $revision = null,
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $resourceType = null;
         $resourceId = null;
 
