@@ -28,9 +28,19 @@ export function ArcoRequestForm({ entries, onCreated, onSessionExpired, user }: 
   const [message, setMessage] = useState<string | null>(null)
   const selected = eligible.find((entry) => entry.id === Number(registryEntryId))
 
-  const submit = async (proposal?: MigrantRegistrationPayload) => {
-    if (!registryEntryId || !reason.trim()) { setMessage('Select a registration and enter the reason for the request.'); return }
-    if (!window.isSecureContext || !('PublicKeyCredential' in window) || isIpHostname(window.location.hostname)) { setMessage('ARCO signatures require a secure context on localhost or a domain name.'); return }
+  const submit = async (proposal?: MigrantRegistrationPayload, propagateError = false) => {
+    if (!registryEntryId || !reason.trim()) {
+      const error = new Error('Select a registration and enter the reason for the request.')
+      if (propagateError) throw error
+      setMessage(error.message)
+      return
+    }
+    if (!window.isSecureContext || !('PublicKeyCredential' in window) || isIpHostname(window.location.hostname)) {
+      const error = new Error('ARCO signatures require a secure context on localhost or a domain name.')
+      if (propagateError) throw error
+      setMessage(error.message)
+      return
+    }
     setBusy(true); setMessage(null)
     let challengeId: string | null = null
     try {
@@ -42,11 +52,12 @@ export function ArcoRequestForm({ entries, onCreated, onSessionExpired, user }: 
     } catch (error) {
       if (challengeId && error instanceof DOMException && error.name === 'NotAllowedError') await cancelSecurityChallenge(challengeId)
       const fields = error instanceof ApiRequestError && error.errors ? Object.values(error.errors).flat() : []
-      setMessage(
+      const failureMessage =
         error instanceof ApiRequestError && error.status >= 500
           ? 'The server could not save the ARCO request. Check the API log and try again.'
-          : fields[0] ?? (error instanceof Error ? error.message : 'Unable to submit the ARCO request.'),
-      )
+          : fields[0] ?? (error instanceof Error ? error.message : 'Unable to submit the ARCO request.')
+      if (propagateError) throw new Error(failureMessage)
+      setMessage(failureMessage)
     } finally { setBusy(false) }
   }
 
@@ -64,6 +75,7 @@ export function ArcoRequestForm({ entries, onCreated, onSessionExpired, user }: 
           <MigrantDocumentsPanel
             canDelete={false}
             canDownload={user.role === 'admin' || user.role === 'coordinator'}
+            canDownloadArcoApproved={user.role === 'non_coordinator'}
             canView
             embedded
             entryId={selected.id}
@@ -72,7 +84,7 @@ export function ArcoRequestForm({ entries, onCreated, onSessionExpired, user }: 
         </section>
       ) : null}
       {requestType === 'rectification' && selected ? (
-        <div className="arco-create__rectification"><h3>Proposed corrected information</h3><MigrantRegistryForm documentsEnabled={false} initialPayload={selected.payload_json} onSubmit={submit} submitLabel={busy ? 'Signing request...' : 'Sign and submit rectification'} successMessage="Rectification request submitted." /></div>
+        <div className="arco-create__rectification"><h3>Proposed corrected information</h3><MigrantRegistryForm documentsEnabled={false} initialPayload={selected.payload_json} onSubmit={(proposal) => submit(proposal, true)} submitLabel={busy ? 'Signing request...' : 'Sign and submit rectification'} successMessage="Rectification request submitted." /></div>
       ) : (
         <button className="session-action" disabled={busy || !registryEntryId || !reason.trim()} onClick={() => void submit()} type="button"><AppIcon name="sign" />{busy ? 'Waiting for passkey...' : 'Sign and submit request'}</button>
       )}

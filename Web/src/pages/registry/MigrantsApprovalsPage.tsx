@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppIcon } from '../../components/ui/AppIcon'
+import { MigrantQuestionnaireViewer } from '../../components/registry/MigrantQuestionnaireViewer'
 import type { AuthenticatedUser } from '../../lib/auth'
 import {
   ApiRequestError,
@@ -413,6 +414,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
                   <strong>{formatEntryName(entry)}</strong>
                   <span>{formatEntrySubtitle(entry)}</span>
                   <small>Submitted {new Date(entry.created_at).toLocaleString()} by {entry.creator?.email ?? entry.created_by_role}</small>
+                  <details className="registry-approval-card__details"><summary>Ver cuestionario completo</summary><MigrantQuestionnaireViewer payload={getApprovalPayload(entry)} /></details>
                 </div>
                 <div className="registry-approval-card__actions">
                   <button className="session-action session-action--quiet" disabled={isBusy} onClick={() => void handleReviewReturn(entry)} type="button">
@@ -551,6 +553,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
                     <span>{formatEntrySubtitle(entry)}</span>
                     <span>{entry.pending_action === 'update' ? 'Modification' : 'New registration'}</span>
                     <small>Queued {new Date(entry.updated_at).toLocaleString()} by {entry.creator?.email ?? entry.created_by_role}</small>
+                    <details className="registry-approval-card__details"><summary>Ver cuestionario completo</summary><MigrantQuestionnaireViewer payload={getApprovalPayload(entry)} /></details>
                   </div>
                   <div className="registry-approval-card__actions">
                     <button className="session-action session-action--quiet" disabled={isBusy || isBulkApproving} onClick={() => void handleApprovalDecision(entry, 'reject')} type="button">

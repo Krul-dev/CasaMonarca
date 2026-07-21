@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { MigrantDocumentsPanel } from '../../components/registry/MigrantDocumentsPanel'
+import { MigrantQuestionnaireViewer } from '../../components/registry/MigrantQuestionnaireViewer'
 import { AppIcon } from '../../components/ui/AppIcon'
 import { APP_MIGRANT_REGISTRY_PATH } from '../../config/appRoutes'
 import { migrantDocumentsEnabled } from '../../config/env'
@@ -91,7 +92,12 @@ const getEntryCountry = (entry: RegistryEntry) =>
 const getEntryPopulationGroup = (entry: RegistryEntry) =>
   formatValue(entry.payload_json.populationGroup)
 
-const getSearchableValue = (entry: RegistryEntry) => [
+const normalizeSearchText = (value: string | number) => String(value)
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLocaleLowerCase()
+
+const getSearchableValue = (entry: RegistryEntry) => normalizeSearchText([
   entry.id,
   entry.created_by_role,
   entry.creator?.email,
@@ -108,8 +114,7 @@ const getSearchableValue = (entry: RegistryEntry) => [
   entry.payload_json.phone,
 ]
   .filter((value): value is string | number => typeof value === 'string' || typeof value === 'number')
-  .join(' ')
-  .toLocaleLowerCase()
+  .join(' '))
 
 const normalizeFilterValue = (value: unknown) =>
   typeof value === 'string' ? value.trim() : ''
@@ -236,7 +241,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
     [entries],
   )
   const filteredEntries = useMemo(() => {
-    const searchTerm = debouncedSearch.toLocaleLowerCase()
+    const searchTerm = normalizeSearchText(debouncedSearch)
 
     return entries.filter((entry) =>
       (statusFilter === '' || entry.current_status === statusFilter) &&
@@ -446,6 +451,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
                 }}
               >
                 <summary>View registration details</summary>
+                <MigrantQuestionnaireViewer payload={entry.payload_json} />
                 <dl>
                   <div><dt>First name</dt><dd>{formatValue(entry.payload_json.firstName)}</dd></div>
                   <div><dt>First last name</dt><dd>{formatValue(entry.payload_json.firstLastName)}</dd></div>
@@ -465,6 +471,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
                     <MigrantDocumentsPanel
                       canDelete={false}
                       canDownload={user.role === 'admin' || user.role === 'coordinator'}
+                      canDownloadArcoApproved={user.role === 'non_coordinator'}
                       canView
                       embedded
                       entryId={entry.id}

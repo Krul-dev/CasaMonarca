@@ -1,17 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { MigrantRegistryForm } from '../../components/registry/MigrantRegistryForm'
-import { APP_HOME_PATH, APP_MIGRANT_REGISTRATIONS_PATH } from '../../config/appRoutes'
+import { AppIcon } from '../../components/ui/AppIcon'
+import { APP_HOME_PATH, APP_MIGRANT_REGISTRATIONS_PATH, APP_MIGRANT_REGISTRY_PATH } from '../../config/appRoutes'
 import { migrantDocumentsEnabled } from '../../config/env'
 import type { AuthenticatedUser } from '../../lib/auth'
 import type { PendingMigrantDocument } from '../../lib/migrantDocuments'
 import {
   ApiRequestError,
-  createRegistryEntry,
+  createRegistryDraft,
+  discardRegistryDraft,
+  getRegistryDrafts,
   getRegistryEntryById,
+  submitRegistryDraft,
   type MigrantRegistrationPayload,
   type RegistryEntry,
   type RegistryStatus,
+  updateRegistryDraft,
   updateRegistryEntry,
 } from '../../lib/registry'
 
@@ -34,6 +39,7 @@ const getDocumentPermissions = (user: AuthenticatedUser, entry: RegistryEntry) =
   return {
     canDelete: (preApproval && isReviewer) || volunteerCanTouch,
     canDownload: role === 'admin' || role === 'coordinator',
+    canDownloadArcoApproved: role === 'non_coordinator',
     canUpload:
       (preApproval && isReviewer) ||
       volunteerCanTouch ||
@@ -49,7 +55,7 @@ type MigrantsRegistryPageProps = {
   user: AuthenticatedUser
 }
 
-type EntryFormMode = 'correction' | 'edit'
+type EntryFormMode = 'correction' | 'draft' | 'edit'
 
 const getEntryFormRequest = (locationSearch?: string) => {
   const params = new URLSearchParams(locationSearch ?? '')
@@ -61,7 +67,7 @@ const getEntryFormRequest = (locationSearch?: string) => {
 
   return {
     entryId,
-    mode: params.get('mode') === 'edit' ? 'edit' : 'correction',
+    mode: params.get('mode') === 'edit' ? 'edit' : params.get('mode') === 'draft' ? 'draft' : 'correction',
   } satisfies { entryId: number, mode: EntryFormMode }
 }
 
@@ -76,6 +82,28 @@ export function MigrantsRegistryPage({
   const formMode = entryFormRequest?.mode ?? null
   const [requestedEntry, setRequestedEntry] = useState<RegistryEntry | null>(null)
   const [loadError, setLoadError] = useState<{ entryId: number, message: string } | null>(null)
+  const [drafts, setDrafts] = useState<RegistryEntry[]>([])
+  const [draftsLoading, setDraftsLoading] = useState(true)
+  const [draftError, setDraftError] = useState<string | null>(null)
+
+  const loadDrafts = useCallback(async () => {
+    setDraftsLoading(true)
+    setDraftError(null)
+    try {
+      const response = await getRegistryDrafts()
+      setDrafts(response.data)
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+      } else {
+        setDraftError(error instanceof Error ? error.message : 'No fue posible cargar los borradores.')
+      }
+    } finally {
+      setDraftsLoading(false)
+    }
+  }, [onSessionExpired])
+
+  useEffect(() => { void loadDrafts() }, [loadDrafts])
 
   useEffect(() => {
     if (requestedEntryId === null || formMode === null) {
@@ -96,8 +124,11 @@ export function MigrantsRegistryPage({
         const isAvailableEdit = formMode === 'edit' &&
           user.role === 'non_coordinator' &&
           response.data.current_status === 'approved'
+        const isAvailableDraft = formMode === 'draft' &&
+          response.data.current_status === 'draft' &&
+          response.data.created_by === user.id
 
-        if (!isAvailableCorrection && !isAvailableEdit) {
+        if (!isAvailableCorrection && !isAvailableEdit && !isAvailableDraft) {
           setRequestedEntry(null)
           setLoadError({
             entryId: requestedEntryId,
@@ -135,14 +166,44 @@ export function MigrantsRegistryPage({
   const handleCreate = async (
     payload_json: MigrantRegistrationPayload,
     documents: PendingMigrantDocument[],
+    draftId: number | null,
   ) => {
-    await createRegistryEntry({ payload_json }, documents)
+    if (draftId === null) throw new Error('El borrador debe guardarse antes de enviar el registro.')
+    await submitRegistryDraft(draftId, payload_json, documents)
+    await loadDrafts()
+    if (formMode === 'draft') onNavigate?.(APP_MIGRANT_REGISTRY_PATH)
+  }
+
+  const handleSaveDraft = async (payload_json: MigrantRegistrationPayload, draftId: number | null) => {
+    const response = draftId === null
+      ? await createRegistryDraft(payload_json)
+      : await updateRegistryDraft(draftId, payload_json)
+    return response.data
+  }
+
+  const handleDiscardDraft = async (draft: RegistryEntry) => {
+    if (!window.confirm(`Eliminar ${String(draft.payload_json.fullName || `borrador #${draft.id}`)}?`)) return
+
+    setDraftError(null)
+    try {
+      await discardRegistryDraft(draft.id)
+      await loadDrafts()
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      setDraftError(error instanceof Error ? error.message : 'No fue posible eliminar el borrador.')
+    }
   }
 
   const handleUpdateRequest = async (
     payload_json: MigrantRegistrationPayload,
     documents: PendingMigrantDocument[],
+    draftId: number | null,
   ) => {
+    void draftId
     if (!requestedEntry) {
       return
     }
@@ -154,6 +215,7 @@ export function MigrantsRegistryPage({
   const isRequestedEntryReady = requestedEntryId !== null && requestedEntry?.id === requestedEntryId
   const isCorrection = isRequestedEntryReady && formMode === 'correction'
   const isEditRequest = isRequestedEntryReady && formMode === 'edit'
+  const isDraft = isRequestedEntryReady && formMode === 'draft'
   const error = loadError?.entryId === requestedEntryId ? loadError.message : null
   const isLoadingEntry = requestedEntryId !== null && !isRequestedEntryReady && !error
 
@@ -171,6 +233,15 @@ export function MigrantsRegistryPage({
             : 'New submissions enter non-coordinator review before coordinator approval.'}
         </p>
 
+        {!isCorrection && !isEditRequest && !isDraft ? (
+          <section className="registry-drafts" aria-label="Mis borradores">
+            <div className="registry-drafts__header"><div><h3>Mis borradores</h3><p>Los borradores se eliminan después de siete días sin actividad.</p></div><button className="session-action session-action--quiet" disabled={draftsLoading} onClick={() => void loadDrafts()} type="button"><AppIcon name="refresh" />Actualizar</button></div>
+            {draftError ? <div className="login-feedback login-feedback--error">{draftError}</div> : null}
+            {!draftsLoading && drafts.length === 0 ? <p>No hay borradores pendientes.</p> : null}
+            {drafts.length > 0 ? <div className="registry-drafts__list">{drafts.map((draft) => <article key={draft.id}><div><strong>{String(draft.payload_json.fullName || `Borrador #${draft.id}`)}</strong><span>Actualizado {new Date(draft.updated_at).toLocaleString()}</span><small>Expira {draft.expires_at ? new Date(draft.expires_at).toLocaleString() : 'en siete días'}</small></div><div className="registry-form__actions"><button className="session-action session-action--quiet" onClick={() => void handleDiscardDraft(draft)} type="button"><AppIcon name="delete" />Eliminar</button><button className="session-action" onClick={() => onNavigate?.(`${APP_MIGRANT_REGISTRY_PATH}?mode=draft&entryId=${draft.id}`)} type="button"><AppIcon name="document" />Continuar</button></div></article>)}</div> : null}
+          </section>
+        ) : null}
+
         {isLoadingEntry ? <p className="workspace-panel__copy">Loading registration...</p> : null}
         {error ? <div className="login-feedback login-feedback--error">{error}</div> : null}
 
@@ -180,6 +251,7 @@ export function MigrantsRegistryPage({
               ? {
                   canDelete: getDocumentPermissions(user, requestedEntry).canDelete,
                   canDownload: getDocumentPermissions(user, requestedEntry).canDownload,
+                  canDownloadArcoApproved: getDocumentPermissions(user, requestedEntry).canDownloadArcoApproved,
                   canUpload: getDocumentPermissions(user, requestedEntry).canUpload,
                   canView: getDocumentPermissions(user, requestedEntry).canView,
                   entryId: requestedEntry.id,
@@ -187,11 +259,15 @@ export function MigrantsRegistryPage({
                 }
               : null}
             documentsEnabled={migrantDocumentsEnabled}
+            draftEntryId={isDraft ? requestedEntry?.id : null}
+            draftsEnabled={!isCorrection && !isEditRequest}
             initialPayload={requestedEntry?.payload_json ?? null}
             onCancel={isRequestedEntryReady
               ? () => onNavigate?.(isEditRequest ? APP_MIGRANT_REGISTRATIONS_PATH : APP_HOME_PATH)
               : undefined}
-            onSubmit={isRequestedEntryReady ? handleUpdateRequest : handleCreate}
+            onSubmit={isRequestedEntryReady && !isDraft ? handleUpdateRequest : handleCreate}
+            onDraftSaved={() => void loadDrafts()}
+            onSaveDraft={!isCorrection && !isEditRequest ? handleSaveDraft : undefined}
             submitLabel={isCorrection ? 'Resubmit registration' : isEditRequest ? 'Submit edit request' : 'Submit registration'}
             successMessage={isCorrection
               ? 'Registration resubmitted for review.'

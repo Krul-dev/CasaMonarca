@@ -184,10 +184,6 @@ export function DocumentUploadPage({
     <section className="workspace-stack">
       <section className="workspace-panel">
         <h2 className="workspace-panel__title">Upload a confidential document</h2>
-        <p className="workspace-panel__copy">
-          Phase 3 stores the uploaded file on the private Laravel disk and
-          records the first revision, owner, uploader, and file hash in MySQL.
-        </p>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="login-form__fields">
@@ -269,8 +265,8 @@ export function DocumentUploadPage({
         <h2 className="workspace-panel__title">Current intake policy</h2>
         <ul className="route-checklist">
           <li>Every role can upload a document.</li>
-          <li>Uploads wait for admin approval before they can be viewed or signed.</li>
-          <li>The uploader becomes the initial owner in this first slice.</li>
+          <li>Uploads are immediately available in the document workspace.</li>
+          <li>The uploader becomes the initial owner.</li>
           <li>Files are stored outside the public web root on the private disk.</li>
         </ul>
       </section>
@@ -280,7 +276,7 @@ export function DocumentUploadPage({
           <h2 className="workspace-panel__title">Upload registered</h2>
           <ul className="route-checklist">
             <li>Document: {feedback.document.title}</li>
-            <li>Status: Pending admin approval</li>
+            <li>Status: Available in VCS</li>
             <li>
               Current revision:{' '}
               {feedback.document.currentRevision?.revisionNumber ?? 'Not available'}

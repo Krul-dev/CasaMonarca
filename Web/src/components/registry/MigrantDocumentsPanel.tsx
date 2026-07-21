@@ -19,6 +19,8 @@ type MigrantDocumentsPanelProps = {
   canView: boolean
   /** Whether the current session may passkey-authenticate a document download. */
   canDownload?: boolean
+  /** Whether completed ARCO access coverage grants download permission. */
+  canDownloadArcoApproved?: boolean
   entryId: number
   onSessionExpired?: () => void
   embedded?: boolean
@@ -44,6 +46,7 @@ const formatBytes = (bytes: number): string => {
 export function MigrantDocumentsPanel({
   canDelete,
   canDownload = false,
+  canDownloadArcoApproved = false,
   canView,
   entryId,
   onSessionExpired,
@@ -200,7 +203,7 @@ export function MigrantDocumentsPanel({
                   </div>
                 </div>
                 <div className="migrant-documents__actions">
-                  {canDownload ? (
+                  {canDownload || (canDownloadArcoApproved && doc.arco_access_completed) ? (
                     <button
                       className="session-action session-action--quiet"
                       disabled={pendingDownloadId === doc.id}

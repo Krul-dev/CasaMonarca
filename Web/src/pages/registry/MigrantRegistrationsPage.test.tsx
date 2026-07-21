@@ -118,6 +118,24 @@ describe('MigrantRegistrationsPage', () => {
     expect(screen.queryByRole('button', { name: 'Download' })).not.toBeInTheDocument()
   })
 
+  it('searches registration text without requiring accents', async () => {
+    const browserUser = userEvent.setup()
+    getRegistryEntriesMock.mockResolvedValueOnce({
+      data: [{
+        created_at: '2026-07-17T12:00:00Z', created_by: 3, created_by_role: 'volunteer',
+        current_status: 'approved', id: 42,
+        payload_json: { countryOfOrigin: 'México', fullName: 'María López', populationGroup: 'adult' },
+        updated_at: '2026-07-17T13:00:00Z',
+      }],
+    })
+    render(<MigrantRegistrationsPage user={user} />)
+
+    await browserUser.type(await screen.findByLabelText('Search'), 'maria lopez mexico')
+    await waitFor(() => expect(JSON.parse(window.sessionStorage.getItem('casa-monarca.migrant-registrations.filters') ?? '{}').search).toBe('maria lopez mexico'))
+
+    expect(screen.getByText('María López')).toBeInTheDocument()
+  })
+
   it('passkey-authenticates coordinator document downloads', async () => {
     const browserUser = userEvent.setup()
     const coordinator = { ...user, role: 'coordinator' as const }

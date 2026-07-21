@@ -1096,105 +1096,6 @@
   gap: 0.55rem;
 }
 
-.approval-list {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.approval-card {
-  display: grid;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px solid rgba(24, 36, 55, 0.08);
-  border-radius: 0.9rem;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.approval-card__header,
-.approval-card__actions,
-.approval-requirement {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.approval-card__header h3 {
-  margin: 0;
-  color: #0f2640;
-  font-size: 1rem;
-}
-
-.approval-card__header p {
-  margin: 0.25rem 0 0;
-  color: #536171;
-  font-size: 0.85rem;
-}
-
-.approval-card__note textarea {
-  min-height: 5rem;
-  resize: vertical;
-}
-
-.approval-order-toggle label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #0f2640;
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.approval-requirements {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.approval-requirement {
-  justify-content: flex-start;
-  padding: 0.65rem;
-  border: 1px solid rgba(24, 36, 55, 0.08);
-  border-radius: 0.65rem;
-  background: rgba(248, 242, 233, 0.62);
-}
-
-.approval-requirement__sequence {
-  display: inline-grid;
-  place-items: center;
-  width: 1.8rem;
-  height: 1.8rem;
-  border-radius: 999px;
-  background: rgba(11, 84, 119, 0.12);
-  color: #0b5477;
-  font-size: 0.85rem;
-  font-weight: 850;
-}
-
-.approval-requirement select {
-  min-height: 2.35rem;
-  min-width: 10rem;
-  border: 1px solid rgba(24, 36, 55, 0.14);
-  border-radius: 0.55rem;
-  background: #fffaf2;
-  color: #0f2640;
-  padding: 0 0.7rem;
-}
-
-.approval-requirement select:nth-of-type(2) {
-  flex: 1;
-  min-width: 16rem;
-}
-
-.approval-card__actions {
-  justify-content: flex-end;
-}
-
-.approval-card__approve {
-  width: auto;
-  min-width: 12rem;
-}
-
 .admin-signing-key {
   display: grid;
   gap: 0.75rem;
@@ -2959,6 +2860,26 @@
   gap: 0.55rem;
 }
 
+.arco-decision-modal__reason {
+  display: grid;
+  gap: 0.4rem;
+  color: #0f2640;
+  font-size: 0.83rem;
+  font-weight: 760;
+}
+
+.arco-decision-modal__reason textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(24, 36, 55, 0.16);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #182437;
+  font: inherit;
+  resize: vertical;
+}
+
 .registry-approval-card__actions {
   display: flex;
   flex-wrap: wrap;
@@ -3638,10 +3559,15 @@
   gap: 1rem;
 }
 
+.workspace-panel--document-list {
+  min-width: 0;
+}
+
 .document-list {
   display: grid;
   gap: 0.75rem;
-  margin-top: 1rem;
+  margin: 0.8rem -0.2rem -0.2rem;
+  padding: 0.2rem;
 }
 
 .document-list__item,
@@ -3656,6 +3582,9 @@
 .document-list__item {
   display: grid;
   gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 0.95rem 1rem;
   text-align: left;
   color: inherit;
@@ -3677,6 +3606,7 @@
 }
 
 .document-list__title {
+  overflow-wrap: anywhere;
   font-size: 1rem;
   font-weight: 800;
   color: #0f2640;
@@ -4331,20 +4261,6 @@
     width: 100%;
   }
 
-  .approval-card__header,
-  .approval-card__actions,
-  .approval-requirement {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .approval-requirement select,
-  .approval-requirement select:nth-of-type(2),
-  .approval-card__approve {
-    min-width: 0;
-    width: 100%;
-  }
-
   .admin-user-facts {
     gap: 0.35rem;
   }
@@ -4432,4 +4348,457 @@
   display: flex;
   gap: 0.5rem;
   white-space: nowrap;
+}
+
+.registry-questionnaire {
+  gap: 0.85rem;
+}
+
+.registry-questionnaire__toolbar,
+.registry-drafts__header {
+  align-items: end;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.registry-questionnaire__toolbar > div,
+.registry-questionnaire__record {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.registry-questionnaire__toolbar > div > strong {
+  color: #142a43;
+  font-size: 1.05rem;
+}
+
+.registry-questionnaire__toolbar > div > span,
+.registry-questionnaire__record small,
+.registry-drafts p,
+.registry-drafts article span,
+.registry-drafts article small {
+  color: #667487;
+  font-size: 0.8rem;
+}
+
+.registry-questionnaire__toolbar label {
+  width: min(13rem, 100%);
+}
+
+.registry-questionnaire__progress {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 0.35rem;
+}
+
+.registry-questionnaire__progress span {
+  height: 0.3rem;
+  border-radius: 2px;
+  background: #d9dee5;
+}
+
+.registry-questionnaire__progress .is-complete {
+  background: #2e6a51;
+}
+
+.registry-questionnaire__progress .is-current {
+  background: #a6292e;
+}
+
+.registry-questionnaire__questions,
+.registry-questionnaire__review,
+.registry-questionnaire-viewer {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.registry-questionnaire__questions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.registry-questionnaire__question {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.72rem 0.8rem 0.78rem;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.registry-questionnaire__question--wide {
+  grid-column: 1 / -1;
+}
+
+.registry-questionnaire__question--error {
+  border-color: #a6292e;
+}
+
+.registry-questionnaire__question legend {
+  max-width: 100%;
+  padding: 0 0.25rem;
+  color: #142a43;
+  font-size: 0.84rem;
+  font-weight: 780;
+}
+
+.registry-questionnaire__question > p {
+  margin: 0;
+  color: #5d6b7b;
+  font-size: 0.76rem;
+}
+
+.registry-questionnaire__question > input,
+.registry-questionnaire__question > select,
+.registry-questionnaire__question > textarea,
+.registry-questionnaire__other input {
+  min-height: 2.35rem;
+  padding: 0.52rem 0.68rem;
+}
+
+.registry-questionnaire__question > textarea {
+  min-height: 5.25rem;
+}
+
+.registry-questionnaire__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.22rem 0.7rem;
+}
+
+.registry-questionnaire__choices label {
+  align-items: start;
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.16rem 0;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.registry-questionnaire__choices input {
+  flex: 0 0 auto;
+  width: 1rem;
+  min-height: 1rem;
+  height: 1rem;
+  margin-top: 0.14rem;
+  padding: 0;
+  accent-color: #a6292e;
+}
+
+.registry-questionnaire__choices span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.registry-questionnaire__other {
+  max-width: 36rem;
+}
+
+.registry-questionnaire__error {
+  color: #982429;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.registry-questionnaire__review > section,
+.registry-questionnaire-viewer > section {
+  border-top: 1px solid #d9dee5;
+  padding-top: 0.65rem;
+}
+
+.registry-questionnaire__review h3,
+.registry-questionnaire-viewer h4,
+.registry-drafts h3 {
+  margin: 0 0 0.65rem;
+  color: #142a43;
+  font-size: 0.95rem;
+}
+
+.registry-questionnaire__review dl,
+.registry-questionnaire-viewer dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.48rem 1rem;
+  margin: 0;
+}
+
+.registry-questionnaire__review dl div,
+.registry-questionnaire-viewer dl div {
+  min-width: 0;
+}
+
+.registry-questionnaire__review dt,
+.registry-questionnaire-viewer dt {
+  color: #667487;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.registry-questionnaire__review dd,
+.registry-questionnaire-viewer dd {
+  margin: 0.16rem 0 0;
+  color: #182437;
+  overflow-wrap: anywhere;
+}
+
+.registry-drafts {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.75rem 0 0.9rem;
+  padding: 0.65rem 0;
+  border-block: 1px solid #d9dee5;
+}
+
+.registry-drafts__header p,
+.registry-drafts > p {
+  margin: 0.2rem 0 0;
+}
+
+.registry-drafts__list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.registry-drafts article {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+}
+
+.registry-drafts article > div:first-child {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.registry-approval-card__details {
+  margin-top: 0.65rem;
+  width: min(60rem, 100%);
+}
+
+.registry-approval-card__details summary {
+  color: #254f7d;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+@media (max-width: 720px) {
+  .registry-questionnaire__toolbar,
+  .registry-drafts__header,
+  .registry-drafts article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .registry-questionnaire__toolbar label,
+  .registry-questionnaire__questions,
+  .registry-questionnaire__review dl,
+  .registry-questionnaire-viewer dl,
+  .registry-questionnaire__choices {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+}
+
+.migrant-signing-ledger {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.migrant-signing-ledger__signers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.65rem;
+}
+
+.migrant-signing-ledger__signer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(24, 36, 55, 0.12);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.migrant-signing-ledger__signer strong,
+.migrant-signing-ledger__signer small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.migrant-signing-ledger__signer small {
+  margin-top: 0.15rem;
+  color: #637083;
+  font-size: 0.76rem;
+}
+
+.migrant-signing-ledger__signer .signing-ledger__signer-badges {
+  grid-column: 2;
+}
+
+.migrant-signing-ledger__registrations {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.migrant-signing-ledger__registration {
+  border: 1px solid rgba(24, 36, 55, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.migrant-signing-ledger__registration--purged {
+  border-color: rgba(164, 46, 49, 0.3);
+  background: rgba(164, 46, 49, 0.035);
+}
+
+.migrant-signing-ledger__registration > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4rem;
+  padding: 0.8rem 0.9rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.migrant-signing-ledger__registration > summary::-webkit-details-marker {
+  display: none;
+}
+
+.migrant-signing-ledger__registration-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.migrant-signing-ledger__registration-title > span,
+.migrant-signing-ledger__registration-title strong,
+.migrant-signing-ledger__registration-title small {
+  display: block;
+  min-width: 0;
+}
+
+.migrant-signing-ledger__registration-title strong {
+  overflow-wrap: anywhere;
+  color: #13263d;
+  font-size: 0.92rem;
+}
+
+.migrant-signing-ledger__registration-title small {
+  margin-top: 0.2rem;
+  color: #637083;
+  font-size: 0.74rem;
+}
+
+.migrant-signing-ledger__signature-count {
+  flex: 0 0 auto;
+  color: #315b45;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.migrant-signing-ledger__signature-count small {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: #8b282c;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.migrant-signing-ledger__chain {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.8rem 0.9rem;
+  border-top: 1px solid rgba(24, 36, 55, 0.1);
+  background: #f7f8fa;
+}
+
+.migrant-signing-ledger__signature {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.7fr) minmax(12rem, 1fr) minmax(13rem, 1.2fr) minmax(10rem, 0.8fr);
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.7rem;
+  border: 1px solid #dce1e7;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.migrant-signing-ledger__action {
+  color: #173f6e;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.migrant-signing-ledger__actor,
+.migrant-signing-ledger__key {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.migrant-signing-ledger__actor strong,
+.migrant-signing-ledger__actor small {
+  overflow-wrap: anywhere;
+}
+
+.migrant-signing-ledger__actor small,
+.migrant-signing-ledger__signature time {
+  color: #637083;
+  font-size: 0.72rem;
+}
+
+.migrant-signing-ledger__actor .role-badge {
+  width: max-content;
+  margin-top: 0.2rem;
+}
+
+.migrant-signing-ledger__key span {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #315b45;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.migrant-signing-ledger__key code {
+  overflow: hidden;
+  color: #52657a;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .migrant-signing-ledger__signature {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .migrant-signing-ledger__registration > summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .migrant-signing-ledger__signature {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
