@@ -15,13 +15,15 @@ use App\Services\Auth\Base64UrlService;
 use App\Services\Auth\WebauthnAssertionService;
 use App\Services\Documents\DocumentAuthorizationService;
 use App\Services\Documents\DocumentSignatureExpiryService;
+use App\Services\Documents\DocumentSignaturePolicyService;
 use App\Services\Documents\DocumentSignatureRequirementService;
-use App\Services\Documents\DocumentSigningIntentService;
 use App\Services\Documents\DocumentSignatureViewService;
+use App\Services\Documents\DocumentSigningIntentService;
 use App\Services\Security\SecurityChallengeIntentService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class DocumentSignVerifyController extends Controller
@@ -35,6 +37,7 @@ class DocumentSignVerifyController extends Controller
         private readonly Base64UrlService $base64UrlService,
         private readonly DocumentAuthorizationService $documentAuthorizationService,
         private readonly DocumentSignatureExpiryService $documentSignatureExpiryService,
+        private readonly DocumentSignaturePolicyService $documentSignaturePolicyService,
         private readonly DocumentSignatureRequirementService $documentSignatureRequirementService,
         private readonly DocumentSigningIntentService $documentSigningIntentService,
         private readonly DocumentSignatureViewService $documentSignatureViewService,
@@ -56,6 +59,7 @@ class DocumentSignVerifyController extends Controller
             ! is_numeric($pendingIntent['documentId'] ?? null) ||
             ! is_numeric($pendingIntent['revisionId'] ?? null) ||
             ! is_numeric($pendingIntent['revisionNumber'] ?? null) ||
+            ! is_numeric($pendingIntent['signaturePolicyVersion'] ?? null) ||
             ! is_string($pendingIntent['revisionSha256'] ?? null) ||
             ! is_numeric($pendingIntent['userId'] ?? null) ||
             ! is_string($pendingIntent['origin'] ?? null) ||
@@ -74,6 +78,7 @@ class DocumentSignVerifyController extends Controller
         $pendingDocumentId = (int) $pendingIntent['documentId'];
         $pendingRevisionId = (int) $pendingIntent['revisionId'];
         $pendingRevisionNumber = (int) $pendingIntent['revisionNumber'];
+        $pendingSignaturePolicyVersion = (int) $pendingIntent['signaturePolicyVersion'];
         $pendingRevisionHash = (string) $pendingIntent['revisionSha256'];
         $pendingUserId = (int) $pendingIntent['userId'];
         $pendingOrigin = (string) $pendingIntent['origin'];
@@ -206,6 +211,15 @@ class DocumentSignVerifyController extends Controller
             ], 409);
         }
 
+        if ((int) $revision->signature_policy_version !== $pendingSignaturePolicyVersion) {
+            $this->markChallengeFailed($challengeIntent, 'signature_policy_changed');
+            $this->forgetChallenge($request);
+
+            return response()->json([
+                'message' => 'The signature policy changed after authentication started. Reload the revision and sign again.',
+            ], 409);
+        }
+
         if (! $this->documentAuthorizationService->canSignRevision($user, $document, $revision)) {
             return $this->documentAuthorizationService->forbiddenResponse($request, $user, 'document.sign', $document, $revision);
         }
@@ -253,59 +267,101 @@ class DocumentSignVerifyController extends Controller
             throw $exception;
         }
 
-        $credential->forceFill([
-            'sign_count' => $newSignCount,
-            'last_used_at' => now(),
-        ])->save();
-
         $signedAt = CarbonImmutable::now('UTC');
+        $signingResult = DB::transaction(function () use (
+            $credential,
+            $newSignCount,
+            $payload,
+            $pendingChallenge,
+            $pendingIntent,
+            $pendingSignaturePolicyVersion,
+            $revision,
+            $signedAt,
+            $user,
+        ): array {
+            $lockedRevision = DocumentRevision::query()
+                ->whereKey($revision->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $signature = $revision->signatures()->create([
-            'signed_by_user_id' => $user->getKey(),
-            'signature_type' => 'passkey',
-            'verification_status' => 'verified',
-            'signed_at' => $signedAt,
-            'signature_hash' => $revision->sha256,
-            'metadata' => [
-                'credentialId' => $credential->credential_id,
-                'credentialName' => $credential->name,
-                'publicKey' => $credential->public_key,
-                'publicKeyFormat' => 'spki-der-base64url',
-                'publicKeyAlgorithm' => (int) $credential->public_key_algorithm,
-                'publicKeyFingerprintSha256' => hash(
-                    'sha256',
-                    $this->base64UrlService->decode((string) $credential->public_key),
-                ),
-                'signCount' => $newSignCount,
-                'documentHash' => $revision->sha256,
-                'challenge' => $pendingChallenge,
-                'intent' => $pendingIntent,
-                'canonicalIntent' => $this->documentSigningIntentService->toCanonicalJson($pendingIntent),
-                'validity' => $this->documentSignatureExpiryService->buildValidityMetadata($signedAt),
-                'assertion' => [
-                    'id' => (string) $payload['id'],
-                    'rawId' => (string) $payload['rawId'],
-                    'type' => (string) $payload['type'],
-                    'response' => [
-                        'clientDataJSON' => (string) data_get($payload, 'response.clientDataJSON'),
-                        'authenticatorData' => (string) data_get($payload, 'response.authenticatorData'),
-                        'signature' => (string) data_get($payload, 'response.signature'),
-                        'userHandle' => data_get($payload, 'response.userHandle'),
+            if ((int) $lockedRevision->signature_policy_version !== $pendingSignaturePolicyVersion) {
+                return ['error' => 'signature_policy_changed'];
+            }
+
+            if ($lockedRevision->signatures()->where('signed_by_user_id', $user->getKey())->exists()) {
+                return ['error' => 'already_signed'];
+            }
+
+            if (! $this->documentSignatureRequirementService->canSign($lockedRevision, $user)) {
+                return ['error' => 'signature_requirement_changed'];
+            }
+
+            $credential->forceFill([
+                'sign_count' => $newSignCount,
+                'last_used_at' => now(),
+            ])->save();
+
+            $signature = $lockedRevision->signatures()->create([
+                'signed_by_user_id' => $user->getKey(),
+                'signature_type' => 'passkey',
+                'verification_status' => 'verified',
+                'signed_at' => $signedAt,
+                'signature_hash' => $lockedRevision->sha256,
+                'metadata' => [
+                    'credentialId' => $credential->credential_id,
+                    'credentialName' => $credential->name,
+                    'publicKey' => $credential->public_key,
+                    'publicKeyFormat' => 'spki-der-base64url',
+                    'publicKeyAlgorithm' => (int) $credential->public_key_algorithm,
+                    'publicKeyFingerprintSha256' => hash(
+                        'sha256',
+                        $this->base64UrlService->decode((string) $credential->public_key),
+                    ),
+                    'signCount' => $newSignCount,
+                    'documentHash' => $lockedRevision->sha256,
+                    'challenge' => $pendingChallenge,
+                    'intent' => $pendingIntent,
+                    'canonicalIntent' => $this->documentSigningIntentService->toCanonicalJson($pendingIntent),
+                    'validity' => $this->documentSignatureExpiryService->buildValidityMetadata($signedAt),
+                    'assertion' => [
+                        'id' => (string) $payload['id'],
+                        'rawId' => (string) $payload['rawId'],
+                        'type' => (string) $payload['type'],
+                        'response' => [
+                            'clientDataJSON' => (string) data_get($payload, 'response.clientDataJSON'),
+                            'authenticatorData' => (string) data_get($payload, 'response.authenticatorData'),
+                            'signature' => (string) data_get($payload, 'response.signature'),
+                            'userHandle' => data_get($payload, 'response.userHandle'),
+                        ],
                     ],
                 ],
-            ],
-        ]);
+            ]);
 
-        $this->documentSignatureRequirementService->fulfillForSignature($document, $user, $signature);
-        $document->load('signatureRequirements');
+            $this->documentSignatureRequirementService->fulfillForSignature($lockedRevision, $user, $signature);
+            $lockedRevision->forceFill([
+                'signature_policy_version' => (int) $lockedRevision->signature_policy_version + 1,
+            ])->save();
+            $this->documentSignaturePolicyService->recalculateStatus($lockedRevision);
 
-        $allRequiredSignaturesCollected = $document->signatureRequirements->isEmpty()
-            || $this->documentSignatureRequirementService->allRequirementsFulfilled($document);
+            return ['revision' => $lockedRevision, 'signature' => $signature];
+        });
 
-        $revision->forceFill([
-            'signature_status' => $allRequiredSignaturesCollected ? 'signed' : 'partially_signed',
-        ])->save();
+        if (isset($signingResult['error'])) {
+            $reason = (string) $signingResult['error'];
+            $this->markChallengeFailed($challengeIntent, $reason);
+            $this->forgetChallenge($request);
 
+            return response()->json([
+                'message' => $reason === 'already_signed'
+                    ? 'This revision is already signed by this account.'
+                    : 'The signature policy or signing progress changed after authentication started. Reload the revision and sign again.',
+            ], 409);
+        }
+
+        /** @var DocumentRevision $revision */
+        $revision = $signingResult['revision'];
+        /** @var DocumentSignature $signature */
+        $signature = $signingResult['signature'];
         $revision->load('signatures.signedBy');
         if ($challengeIntent instanceof SecurityChallengeIntent) {
             $this->securityChallengeIntentService->markSucceeded($challengeIntent);

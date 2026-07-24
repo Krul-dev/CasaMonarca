@@ -32,6 +32,7 @@ enum AuditEventType: string
     case DocumentDeleteChallengeStarted = 'document.delete.challenge.started';
     case DocumentSignatureChallengeStarted = 'document.signature.challenge.started';
     case DocumentSigned = 'document.signed';
+    case DocumentSignaturePolicyUpdated = 'document.signature_policy.updated';
     case DocumentDeleted = 'document.deleted';
     case DocumentVerificationBundleDownloaded = 'document.verification_bundle.downloaded';
     case DocumentVerificationPackageDownloaded = 'document.verification_package.downloaded';

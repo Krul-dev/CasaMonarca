@@ -48,6 +48,7 @@ class DocumentSensitiveOperationsTest extends TestCase
                     'documentId',
                     'revisionId',
                     'revisionNumber',
+                    'signaturePolicyVersion',
                     'documentHash',
                     'expiresAt',
                 ],
@@ -56,6 +57,7 @@ class DocumentSensitiveOperationsTest extends TestCase
         $response->assertSessionHas('documents.sign.webauthn.intent.documentId', $document->id);
         $response->assertSessionHas('documents.sign.webauthn.intent.revisionId', $document->currentRevision->id);
         $response->assertSessionHas('documents.sign.webauthn.intent.revisionSha256', $document->currentRevision->sha256);
+        $response->assertSessionHas('documents.sign.webauthn.intent.signaturePolicyVersion', 1);
         $response->assertSessionHas('documents.sign.webauthn.challenge_intent_id');
         $this->assertDatabaseHas('security_challenge_intents', [
             'actor_user_id' => $user->id,
@@ -313,7 +315,7 @@ class DocumentSensitiveOperationsTest extends TestCase
 
         $this->assertEquals($signSession['documents.sign.webauthn.intent'], $signature->metadata['intent']);
         $this->assertSame(
-            '{"documentId":'.$document->id.',"expiresAt":"'.$signSession['documents.sign.webauthn.intent']['expiresAt'].'","issuedAt":"'.$signSession['documents.sign.webauthn.intent']['issuedAt'].'","nonce":"nonce-sign","origin":"http://localhost","purpose":"document-sign","revisionId":'.$revision->id.',"revisionNumber":1,"revisionSha256":"'.$revision->sha256.'","rpId":"localhost","userId":'.$user->id.',"version":1}',
+            '{"documentId":'.$document->id.',"expiresAt":"'.$signSession['documents.sign.webauthn.intent']['expiresAt'].'","issuedAt":"'.$signSession['documents.sign.webauthn.intent']['issuedAt'].'","nonce":"nonce-sign","origin":"http://localhost","purpose":"document-sign","revisionId":'.$revision->id.',"revisionNumber":1,"revisionSha256":"'.$revision->sha256.'","rpId":"localhost","signaturePolicyVersion":1,"userId":'.$user->id.',"version":1}',
             $signature->metadata['canonicalIntent'],
         );
         $this->assertSame('server-policy', data_get($signature->metadata, 'validity.source'));
@@ -538,6 +540,31 @@ class DocumentSensitiveOperationsTest extends TestCase
             ->assertJson([
                 'message' => 'Document signature challenge no longer matches the current revision. Reload the document and sign again.',
             ]);
+
+        $this->assertDatabaseCount('document_signatures', 0);
+    }
+
+    public function test_document_sign_verification_rejects_policy_changes_after_challenge_creation(): void
+    {
+        $user = $this->createUserWithCredential(UserRole::Coordinator);
+        $document = $this->createDocumentWithRevision($user);
+        $signSession = $this->signSession($user, $document);
+
+        $document->currentRevision->forceFill([
+            'signature_policy_version' => 2,
+        ])->save();
+
+        $this->actingAs($user)
+            ->withSession($signSession)
+            ->postJson(
+                sprintf('/documents/%d/sign/verify', $document->id),
+                $this->assertionPayload('credential-coordinator'),
+            )
+            ->assertStatus(409)
+            ->assertJsonPath(
+                'message',
+                'The signature policy changed after authentication started. Reload the revision and sign again.',
+            );
 
         $this->assertDatabaseCount('document_signatures', 0);
     }
@@ -1045,6 +1072,7 @@ class DocumentSensitiveOperationsTest extends TestCase
             'revisionId' => $revision->id,
             'revisionNumber' => $revision->revision_number,
             'revisionSha256' => $revision->sha256,
+            'signaturePolicyVersion' => $revision->signature_policy_version,
             'userId' => $user->id,
             'origin' => 'http://localhost',
             'rpId' => 'localhost',

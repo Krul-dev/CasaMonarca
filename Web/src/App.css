@@ -3849,6 +3849,163 @@
   margin-top: 0;
 }
 
+.signature-policy {
+  border-block: 1px solid #d8e0e7;
+  margin-top: 0.25rem;
+  padding-block: 1rem;
+}
+
+.signature-policy__header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.signature-policy__header h4 {
+  color: #17324d;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.signature-policy__header p {
+  color: #526579;
+  font-size: 0.88rem;
+  margin: 0.3rem 0 0;
+}
+
+.signature-policy__toggle {
+  align-items: center;
+  color: #2c4054;
+  display: flex;
+  font-size: 0.88rem;
+  font-weight: 650;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+}
+
+.signature-policy__toggle input {
+  block-size: 1rem;
+  inline-size: 1rem;
+}
+
+.signature-policy__requirements {
+  display: grid;
+  gap: 0.55rem;
+  list-style: none;
+  margin: 0.9rem 0;
+  padding: 0;
+}
+
+.signature-policy__requirement {
+  align-items: center;
+  background: #f7f9fb;
+  border: 1px solid #d8e0e7;
+  border-radius: 6px;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 2rem minmax(7rem, 0.75fr) minmax(10rem, 1.25fr) auto auto;
+  min-block-size: 3.5rem;
+  padding: 0.55rem;
+}
+
+.signature-policy__requirement--fulfilled {
+  background: #eef6f1;
+  border-color: #aecdb9;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+}
+
+.signature-policy__sequence {
+  align-items: center;
+  background: #17324d;
+  border-radius: 50%;
+  block-size: 1.75rem;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 750;
+  inline-size: 1.75rem;
+  justify-content: center;
+}
+
+.signature-policy__requirement select {
+  background: #fff;
+  border: 1px solid #b9c6d2;
+  border-radius: 5px;
+  color: #17324d;
+  font: inherit;
+  min-inline-size: 0;
+  padding: 0.55rem 0.65rem;
+  width: 100%;
+}
+
+.signature-policy__summary {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.signature-policy__summary strong,
+.signature-policy__summary span {
+  overflow-wrap: anywhere;
+}
+
+.signature-policy__summary span {
+  color: #526579;
+  font-size: 0.82rem;
+}
+
+.signature-policy__row-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.signature-policy__icon-button,
+.signature-policy__insert {
+  align-items: center;
+  background: transparent;
+  border: 1px solid #b9c6d2;
+  border-radius: 5px;
+  color: #28465f;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.signature-policy__icon-button {
+  block-size: 2rem;
+  inline-size: 2rem;
+}
+
+.signature-policy__icon-button--danger {
+  color: #9c2f35;
+}
+
+.signature-policy__icon-button:disabled,
+.signature-policy__insert:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.signature-policy__insert {
+  block-size: 1.75rem;
+  inline-size: 1.75rem;
+}
+
+@media (max-width: 760px) {
+  .signature-policy__requirement {
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+  }
+
+  .signature-policy__requirement select {
+    grid-column: 2 / -1;
+  }
+
+  .signature-policy__row-actions {
+    grid-column: 2;
+  }
+}
+
 .revision-timeline__header {
   display: flex;
   gap: 0.75rem;
@@ -3876,6 +4033,11 @@
 .revision-timeline__status--signed {
   background: rgba(31, 107, 68, 0.14);
   color: #145f39;
+}
+
+.revision-timeline__status--partially_signed {
+  background: #fff1c7;
+  color: #76530d;
 }
 
 .revision-timeline__status--unsigned {

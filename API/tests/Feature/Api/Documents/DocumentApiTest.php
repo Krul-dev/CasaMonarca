@@ -415,7 +415,7 @@ class DocumentApiTest extends TestCase
             'two_factor_secret' => 'JBSWY3DPEHPK3PXP',
         ]);
 
-        if ($role === UserRole::Coordinator) {
+        if (in_array($role, [UserRole::Admin, UserRole::Coordinator], true)) {
             $user->webauthnCredentials()->create([
                 'credential_id' => 'credential-'.$user->id,
                 'public_key' => 'test-public-key',

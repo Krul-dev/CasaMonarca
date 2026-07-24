@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\DocumentSignature;
 use App\Models\User;
 use App\Services\Documents\DocumentAuthorizationService;
+use App\Services\Documents\DocumentSignaturePolicyService;
 use App\Services\Documents\DocumentSignatureViewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class DocumentShowController extends Controller
 {
     public function __construct(
         private readonly DocumentAuthorizationService $documentAuthorizationService,
+        private readonly DocumentSignaturePolicyService $documentSignaturePolicyService,
         private readonly DocumentSignatureViewService $documentSignatureViewService,
     ) {}
 
@@ -33,11 +35,14 @@ class DocumentShowController extends Controller
             'owner',
             'uploadedBy',
             'approvedBy',
-            'signatureRequirements.signerUser',
             'currentRevision.createdBy',
             'currentRevision.signatures.signedBy',
+            'currentRevision.signatureRequirements.signerUser',
+            'currentRevision.signatureRequirements.fulfilledBySignature.signedBy',
             'revisions.createdBy',
             'revisions.signatures.signedBy',
+            'revisions.signatureRequirements.signerUser',
+            'revisions.signatureRequirements.fulfilledBySignature.signedBy',
         ]);
 
         if (! $this->documentAuthorizationService->canReadDocument($user, $document)) {
@@ -73,22 +78,6 @@ class DocumentShowController extends Controller
                         'email' => $document->approvedBy?->email,
                     ],
                     'note' => $document->approval_note,
-                    'signatureOrderEnforced' => (bool) $document->signature_order_enforced,
-                    'signatureRequirements' => $document->signatureRequirements
-                        ->map(fn ($requirement): array => [
-                            'id' => $requirement->getKey(),
-                            'sequence' => $requirement->sequence,
-                            'signerRole' => $requirement->signer_role?->value,
-                            'signerUser' => [
-                                'id' => $requirement->signerUser?->getKey(),
-                                'name' => $requirement->signerUser?->name,
-                                'email' => $requirement->signerUser?->email,
-                                'role' => $requirement->signerUser?->role?->value,
-                            ],
-                            'fulfilledAt' => $requirement->fulfilled_at?->toIso8601String(),
-                            'fulfilledBySignatureId' => $requirement->fulfilled_by_signature_id,
-                        ])
-                        ->values(),
                 ],
                 'currentRevision' => $document->currentRevision ? [
                     'id' => $document->currentRevision->getKey(),
@@ -98,6 +87,10 @@ class DocumentShowController extends Controller
                     'sizeBytes' => $document->currentRevision->size_bytes,
                     'sha256' => $document->currentRevision->sha256,
                     'signatureStatus' => $document->currentRevision->signature_status,
+                    'capabilities' => $this->documentAuthorizationService
+                        ->revisionCapabilities($user, $document, $document->currentRevision),
+                    'signaturePolicy' => $this->documentSignaturePolicyService
+                        ->toArray($document->currentRevision),
                     'createdBy' => [
                         'id' => $document->currentRevision->createdBy?->getKey(),
                         'name' => $document->currentRevision->createdBy?->name,
@@ -119,6 +112,7 @@ class DocumentShowController extends Controller
                             'sizeBytes' => $revision->size_bytes,
                             'sha256' => $revision->sha256,
                             'signatureStatus' => $revision->signature_status,
+                            'signaturePolicy' => $this->documentSignaturePolicyService->toArray($revision),
                             'capabilities' => $this->documentAuthorizationService
                                 ->revisionCapabilities($user, $document, $revision),
                             'signatures' => $revision->signatures

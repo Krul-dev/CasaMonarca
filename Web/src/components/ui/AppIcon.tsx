@@ -15,6 +15,9 @@ type AppIconProps = {
     | 'login'
     | 'logging'
     | 'logout'
+    | 'moveDown'
+    | 'moveUp'
+    | 'plus'
     | 'refresh'
     | 'sign'
     | 'suspend'
@@ -198,6 +201,25 @@ export function AppIcon({
         <>
           <rect {...commonProps} height="11" rx="1.7" width="9.5" x="8.25" y="7.5" />
           <path {...commonProps} d="M15.75 7.5v-2A1.75 1.75 0 0 0 14 3.75H6.75A1.75 1.75 0 0 0 5 5.5v11A1.75 1.75 0 0 0 6.75 18.25H8.25" />
+        </>
+      ) : null}
+
+      {name === 'plus' ? (
+        <>
+          <path {...commonProps} d="M12 5v14" />
+          <path {...commonProps} d="M5 12h14" />
+        </>
+      ) : null}
+
+      {name === 'moveUp' ? (
+        <>
+          <path {...commonProps} d="m6.5 14.5 5.5-5.5 5.5 5.5" />
+        </>
+      ) : null}
+
+      {name === 'moveDown' ? (
+        <>
+          <path {...commonProps} d="m6.5 9.5 5.5 5.5 5.5-5.5" />
         </>
       ) : null}
     </svg>

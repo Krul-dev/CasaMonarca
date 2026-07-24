@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 
 import { AppIcon } from '../components/ui/AppIcon'
-import { APP_ADMIN_PATH, APP_DOCUMENTS_PATH } from '../config/appRoutes'
+import { APP_DOCUMENTS_PATH } from '../config/appRoutes'
 import type { AuthenticatedUser } from '../lib/auth'
 import { ApiRequestError } from '../lib/api'
 import { uploadDocument, type DocumentSummary } from '../lib/documents'
@@ -291,22 +291,16 @@ export function DocumentUploadPage({
             <div className="workspace-actions">
               <button
                 className="workspace-action workspace-action--secondary"
-                onClick={() => onNavigate(APP_DOCUMENTS_PATH)}
+                onClick={() =>
+                  onNavigate(
+                    `${APP_DOCUMENTS_PATH}?documentId=${feedback.document.id}`,
+                  )
+                }
                 type="button"
               >
                 <AppIcon name="document" />
                 Open document workspace
               </button>
-              {user.role === 'admin' ? (
-                <button
-                  className="workspace-action workspace-action--primary"
-                  onClick={() => onNavigate(`${APP_ADMIN_PATH}?tab=approvals`)}
-                  type="button"
-                >
-                  <AppIcon name="verify" />
-                  Review approvals
-                </button>
-              ) : null}
             </div>
           ) : null}
         </section>

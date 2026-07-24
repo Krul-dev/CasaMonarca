@@ -157,12 +157,23 @@ const getPendingSignatureQueue = (
       return document.capabilities?.canSignCurrent === true && !alreadySigned
     })
     .map((document): PendingSignatureQueueItem => {
-      const pendingRequirements = document.approval?.signatureRequirements
+      const pendingRequirements = document.currentRevision?.signaturePolicy?.requirements
         ?.filter((requirement) => !requirement.fulfilledAt && !requirement.fulfilledBySignatureId)
         .sort((left, right) => left.sequence - right.sequence) ?? []
-      const matchingRequirement = pendingRequirements.find((requirement) =>
-        requirementMatchesUser(requirement, user),
-      )
+      const matchingRequirement = document.currentRevision?.signaturePolicy
+        ?.signatureOrderEnforced
+        ? pendingRequirements[0] &&
+          requirementMatchesUser(pendingRequirements[0], user)
+          ? pendingRequirements[0]
+          : null
+        : pendingRequirements.find(
+            (requirement) =>
+              requirement.signerUser?.id != null &&
+              requirementMatchesUser(requirement, user),
+          ) ??
+          pendingRequirements.find((requirement) =>
+            requirementMatchesUser(requirement, user),
+          )
 
       return {
         document,

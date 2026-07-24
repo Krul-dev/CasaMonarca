@@ -140,6 +140,7 @@ class DocumentSignOptionsController extends Controller
                 'documentId' => $document->getKey(),
                 'revisionId' => $signIntent['intent']['revisionId'],
                 'revisionNumber' => $signIntent['intent']['revisionNumber'],
+                'signaturePolicyVersion' => $signIntent['intent']['signaturePolicyVersion'],
                 'documentHash' => $signIntent['intent']['revisionSha256'],
                 'expiresAt' => $signIntent['intent']['expiresAt'],
             ],

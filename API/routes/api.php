@@ -42,6 +42,8 @@ use App\Http\Controllers\Api\Documents\DocumentIndexController;
 use App\Http\Controllers\Api\Documents\DocumentRevisionUpdateOptionsController;
 use App\Http\Controllers\Api\Documents\DocumentRevisionUpdateVerifyController;
 use App\Http\Controllers\Api\Documents\DocumentShowController;
+use App\Http\Controllers\Api\Documents\DocumentSignaturePolicySignerOptionsController;
+use App\Http\Controllers\Api\Documents\DocumentSignaturePolicyUpdateController;
 use App\Http\Controllers\Api\Documents\DocumentSignOptionsController;
 use App\Http\Controllers\Api\Documents\DocumentSignVerifyController;
 use App\Http\Controllers\Api\Documents\DocumentStoreController;
@@ -105,6 +107,10 @@ Route::middleware('web')->group(function (): void {
         Route::post('/admin/verification-package-signing-key/rotation/options', VerificationPackageSigningKeyRotationOptionsController::class)->middleware('throttle:10,1');
         Route::post('/admin/verification-package-signing-key/rotation/verify', VerificationPackageSigningKeyRotationVerifyController::class)->middleware('throttle:10,1');
         Route::get('/audit-events', AuditEventIndexController::class);
+        Route::get('/documents/signature-policy/signer-options', DocumentSignaturePolicySignerOptionsController::class)
+            ->middleware('requireSecurityEnrollment');
+        Route::put('/documents/{document}/revisions/{revision}/signature-policy', DocumentSignaturePolicyUpdateController::class)
+            ->middleware('requireSecurityEnrollment');
     });
 
     Route::middleware(['auth', 'requireActiveAccount', 'requireSecurityEnrollment', 'requireRole:admin,coordinator,non_coordinator,volunteer'])->group(function (): void {

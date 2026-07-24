@@ -85,12 +85,12 @@ class DocumentAuthorizationService
             default => false,
         };
 
-        return $roleAllowed && $this->documentSignatureRequirementService->canSign($document, $user);
+        return $roleAllowed && $this->documentSignatureRequirementService->canSign($revision, $user);
     }
 
-    public function signatureRequirementRejectionMessage(Document $document, User $user): string
+    public function signatureRequirementRejectionMessage(DocumentRevision $revision, User $user): string
     {
-        return $this->documentSignatureRequirementService->rejectionMessage($document, $user);
+        return $this->documentSignatureRequirementService->rejectionMessage($revision, $user);
     }
 
     /**
@@ -123,6 +123,7 @@ class DocumentAuthorizationService
      * @return array{
      *     canDownload: bool,
      *     canReadVerificationBundle: bool,
+     *     canManageSignaturePolicy: bool,
      *     canSign: bool,
      * }
      */
@@ -133,6 +134,7 @@ class DocumentAuthorizationService
         return [
             'canDownload' => $canRead,
             'canReadVerificationBundle' => $canRead,
+            'canManageSignaturePolicy' => $user->role === UserRole::Admin,
             'canSign' => $this->canSignRevision($user, $document, $revision),
         ];
     }

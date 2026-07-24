@@ -19,7 +19,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'approved_at',
     'approved_by_user_id',
     'approval_note',
-    'signature_order_enforced',
 ])]
 class Document extends Model
 {
@@ -38,7 +37,6 @@ class Document extends Model
     {
         return [
             'approved_at' => 'datetime',
-            'signature_order_enforced' => 'boolean',
         ];
     }
 
@@ -65,11 +63,6 @@ class Document extends Model
     public function revisions(): HasMany
     {
         return $this->hasMany(DocumentRevision::class);
-    }
-
-    public function signatureRequirements(): HasMany
-    {
-        return $this->hasMany(DocumentSignatureRequirement::class)->orderBy('sequence');
     }
 
     public function isApproved(): bool

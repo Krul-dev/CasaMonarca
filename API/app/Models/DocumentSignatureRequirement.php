@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'document_id',
+    'document_revision_id',
     'sequence',
     'signer_role',
     'signer_user_id',
@@ -29,9 +29,9 @@ class DocumentSignatureRequirement extends Model
         ];
     }
 
-    public function document(): BelongsTo
+    public function documentRevision(): BelongsTo
     {
-        return $this->belongsTo(Document::class);
+        return $this->belongsTo(DocumentRevision::class);
     }
 
     public function signerUser(): BelongsTo

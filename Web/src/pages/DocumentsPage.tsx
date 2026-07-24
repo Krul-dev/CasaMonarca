@@ -1,6 +1,7 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppIcon } from '../components/ui/AppIcon'
+import { DocumentSignaturePolicyPanel } from '../components/documents/DocumentSignaturePolicyPanel'
 import type { AuthenticatedUser } from '../lib/auth'
 import { ApiRequestError } from '../lib/api'
 import { cancelSecurityChallenge } from '../lib/securityChallenges'
@@ -541,6 +542,30 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
     if (file) {
       handleUpdateDocumentRevision(file)
     }
+  }
+
+  const reloadDocumentDetail = async () => {
+    if (!detail) {
+      return
+    }
+
+    const [documentResponse, verificationResponse] = await Promise.all([
+      getDocument(detail.id),
+      getDocumentVerification(detail.id),
+    ])
+    setDetail(documentResponse.document)
+    setVerification(verificationResponse.verification)
+    setDocuments((current) =>
+      current.map((document) =>
+        document.id === documentResponse.document.id
+          ? {
+              ...document,
+              currentRevision: documentResponse.document.currentRevision,
+              updatedAt: documentResponse.document.updatedAt,
+            }
+          : document,
+      ),
+    )
   }
 
   const handleSignRevision = async (revision: DocumentDetailRevision) => {
@@ -1128,6 +1153,16 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                           .join(', ')}
                       </p>
                     ) : null}
+
+                    <DocumentSignaturePolicyPanel
+                      documentId={detail.id}
+                      onReload={() => {
+                        void reloadDocumentDetail()
+                      }}
+                      onSaved={reloadDocumentDetail}
+                      onSessionExpired={onSessionExpired}
+                      revision={selectedRevision}
+                    />
 
                     <div className="workspace-actions">
                       {selectedRevision.capabilities.canDownload ? (

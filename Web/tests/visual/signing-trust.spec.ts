@@ -161,6 +161,7 @@ const signingLedgerResponse = {
 const linkedDocumentRevision = {
   capabilities: {
     canDownload: true,
+    canManageSignaturePolicy: true,
     canReadVerificationBundle: true,
     canSign: false,
   },
@@ -172,6 +173,32 @@ const linkedDocumentRevision = {
   parentRevisionId: null,
   revisionNumber: 1,
   sha256: '88989c9935492302',
+  signaturePolicy: {
+    requirements: [
+      {
+        fulfilledAt: signedAt,
+        fulfilledBy: adminUser,
+        fulfilledBySignatureId: 21,
+        id: 71,
+        sequence: 1,
+        signerRole: 'admin',
+        signerUser: null,
+        type: 'role',
+      },
+      {
+        fulfilledAt: null,
+        fulfilledBy: null,
+        fulfilledBySignatureId: null,
+        id: 72,
+        sequence: 2,
+        signerRole: 'coordinator',
+        signerUser: null,
+        type: 'role',
+      },
+    ],
+    signatureOrderEnforced: true,
+    version: 3,
+  },
   signatureStatus: 'signed',
   signatures: [signature(21, adminUser, '88989c9935492302')],
   sizeBytes: 1200,
@@ -319,13 +346,29 @@ async function mockAdminApi(page: Page) {
       },
     })
   })
+
+  await page.route('**/api/documents/signature-policy/signer-options', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        message: 'Signer options loaded.',
+        roles: [
+          { label: 'Administrator', value: 'admin' },
+          { label: 'Coordinator', value: 'coordinator' },
+        ],
+        users: [adminUser],
+      },
+    })
+  })
 }
 
 async function openSigningTrust(page: Page) {
   await mockAdminApi(page)
   await page.goto('/app/admin')
-  await page.getByRole('button', { name: 'Signing Trust' }).click()
-  await expect(page.getByRole('heading', { name: 'Signing Trust' })).toBeVisible()
+  await page.getByRole('button', { exact: true, name: 'Signing Trust' }).click()
+  await expect(
+    page.getByRole('heading', { exact: true, name: 'Signing Trust' }),
+  ).toBeVisible()
   await expect(page.locator('.signing-ledger')).toBeVisible()
 }
 
@@ -566,13 +609,19 @@ test.describe('Signing Trust visual QA', () => {
     })
   })
 
-  test('revision links navigate to the matching document revision', async ({ page }) => {
+  test('revision links navigate to the matching document revision', async ({ page }, testInfo) => {
     await page.setViewportSize({ height: 1000, width: 1500 })
     await openSigningTrust(page)
 
     await page.locator('.signing-ledger__revision-link').first().click()
 
     await expect(page).toHaveURL(/\/app\/documents\?documentId=9&revisionId=901$/)
+    await expect(page.getByRole('heading', { name: 'Signature policy' })).toBeVisible()
+    await expect(page.getByText('1 of 2 required signatures completed.')).toBeVisible()
+    await page.screenshot({
+      fullPage: true,
+      path: testInfo.outputPath('document-signature-policy.png'),
+    })
   })
 
   for (const viewport of [
