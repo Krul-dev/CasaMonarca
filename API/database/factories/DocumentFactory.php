@@ -28,7 +28,6 @@ class DocumentFactory extends Factory
             'approved_at' => now(),
             'approved_by_user_id' => null,
             'approval_note' => null,
-            'signature_order_enforced' => false,
         ];
     }
 }

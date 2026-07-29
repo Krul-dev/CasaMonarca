@@ -14,7 +14,14 @@
 <div class="header"><strong>Casa Monarca Ayuda Humanitaria al Migrante A.B.P.</strong><h1>Respuesta al Derecho de Acceso</h1><div class="meta">Solicitud ARCO #{{ $arco->id }} · Generado {{ now()->format('d/m/Y H:i:s') }}</div></div>
 <p>El presente documento reúne la información vigente asociada al registro solicitado y su procedencia dentro del sistema.</p>
 <h2>Datos del registro</h2>
+@if(count($questionnaireSections ?? []) > 0)
+@foreach($questionnaireSections as $section)
+<h2>{{ $section['title'] }}</h2>
+<table>@foreach($section['answers'] as $answer)<tr><th>{{ $answer['question'] }}</th><td>{{ $answer['answer'] }}</td></tr>@endforeach</table>
+@endforeach
+@else
 <table>@foreach(($arco->registryEntry?->payload_json ?? $arco->original_payload_json ?? []) as $key => $value)<tr><th>{{ str($key)->headline() }}</th><td>{{ is_scalar($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE) }}</td></tr>@endforeach</table>
+@endif
 <h2>Procedencia</h2>
 <table><tr><th>Identificador del registro</th><td>{{ $arco->registry_entry_id }}</td></tr><tr><th>Fecha de creación</th><td>{{ $arco->registryEntry?->created_at }}</td></tr><tr><th>Estado</th><td>{{ $arco->registryEntry?->current_status }}</td></tr><tr><th>Solicitado por</th><td>{{ $arco->requester?->name }} ({{ $arco->requested_by_role }})</td></tr></table>
 <h2>Documentos adjuntos</h2>

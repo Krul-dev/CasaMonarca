@@ -85,7 +85,6 @@ erDiagram
         timestamp approved_at
         bigint approved_by_user_id FK
         text approval_note
-        boolean signature_order_enforced
         timestamp created_at
         timestamp updated_at
     }
@@ -103,6 +102,8 @@ erDiagram
         bigint size_bytes
         string sha256
         string signature_status
+        boolean signature_order_enforced
+        bigint signature_policy_version
         json diff_metadata
         timestamp created_at
         timestamp updated_at
@@ -123,7 +124,7 @@ erDiagram
 
     document_signature_requirements {
         bigint id PK
-        bigint document_id FK
+        bigint document_revision_id FK
         integer sequence
         string signer_role
         bigint signer_user_id FK
@@ -260,19 +261,17 @@ erDiagram
     users ||--o{ security_challenge_intents : initiates
 
     documents ||--o{ document_revisions : has
-    documents ||--o{ document_signature_requirements : requires
     document_revisions ||--o{ document_revisions : parent
     document_revisions ||--o{ document_signatures : has
+    document_revisions ||--o{ document_signature_requirements : requires
     document_revisions ||--o{ documents : current
     document_signatures ||--o| document_signature_requirements : fulfills
 ```
 
-## Approval Workflow Additions
+## Document Approval And Signature Policies
 
-- `documents.approved_at`, `documents.approved_by_user_id`, `documents.approval_note`, and `documents.signature_order_enforced` track admin approval state.
-- `document_signature_requirements` stores required signers by role or by specific signing-capable user.
-- `document_signature_requirements.sequence` defines required signing order when `documents.signature_order_enforced` is true.
-- `document_signature_requirements.fulfilled_by_signature_id` links a requirement to the document signature that satisfied it.
+- The document approval columns remain for migration compatibility and historical data; uploads publish directly to VCS.
+- Signature policies belong to individual revisions. New revisions copy the preceding revision's assignments without copying fulfillment.
 
 ## Notes
 

@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\DocumentSignature;
 use App\Models\User;
 use App\Services\Documents\DocumentAuthorizationService;
+use App\Services\Documents\DocumentSignaturePolicyService;
 use App\Services\Documents\DocumentSignatureViewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class DocumentIndexController extends Controller
 {
     public function __construct(
         private readonly DocumentAuthorizationService $documentAuthorizationService,
+        private readonly DocumentSignaturePolicyService $documentSignaturePolicyService,
         private readonly DocumentSignatureViewService $documentSignatureViewService,
     ) {}
 
@@ -35,7 +37,8 @@ class DocumentIndexController extends Controller
                 'uploadedBy',
                 'approvedBy',
                 'currentRevision.signatures.signedBy',
-                'signatureRequirements.signerUser',
+                'currentRevision.signatureRequirements.signerUser',
+                'currentRevision.signatureRequirements.fulfilledBySignature.signedBy',
             ])
             ->where('status', 'active')
             ->latest()
@@ -68,22 +71,6 @@ class DocumentIndexController extends Controller
                             'role' => $document->approvedBy?->role?->value,
                         ],
                         'note' => $document->approval_note,
-                        'signatureOrderEnforced' => (bool) $document->signature_order_enforced,
-                        'signatureRequirements' => $document->signatureRequirements
-                            ->map(fn ($requirement): array => [
-                                'id' => $requirement->getKey(),
-                                'sequence' => $requirement->sequence,
-                                'signerRole' => $requirement->signer_role?->value,
-                                'signerUser' => [
-                                    'id' => $requirement->signerUser?->getKey(),
-                                    'name' => $requirement->signerUser?->name,
-                                    'email' => $requirement->signerUser?->email,
-                                    'role' => $requirement->signerUser?->role?->value,
-                                ],
-                                'fulfilledAt' => $requirement->fulfilled_at?->toIso8601String(),
-                                'fulfilledBySignatureId' => $requirement->fulfilled_by_signature_id,
-                            ])
-                            ->values(),
                     ],
                     'currentRevision' => [
                         'id' => $document->currentRevision?->getKey(),
@@ -93,6 +80,12 @@ class DocumentIndexController extends Controller
                         'sizeBytes' => $document->currentRevision?->size_bytes,
                         'sha256' => $document->currentRevision?->sha256,
                         'signatureStatus' => $document->currentRevision?->signature_status,
+                        'capabilities' => $document->currentRevision
+                            ? $this->documentAuthorizationService->revisionCapabilities($user, $document, $document->currentRevision)
+                            : null,
+                        'signaturePolicy' => $document->currentRevision
+                            ? $this->documentSignaturePolicyService->toArray($document->currentRevision)
+                            : null,
                         'signatures' => $document->currentRevision?->signatures
                             ->map(fn (DocumentSignature $signature): array => $this->documentSignatureViewService->toRevisionSignature($signature))
                             ->values() ?? [],

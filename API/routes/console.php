@@ -1,9 +1,11 @@
 <?php
 
 use App\Services\Documents\VerificationPackageSigningKeyService;
+use App\Services\Registry\MigrantRegistryService;
 use App\Services\Security\SecurityChallengeIntentService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Command\Command;
 
@@ -41,7 +43,7 @@ Artisan::command(
         if ($this->option('write-env')) {
             try {
                 $signingKeyService->writeEnvValues($values, (bool) $this->option('force'));
-            } catch (\RuntimeException $exception) {
+            } catch (RuntimeException $exception) {
                 $this->error($exception->getMessage());
 
                 return Command::FAILURE;
@@ -82,3 +84,12 @@ Artisan::command(
         return Command::SUCCESS;
     },
 )->purpose('Mark pending security challenge intents as expired after their expiry time.');
+
+Artisan::command('registry:migrant-drafts:purge', function (): int {
+    $purged = app(MigrantRegistryService::class)->purgeExpiredDrafts(7);
+    $this->info("Purged {$purged} expired migrant registration draft(s).");
+
+    return Command::SUCCESS;
+})->purpose('Permanently delete migrant registration drafts inactive for seven days.');
+
+Schedule::command('registry:migrant-drafts:purge')->daily();

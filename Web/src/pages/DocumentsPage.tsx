@@ -1,6 +1,7 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppIcon } from '../components/ui/AppIcon'
+import { DocumentSignaturePolicyPanel } from '../components/documents/DocumentSignaturePolicyPanel'
 import type { AuthenticatedUser } from '../lib/auth'
 import { ApiRequestError } from '../lib/api'
 import { cancelSecurityChallenge } from '../lib/securityChallenges'
@@ -24,9 +25,7 @@ import {
   verifyDocumentRevisionSign,
   type DocumentDetail,
   type DocumentDetailRevision,
-  type DocumentSignatureRequirement,
   type DocumentSummary,
-  type DocumentVerificationSignature,
   type DocumentVerification,
 } from '../lib/documents'
 import {
@@ -160,106 +159,6 @@ const omitRevisionEntry = <T,>(entries: Record<number, T>, revisionId: number) =
   delete nextEntries[revisionId]
 
   return nextEntries
-}
-
-type SignatureOrderVerification = {
-  checked: boolean
-  message: string
-  passed: boolean
-}
-
-const getRequirementLabel = (requirement: DocumentSignatureRequirement) => {
-  if (requirement.signerUser?.email) {
-    return requirement.signerUser.email
-  }
-
-  if (requirement.signerRole) {
-    return requirement.signerRole
-      .split('_')
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ')
-  }
-
-  return 'Assigned signer'
-}
-
-const signatureMatchesRequirement = (
-  signature: DocumentVerificationSignature,
-  requirement: DocumentSignatureRequirement,
-) => {
-  if (requirement.signerUser?.id != null) {
-    return signature.signedBy.id === requirement.signerUser.id
-  }
-
-  return Boolean(requirement.signerRole && signature.signedBy.role === requirement.signerRole)
-}
-
-const verifySignatureRequirementOrder = (
-  requirements: DocumentSignatureRequirement[] | undefined,
-  signatures: DocumentVerificationSignature[],
-  enforceOrder: boolean,
-): SignatureOrderVerification => {
-  const orderedRequirements = [...(requirements ?? [])].sort(
-    (left, right) => left.sequence - right.sequence,
-  )
-
-  if (orderedRequirements.length === 0) {
-    return {
-      checked: false,
-      message: 'No approval signature order is configured for this document.',
-      passed: true,
-    }
-  }
-
-  const unusedSignatures = [...signatures].sort(
-    (left, right) =>
-      new Date(left.signedAt ?? 0).getTime() - new Date(right.signedAt ?? 0).getTime(),
-  )
-  const matchedSignatures: DocumentVerificationSignature[] = []
-
-  for (const requirement of orderedRequirements) {
-    const matchedIndex = unusedSignatures.findIndex((signature) =>
-      signatureMatchesRequirement(signature, requirement),
-    )
-
-    if (matchedIndex === -1) {
-      return {
-        checked: true,
-        message: `Missing required signature from ${getRequirementLabel(requirement)}.`,
-        passed: false,
-      }
-    }
-
-    const [matchedSignature] = unusedSignatures.splice(matchedIndex, 1)
-    matchedSignatures.push(matchedSignature)
-  }
-
-  if (!enforceOrder) {
-    return {
-      checked: true,
-      message: 'All configured signature requirements are present. Order is not enforced for this document.',
-      passed: true,
-    }
-  }
-
-  const orderedBySignedAt = matchedSignatures.every((signature, index) => {
-    if (index === 0) {
-      return true
-    }
-
-    return (
-      new Date(matchedSignatures[index - 1].signedAt ?? 0).getTime() <=
-      new Date(signature.signedAt ?? 0).getTime()
-    )
-  })
-
-  return {
-    checked: true,
-    message: orderedBySignedAt
-      ? 'Required signatures were collected in the configured approval order.'
-      : 'Required signatures were not collected in the configured approval order.',
-    passed: orderedBySignedAt,
-  }
 }
 
 const parsePositiveIntegerParam = (search: string | undefined, key: string) => {
@@ -520,6 +419,13 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
     ) ?? false
   const isSelectedRevisionCurrent =
     selectedRevision?.id === detail?.currentRevision?.id
+  const selectedRevisionSigningBlock = useMemo(() => {
+    if (!detail || !selectedRevision || selectedRevision.capabilities.canSign) {
+      return null
+    }
+
+    return 'Signing unavailable for this revision'
+  }, [detail, selectedRevision])
   const isSigningSelectedRevision =
     selectedRevision ? pendingSigningRevisionId === selectedRevision.id : false
   const isDownloadingSelectedRevisionBundle =
@@ -532,17 +438,6 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
   const selectedRevisionLocalVerificationReport = selectedRevision
     ? localVerificationReports[selectedRevision.id] ?? null
     : null
-  const currentSignatureOrderVerification = useMemo(
-    () =>
-      localVerificationReport && detail?.approval
-        ? verifySignatureRequirementOrder(
-            detail.approval.signatureRequirements,
-            verification?.signatures ?? [],
-            detail.approval.signatureOrderEnforced,
-          )
-        : null,
-    [detail?.approval, localVerificationReport, verification?.signatures],
-  )
 
   useEffect(() => {
     if (!canUseVersioning || !detail || sortedRevisions.length === 0) {
@@ -647,6 +542,30 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
     if (file) {
       handleUpdateDocumentRevision(file)
     }
+  }
+
+  const reloadDocumentDetail = async () => {
+    if (!detail) {
+      return
+    }
+
+    const [documentResponse, verificationResponse] = await Promise.all([
+      getDocument(detail.id),
+      getDocumentVerification(detail.id),
+    ])
+    setDetail(documentResponse.document)
+    setVerification(verificationResponse.verification)
+    setDocuments((current) =>
+      current.map((document) =>
+        document.id === documentResponse.document.id
+          ? {
+              ...document,
+              currentRevision: documentResponse.document.currentRevision,
+              updatedAt: documentResponse.document.updatedAt,
+            }
+          : document,
+      ),
+    )
   }
 
   const handleSignRevision = async (revision: DocumentDetailRevision) => {
@@ -1003,7 +922,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
       </section>
 
       <section className="document-layout">
-        <section className="workspace-panel">
+        <section className="workspace-panel workspace-panel--document-list">
           <h2 className="workspace-panel__title">Available documents</h2>
 
           {isLoadingList ? (
@@ -1235,6 +1154,16 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                       </p>
                     ) : null}
 
+                    <DocumentSignaturePolicyPanel
+                      documentId={detail.id}
+                      onReload={() => {
+                        void reloadDocumentDetail()
+                      }}
+                      onSaved={reloadDocumentDetail}
+                      onSessionExpired={onSessionExpired}
+                      revision={selectedRevision}
+                    />
+
                     <div className="workspace-actions">
                       {selectedRevision.capabilities.canDownload ? (
                         <a
@@ -1266,15 +1195,17 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                         </button>
                       ) : null}
 
-                      {canPerformPrivilegedDocumentActions && selectedRevision.capabilities.canSign ? (
+                      {canPerformPrivilegedDocumentActions ? (
                         <button
                           className="workspace-action workspace-action--secondary"
                           disabled={
                             pendingAction !== 'idle' ||
                             pendingSigningRevisionId !== null ||
-                            selectedRevisionSignedByCurrentUser
+                            selectedRevisionSignedByCurrentUser ||
+                            !selectedRevision.capabilities.canSign
                           }
                           onClick={() => handleSignRevision(selectedRevision)}
+                          title={selectedRevisionSigningBlock ?? undefined}
                           type="button"
                         >
                           <AppIcon name="sign" />
@@ -1282,7 +1213,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                             ? 'Signing with passkey...'
                             : selectedRevisionSignedByCurrentUser
                               ? 'Signed by this account'
-                              : `Sign revision ${selectedRevision.revisionNumber}`}
+                              : selectedRevisionSigningBlock ?? `Sign revision ${selectedRevision.revisionNumber}`}
                         </button>
                       ) : null}
                     </div>
@@ -1459,8 +1390,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                     {localVerificationReport ? (
                       <div
                         className={`login-feedback ${
-                          localVerificationReport.verified &&
-                          (currentSignatureOrderVerification?.passed ?? true)
+                          localVerificationReport.verified
                             ? 'login-feedback--success'
                             : 'login-feedback--error'
                         }`}
@@ -1470,9 +1400,6 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                             ? `Local verification succeeded for ${localVerificationReport.signatures.length} signature(s).`
                             : 'Local verification completed with one or more failed checks.'}
                         </p>
-                        {currentSignatureOrderVerification?.checked ? (
-                          <p>{currentSignatureOrderVerification.message}</p>
-                        ) : null}
                       </div>
                     ) : null}
 

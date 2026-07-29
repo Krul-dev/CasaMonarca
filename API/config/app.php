@@ -66,6 +66,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'local_admin_email' => env('LOCAL_ADMIN_EMAIL', 'admin@example.com'),
+
+    'local_admin_password' => env('LOCAL_ADMIN_PASSWORD'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

@@ -12,6 +12,7 @@ use App\Services\Audit\AuditEventService;
 use App\Services\Auth\WebauthnAssertionService;
 use App\Services\Documents\DocumentAuthorizationService;
 use App\Services\Documents\DocumentRevisionUpdateIntentService;
+use App\Services\Documents\DocumentSignaturePolicyService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,7 @@ class DocumentRevisionUpdateVerifyController extends Controller
         private readonly AuditEventService $auditEventService,
         private readonly DocumentAuthorizationService $documentAuthorizationService,
         private readonly DocumentRevisionUpdateIntentService $documentRevisionUpdateIntentService,
+        private readonly DocumentSignaturePolicyService $documentSignaturePolicyService,
         private readonly WebauthnAssertionService $webauthnAssertionService,
     ) {}
 
@@ -251,6 +253,8 @@ class DocumentRevisionUpdateVerifyController extends Controller
                     'current_revision_id' => $revision->getKey(),
                 ])->save();
 
+                $this->documentSignaturePolicyService->clonePolicy($currentRevision, $revision);
+
                 $credential->forceFill([
                     'sign_count' => $newSignCount,
                     'last_used_at' => now(),
@@ -318,6 +322,9 @@ class DocumentRevisionUpdateVerifyController extends Controller
                     'sizeBytes' => $updatedDocument->currentRevision?->size_bytes,
                     'sha256' => $updatedDocument->currentRevision?->sha256,
                     'signatureStatus' => $updatedDocument->currentRevision?->signature_status,
+                    'signaturePolicy' => $updatedDocument->currentRevision
+                        ? $this->documentSignaturePolicyService->toArray($updatedDocument->currentRevision)
+                        : null,
                 ],
                 'updatedAt' => $updatedDocument->updated_at?->toIso8601String(),
             ],

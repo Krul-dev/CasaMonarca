@@ -24,19 +24,73 @@ export type RegistryStatus =
   | 'deleted_by_admin'
 
 export type MigrantRegistrationPayload = {
-  attentionDate: string
-  birthDate: string
-  civilStatus: string
-  countryOfOrigin: string
-  departmentState: string
-  firstLastName: string
-  firstName: string
-  fullName: string
-  gender: string
+  age?: string
+  attentionDate?: string
+  birthDate?: string
+  civilStatus?: string
+  countryOfOrigin?: string
+  departmentState?: string
+  firstLastName?: string
+  firstName?: string
+  fullName?: string
+  gender?: string
   notes?: string
   phone?: string
-  populationGroup: string
-  secondLastName: string
+  populationGroup?: string
+  questionnaire?: MigrantQuestionnairePayload
+  schemaVersion?: 2
+  secondLastName?: string
+}
+
+export type MigrantQuestionnaireAnswer = {
+  otherText?: string
+  value: string | string[]
+}
+
+export type MigrantQuestionnairePayload = {
+  answers: Record<string, MigrantQuestionnaireAnswer>
+  definitionId: string
+}
+
+export type QuestionnaireLocale = 'es' | 'en' | 'fr' | 'ht'
+
+export type QuestionnaireDestination =
+  | { kind: 'end' }
+  | { kind: 'question'; questionId: string }
+
+export type QuestionnaireChoice = {
+  custom: boolean
+  id: string
+  label: Record<QuestionnaireLocale, string>
+  next: QuestionnaireDestination
+  value: string
+}
+
+export type QuestionnaireQuestion = {
+  choices: QuestionnaireChoice[]
+  defaultNext: QuestionnaireDestination
+  help: Record<QuestionnaireLocale, string> | null
+  id: string
+  multiline: boolean
+  multipleSelection: boolean
+  number: number
+  numeric: boolean
+  required: boolean
+  sectionId: string
+  title: Record<QuestionnaireLocale, string>
+  type: 'choice' | 'date' | 'text'
+}
+
+export type MigrantQuestionnaireDefinition = {
+  canonicalAnswerLocale: 'es'
+  defaultLocale: 'es'
+  id: string
+  locales: Array<{ id: QuestionnaireLocale; name: string }>
+  questions: QuestionnaireQuestion[]
+  schemaVersion: 2
+  sections: Array<{ id: string; title: Record<QuestionnaireLocale, string> }>
+  summaryMappings: Record<string, string>
+  title: Record<QuestionnaireLocale, string>
 }
 
 export type RegistryActor = {
@@ -61,6 +115,7 @@ export type RegistryEntry = {
   payload_json: Partial<MigrantRegistrationPayload> & Record<string, unknown>
   status_history?: RegistryStatusHistory[]
   updated_at: string
+  expires_at?: string
 }
 
 export type RegistrySignature = {

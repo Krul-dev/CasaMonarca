@@ -15,10 +15,12 @@ export type DocumentActor = {
 }
 
 export type DocumentSignatureRequirement = {
+  fulfilledBy?: DocumentActor | null
   fulfilledAt?: string | null
   fulfilledBySignatureId?: number | null
   id: number
   sequence: number
+  type: 'role' | 'user'
   signerRole?: UserRole | null
   signerUser?: DocumentActor | null
 }
@@ -27,8 +29,12 @@ export type DocumentApproval = {
   approvedAt?: string | null
   approvedBy?: DocumentActor | null
   note?: string | null
+}
+
+export type DocumentSignaturePolicy = {
+  requirements: DocumentSignatureRequirement[]
   signatureOrderEnforced: boolean
-  signatureRequirements: DocumentSignatureRequirement[]
+  version: number
 }
 
 export type DocumentRevisionSignature = {
@@ -51,6 +57,7 @@ export type DocumentCapabilities = {
 
 export type DocumentRevisionCapabilities = {
   canDownload: boolean
+  canManageSignaturePolicy: boolean
   canReadVerificationBundle: boolean
   canSign: boolean
 }
@@ -63,6 +70,7 @@ export type DocumentRevisionSummary = {
   sizeBytes: number | null
   sha256: string | null
   signatureStatus: string | null
+  signaturePolicy?: DocumentSignaturePolicy | null
   signatures?: DocumentRevisionSignature[]
 }
 
@@ -91,6 +99,7 @@ export type DocumentDetailRevision = {
   sizeBytes: number
   sha256: string
   signatureStatus: string
+  signaturePolicy: DocumentSignaturePolicy
   signatures?: DocumentRevisionSignature[]
   createdBy: DocumentActor
   createdAt?: string | null
@@ -169,6 +178,7 @@ export type DocumentVerificationBundleSignature =
       revisionNumber?: number | null
       revisionSha256?: string | null
       rpId?: string | null
+      signaturePolicyVersion?: number | null
       userId?: number | null
       version?: number | null
     } | null
@@ -224,6 +234,7 @@ export type DocumentSensitiveActionOptionsResponse = {
     expiresAt: string
     revisionId: number
     revisionNumber: number
+    signaturePolicyVersion: number
   }
 }
 
@@ -245,6 +256,41 @@ export type DocumentSignResponse = {
   message: string
   signature: DocumentVerificationSignature
   verification: DocumentVerification
+}
+
+export type DocumentSignaturePolicySignerOptions = {
+  message: string
+  roles: Array<{
+    label: string
+    value: Extract<UserRole, 'admin' | 'coordinator'>
+  }>
+  users: Array<{
+    email: string
+    id: number
+    name: string
+    role: Extract<UserRole, 'admin' | 'coordinator'>
+  }>
+}
+
+export type DocumentSignaturePolicyRequirementInput =
+  | {
+      id?: number
+      role: Extract<UserRole, 'admin' | 'coordinator'>
+      type: 'role'
+    }
+  | {
+      id?: number
+      type: 'user'
+      userId: number
+    }
+
+export type DocumentSignaturePolicyUpdateResponse = {
+  message: string
+  revision: {
+    id: number
+    signaturePolicy: DocumentSignaturePolicy
+    signatureStatus: string
+  }
 }
 
 export type DocumentDeleteResponse = {
@@ -349,6 +395,34 @@ export function getDocuments(): Promise<DocumentIndexResponse> {
 
 export function getDocument(documentId: number): Promise<DocumentShowResponse> {
   return apiFetch<DocumentShowResponse>(`/documents/${documentId}`)
+}
+
+export function getDocumentSignaturePolicySignerOptions(): Promise<DocumentSignaturePolicySignerOptions> {
+  return apiFetch<DocumentSignaturePolicySignerOptions>(
+    '/documents/signature-policy/signer-options',
+  )
+}
+
+export async function updateDocumentRevisionSignaturePolicy(
+  documentId: number,
+  revisionId: number,
+  payload: {
+    expectedVersion: number
+    requirements: DocumentSignaturePolicyRequirementInput[]
+    signatureOrderEnforced: boolean
+  },
+): Promise<DocumentSignaturePolicyUpdateResponse> {
+  return apiFetch<DocumentSignaturePolicyUpdateResponse>(
+    `/documents/${documentId}/revisions/${revisionId}/signature-policy`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': (await getCsrfToken()).csrfToken,
+      },
+      body: JSON.stringify(payload),
+    },
+  )
 }
 
 export function getDocumentVerification(

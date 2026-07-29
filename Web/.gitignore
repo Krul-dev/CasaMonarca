@@ -7,11 +7,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-playwright-report
-test-results
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+dist-ssr/
+
+# Test artifacts
+playwright-report/
+test-results/
+
+# Environment
 .env
 .env.local
 .env.*.local

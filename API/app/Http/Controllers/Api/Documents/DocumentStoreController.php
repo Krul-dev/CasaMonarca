@@ -8,6 +8,7 @@ use App\Models\Document;
 use App\Models\DocumentRevision;
 use App\Models\User;
 use App\Services\Audit\AuditEventService;
+use App\Services\Documents\DocumentSignaturePolicyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -20,6 +21,7 @@ class DocumentStoreController extends Controller
 {
     public function __construct(
         private readonly AuditEventService $auditEventService,
+        private readonly DocumentSignaturePolicyService $documentSignaturePolicyService,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -48,10 +50,11 @@ class DocumentStoreController extends Controller
             $document = DB::transaction(function () use ($title, $uploadedFile, $user, $originalFileName, &$storedPath): Document {
                 $document = Document::query()->create([
                     'title' => $title,
-                    'status' => 'pending_approval',
+                    'status' => 'active',
                     'confidentiality' => 'confidential',
                     'owner_user_id' => $user->getKey(),
                     'uploaded_by_user_id' => $user->getKey(),
+                    'approved_at' => now('UTC'),
                 ]);
 
                 $storedPath = sprintf(
@@ -121,7 +124,7 @@ class DocumentStoreController extends Controller
         );
 
         return response()->json([
-            'message' => 'Document uploaded successfully and is pending admin approval.',
+            'message' => 'Document uploaded successfully.',
             'document' => [
                 'id' => $document->getKey(),
                 'title' => $document->title,
@@ -145,6 +148,9 @@ class DocumentStoreController extends Controller
                     'sizeBytes' => $document->currentRevision?->size_bytes,
                     'sha256' => $document->currentRevision?->sha256,
                     'signatureStatus' => $document->currentRevision?->signature_status,
+                    'signaturePolicy' => $document->currentRevision
+                        ? $this->documentSignaturePolicyService->toArray($document->currentRevision)
+                        : null,
                 ],
                 'createdAt' => $document->created_at?->toIso8601String(),
             ],

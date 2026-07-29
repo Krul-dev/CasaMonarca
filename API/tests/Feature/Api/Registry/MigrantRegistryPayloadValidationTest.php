@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\Registry;
 
 use App\Http\Requests\StoreMigrantRegistryRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Redirector;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -99,12 +100,69 @@ class MigrantRegistryPayloadValidationTest extends TestCase
         $this->assertArrayHasKey('payload_json.fullName', $errors);
     }
 
+    public function test_multipart_registration_decodes_payload_and_accepts_supported_documents(): void
+    {
+        $request = $this->multipartRequest([
+            UploadedFile::fake()->create('identification.pdf', 32, 'application/pdf'),
+        ]);
+
+        $request->validateResolved();
+
+        $this->assertSame('John Doe X', $request->validated('payload_json.fullName'));
+        $this->assertCount(1, $request->validated('documents'));
+    }
+
+    public function test_multipart_registration_rejects_unsupported_document_types(): void
+    {
+        try {
+            $this->multipartRequest([
+                UploadedFile::fake()->create('program.exe', 32, 'application/x-msdownload'),
+            ])->validateResolved();
+            $this->fail('Executable attachments should not pass migrant document validation.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('documents.0', $exception->errors());
+        }
+    }
+
+    public function test_multipart_registration_rejects_documents_when_the_feature_is_disabled(): void
+    {
+        config()->set('features.migrant_documents', false);
+
+        try {
+            $this->multipartRequest([
+                UploadedFile::fake()->create('identification.pdf', 32, 'application/pdf'),
+            ])->validateResolved();
+            $this->fail('Attachments should not pass validation while migrant documents are disabled.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('documents', $exception->errors());
+        }
+    }
+
     /** @param array<string, mixed> $payload */
     private function requestWithPayload(array $payload): StoreMigrantRegistryRequest
     {
         $request = StoreMigrantRegistryRequest::create('/registry/migrants', 'POST', [
             'payload_json' => $payload,
         ]);
+        $request->setContainer($this->app);
+        $request->setRedirector($this->app->make(Redirector::class));
+
+        return $request;
+    }
+
+    /** @param list<UploadedFile> $documents */
+    private function multipartRequest(array $documents): StoreMigrantRegistryRequest
+    {
+        $request = StoreMigrantRegistryRequest::create(
+            '/registry/migrants',
+            'POST',
+            [
+                'payload_json' => json_encode($this->validPayload(), JSON_THROW_ON_ERROR),
+                'document_labels' => ['Identification'],
+            ],
+            [],
+            ['documents' => $documents],
+        );
         $request->setContainer($this->app);
         $request->setRedirector($this->app->make(Redirector::class));
 

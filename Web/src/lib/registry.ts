@@ -1,9 +1,11 @@
 import { apiFetch, ApiRequestError } from './api'
 import type { WebauthnLoginAssertionPayload, WebauthnLoginOptions } from './auth'
 import { getCsrfToken } from './csrf'
+import type { PendingMigrantDocument } from './migrantDocuments'
 import type { SecurityChallengeSummary } from './securityChallenges'
 import type {
   MigrantRegistrationPayload,
+  MigrantQuestionnaireDefinition,
   RegistryEntry,
   RegistrySignature,
 } from '../types/registry'
@@ -25,6 +27,8 @@ export type RegistryDetailResponse = {
   data: RegistryEntry
   signatures?: RegistrySignature[]
 }
+
+export type QuestionnaireDefinitionResponse = { data: MigrantQuestionnaireDefinition }
 
 export type CreateRegistryEntryPayload = {
   payload_json: MigrantRegistrationPayload
@@ -110,6 +114,62 @@ export async function getRegistryEntries() {
   return apiFetch<RegistryListResponse>('/registry/migrants')
 }
 
+let questionnaireDefinitionRequest: Promise<QuestionnaireDefinitionResponse> | null = null
+
+export function getCurrentMigrantQuestionnaire() {
+  questionnaireDefinitionRequest ??= apiFetch<QuestionnaireDefinitionResponse>('/registry/migrants/questionnaires/current')
+  return questionnaireDefinitionRequest
+}
+
+export async function getRegistryDrafts() {
+  return apiFetch<RegistryListResponse>('/registry/migrants/drafts')
+}
+
+export async function createRegistryDraft(payload_json: MigrantRegistrationPayload) {
+  const { csrfToken } = await getCsrfToken()
+  return apiFetch<RegistryDetailResponse>('/registry/migrants/drafts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    body: JSON.stringify({ payload_json }),
+  })
+}
+
+export async function updateRegistryDraft(id: number, payload_json: MigrantRegistrationPayload) {
+  const { csrfToken } = await getCsrfToken()
+  return apiFetch<RegistryDetailResponse>(`/registry/migrants/drafts/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    body: JSON.stringify({ payload_json }),
+  })
+}
+
+export async function discardRegistryDraft(id: number) {
+  const { csrfToken } = await getCsrfToken()
+  return apiFetch<{ message: string }>(`/registry/migrants/drafts/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-TOKEN': csrfToken },
+  })
+}
+
+export async function submitRegistryDraft(
+  id: number,
+  payload_json: MigrantRegistrationPayload,
+  documents: PendingMigrantDocument[] = [],
+) {
+  const { csrfToken } = await getCsrfToken()
+  const formData = new FormData()
+  formData.set('payload_json', JSON.stringify(payload_json))
+  documents.forEach(({ file, label }) => {
+    formData.append('documents[]', file)
+    formData.append('document_labels[]', label.trim())
+  })
+  return apiFetch<RegistryDetailResponse>(`/registry/migrants/drafts/${id}/submit`, {
+    method: 'POST',
+    headers: { 'X-CSRF-TOKEN': csrfToken },
+    body: formData,
+  })
+}
+
 export async function getPendingRegistryApprovals() {
   return apiFetch<RegistryListResponse>('/registry/migrants/pending-approval')
 }
@@ -126,8 +186,29 @@ export async function getRegistryEntryById(id: number) {
   return apiFetch<RegistryDetailResponse>(`/registry/migrants/${id}`)
 }
 
-export async function createRegistryEntry(payload: CreateRegistryEntryPayload) {
+export async function createRegistryEntry(
+  payload: CreateRegistryEntryPayload,
+  documents: PendingMigrantDocument[] = [],
+) {
   const { csrfToken } = await getCsrfToken()
+
+  if (documents.length > 0) {
+    const formData = new FormData()
+
+    formData.set('payload_json', JSON.stringify(payload.payload_json))
+    documents.forEach(({ file, label }) => {
+      formData.append('documents[]', file)
+      formData.append('document_labels[]', label.trim())
+    })
+
+    return apiFetch<RegistryDetailResponse>('/registry/migrants', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: formData,
+    })
+  }
 
   return apiFetch<RegistryDetailResponse>('/registry/migrants', {
     method: 'POST',
@@ -142,8 +223,28 @@ export async function createRegistryEntry(payload: CreateRegistryEntryPayload) {
 export async function updateRegistryEntry(
   id: number,
   payload: UpdateRegistryEntryPayload,
+  documents: PendingMigrantDocument[] = [],
 ) {
   const { csrfToken } = await getCsrfToken()
+
+  if (documents.length > 0) {
+    const formData = new FormData()
+
+    formData.set('_method', 'PATCH')
+    formData.set('payload_json', JSON.stringify(payload.payload_json))
+    documents.forEach(({ file, label }) => {
+      formData.append('documents[]', file)
+      formData.append('document_labels[]', label.trim())
+    })
+
+    return apiFetch<RegistryDetailResponse>(`/registry/migrants/${id}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: formData,
+    })
+  }
 
   return apiFetch<RegistryDetailResponse>(`/registry/migrants/${id}`, {
     method: 'PATCH',

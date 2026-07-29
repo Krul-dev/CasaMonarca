@@ -1,0 +1,84 @@
+name: casa-monarca
+
+services:
+  web:
+    build:
+      context: ./Web
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - type: bind
+        source: ./Web
+        target: /app
+        bind:
+          create_host_path: false
+
+      - type: bind
+        source: ./Web/.env.dev
+        target: /app/.env
+        read_only: true
+        bind:
+          create_host_path: false
+
+      - type: volume
+        source: web-node-modules
+        target: /app/node_modules
+
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: ./API
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - type: bind
+        source: ./API
+        target: /var/www/html
+        bind:
+          create_host_path: false
+
+      - type: bind
+        source: ./API/.env.dev
+        target: /var/www/html/.env
+        read_only: true
+        bind:
+          create_host_path: false
+
+      - type: volume
+        source: api-vendor
+        target: /var/www/html/vendor
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:5.7.44
+    environment:
+      MYSQL_DATABASE: casamonarca_api
+      MYSQL_USER: casamonarca
+      MYSQL_PASSWORD: local_password
+      MYSQL_ROOT_PASSWORD: local_root_password
+    volumes:
+      - type: volume
+        source: db-data
+        target: /var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  web-node-modules:
+  api-vendor:
+  db-data:

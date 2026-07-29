@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 
 class MigrantRegistryService
 {
+    public const STATUS_DRAFT = 'draft';
+
     public const STATUS_PENDING_REVIEW = 'pending_review';
 
     public const STATUS_PENDING_APPROVAL = 'pending_approval';
@@ -71,6 +73,115 @@ class MigrantRegistryService
 
             return $entry;
         });
+    }
+
+    /** @param array<string, mixed> $payloadJson */
+    public function createDraft(User $user, array $payloadJson): MigrantRegistryEntry
+    {
+        return DB::transaction(function () use ($user, $payloadJson): MigrantRegistryEntry {
+            $entry = MigrantRegistryEntry::query()->create([
+                'created_by' => $user->id,
+                'created_by_role' => $user->role?->value ?? 'volunteer',
+                'current_status' => self::STATUS_DRAFT,
+                'current_assignee_role' => null,
+                'pending_action' => self::ACTION_CREATE,
+                'pending_requested_by' => $user->id,
+                'pending_requested_by_role' => $user->role?->value ?? 'volunteer',
+                'payload_json' => $payloadJson,
+            ]);
+
+            MigrantRegistryStatusHistory::query()->create([
+                'registry_entry_id' => $entry->id,
+                'from_status' => null,
+                'to_status' => self::STATUS_DRAFT,
+                'changed_by' => $user->id,
+                'changed_by_role' => $user->role?->value ?? 'volunteer',
+                'reason' => 'Questionnaire draft created',
+            ]);
+
+            $this->auditService->success($this->request, AuditEventType::MigrantRegistryDraftCreated, $user, [
+                'type' => MigrantRegistryEntry::class,
+                'id' => $entry->id,
+            ]);
+
+            return $entry;
+        });
+    }
+
+    /** @param array<string, mixed> $payloadJson */
+    public function updateDraft(User $user, MigrantRegistryEntry $entry, array $payloadJson): MigrantRegistryEntry
+    {
+        $this->assertDraftOwner($user, $entry);
+        $entry->forceFill(['payload_json' => $payloadJson])->save();
+
+        return $entry->fresh(['creator:id,name,email,role', 'statusHistory']) ?? $entry;
+    }
+
+    /** @param array<string, mixed> $payloadJson */
+    public function submitDraft(User $user, MigrantRegistryEntry $entry, array $payloadJson): MigrantRegistryEntry
+    {
+        return DB::transaction(function () use ($user, $entry, $payloadJson): MigrantRegistryEntry {
+            $entry = MigrantRegistryEntry::query()->whereKey($entry->getKey())->lockForUpdate()->firstOrFail();
+            $this->assertDraftOwner($user, $entry);
+            $entry->forceFill([
+                'payload_json' => $payloadJson,
+                'current_status' => self::STATUS_PENDING_REVIEW,
+                'current_assignee_role' => 'non_coordinator',
+            ])->save();
+
+            MigrantRegistryStatusHistory::query()->create([
+                'registry_entry_id' => $entry->id,
+                'from_status' => self::STATUS_DRAFT,
+                'to_status' => self::STATUS_PENDING_REVIEW,
+                'changed_by' => $user->id,
+                'changed_by_role' => $user->role?->value ?? 'volunteer',
+                'reason' => 'Registration submitted for non-coordinator review',
+            ]);
+
+            $this->auditService->success($this->request, AuditEventType::MigrantRegistrySubmitted, $user, [
+                'type' => MigrantRegistryEntry::class,
+                'id' => $entry->id,
+            ]);
+
+            return $entry->fresh(['creator:id,name,email,role', 'signatures', 'statusHistory']) ?? $entry;
+        });
+    }
+
+    public function discardDraft(User $user, MigrantRegistryEntry $entry): void
+    {
+        $this->assertDraftOwner($user, $entry);
+        $this->auditService->success($this->request, AuditEventType::MigrantRegistryDraftDiscarded, $user, [
+            'type' => MigrantRegistryEntry::class,
+            'id' => $entry->id,
+        ]);
+        $entry->forceDelete();
+    }
+
+    public function purgeExpiredDrafts(int $days = 7): int
+    {
+        $expired = MigrantRegistryEntry::query()
+            ->where('current_status', self::STATUS_DRAFT)
+            ->where('updated_at', '<=', now()->subDays($days))
+            ->get();
+
+        foreach ($expired as $entry) {
+            $this->auditService->success($this->request, AuditEventType::MigrantRegistryDraftExpired, null, [
+                'type' => MigrantRegistryEntry::class,
+                'id' => $entry->id,
+            ]);
+            $entry->forceDelete();
+        }
+
+        return $expired->count();
+    }
+
+    private function assertDraftOwner(User $user, MigrantRegistryEntry $entry): void
+    {
+        abort_unless(
+            $entry->current_status === self::STATUS_DRAFT && (int) $entry->created_by === (int) $user->getKey(),
+            403,
+            'Only the draft creator can access this registration draft.',
+        );
     }
 
     public function requestUpdate(

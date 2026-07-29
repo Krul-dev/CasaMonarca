@@ -19,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'size_bytes',
     'sha256',
     'signature_status',
+    'signature_order_enforced',
+    'signature_policy_version',
     'diff_metadata',
 ])]
 class DocumentRevision extends Model
@@ -31,6 +33,8 @@ class DocumentRevision extends Model
         return [
             'diff_metadata' => 'array',
             'size_bytes' => 'integer',
+            'signature_order_enforced' => 'boolean',
+            'signature_policy_version' => 'integer',
         ];
     }
 
@@ -52,5 +56,10 @@ class DocumentRevision extends Model
     public function signatures(): HasMany
     {
         return $this->hasMany(DocumentSignature::class);
+    }
+
+    public function signatureRequirements(): HasMany
+    {
+        return $this->hasMany(DocumentSignatureRequirement::class)->orderBy('sequence');
     }
 }

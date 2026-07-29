@@ -1,34 +1,4 @@
 # =========================
-# React / Vite
-# =========================
-Web/node_modules/
-Web/dist/
-
-# Environment files
-.env
-.env.*
-!.env.example
-
-# Logs
-*.log
-
-# =========================
-# Laravel
-# =========================
-API/vendor/
-API/storage/logs/*
-API/storage/framework/cache/*
-API/storage/framework/sessions/*
-API/storage/framework/views/*
-API/bootstrap/cache/*.php
-
-# Keep directories in Git
-!API/storage/logs/.gitignore
-!API/storage/framework/cache/.gitignore
-!API/storage/framework/sessions/.gitignore
-!API/storage/framework/views/.gitignore
-
-# =========================
 # IDEs and editors
 # =========================
 .vscode/
@@ -36,6 +6,11 @@ API/bootstrap/cache/*.php
 *.swp
 *.swo
 *~
+
+# =========================
+# Logs
+# =========================
+*.log
 
 # =========================
 # Operating systems
@@ -47,9 +22,3 @@ Thumbs.db
 # Local AI instructions
 # =========================
 AGENTS.md
-
-# =========================
-# Local helper scripts
-# =========================
-dev-on
-dev-off

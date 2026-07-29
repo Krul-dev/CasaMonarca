@@ -219,87 +219,43 @@ export type SigningLedgerResponse = {
   signers: SigningLedgerSigner[]
 }
 
-export type DocumentApprovalRequirement = {
-  fulfilledAt?: string | null
-  fulfilledBySignatureId?: number | null
-  id: number
-  sequence: number
-  signerRole?: UserRole | null
-  signerUser?: {
-    email?: string | null
-    id?: number | null
-    name?: string | null
-    role?: UserRole | null
-  } | null
-}
-
-export type DocumentApprovalSummary = {
-  approvalNote?: string | null
-  approvedAt?: string | null
-  approvedBy?: {
-    email?: string | null
-    id?: number | null
-    name?: string | null
-    role?: UserRole | null
-  } | null
-  confidentiality: string
-  createdAt?: string | null
-  currentRevision?: {
-    id: number | null
-    mimeType?: string | null
-    originalFileName?: string | null
-    revisionNumber?: number | null
-    sha256?: string | null
-    signatureStatus?: string | null
-    sizeBytes?: number | null
-  } | null
-  id: number
-  signatureOrderEnforced: boolean
-  signatureRequirements: DocumentApprovalRequirement[]
-  status: string
-  title: string
-  updatedAt?: string | null
-  uploadedBy?: {
-    email?: string | null
-    id?: number | null
-    name?: string | null
-    role?: UserRole | null
-  } | null
-}
-
-export type DocumentApprovalSigningUser = {
+export type MigrantSigningLedgerSigner = {
   email: string
   id: number
   name: string
-  passkeyCount: number
   role: UserRole
+  signatureCount: number
 }
 
-export type DocumentApprovalRequirementDraft = {
-  role?: 'admin' | 'coordinator'
-  type: 'role' | 'user'
-  userId?: number
-}
-
-export type DocumentApprovalsResponse = {
-  documents: DocumentApprovalSummary[]
-  message: string
-  signingRoles: Array<'admin' | 'coordinator'>
-  signingUsers: DocumentApprovalSigningUser[]
-}
-
-export type DocumentApprovalApproveResponse = {
-  document: DocumentApprovalSummary
-  message: string
-}
-
-export type DocumentApprovalRejectResponse = {
-  message: string
-  rejectedDocument: {
+export type MigrantSigningLedgerSignature = {
+  actionType: string
+  actor?: {
+    email: string
     id: number
-    revisionId?: number | null
-    title: string
-  }
+    name: string
+    role: UserRole
+  } | null
+  algorithm: string
+  id: number
+  publicKeyRef?: string | null
+  verifiedAt?: string | null
+}
+
+export type MigrantSigningLedgerRegistration = {
+  createdAt?: string | null
+  fullName: string
+  id: number
+  isPurged: boolean
+  purgedAt?: string | null
+  signatures: MigrantSigningLedgerSignature[]
+  status: string
+  updatedAt?: string | null
+}
+
+export type MigrantSigningLedgerResponse = {
+  message: string
+  registrations: MigrantSigningLedgerRegistration[]
+  signers: MigrantSigningLedgerSigner[]
 }
 
 export function getAdminUsers(limit = 50): Promise<AdminUserListResponse> {
@@ -414,56 +370,8 @@ export function getSigningLedger(): Promise<SigningLedgerResponse> {
   return apiFetch<SigningLedgerResponse>('/admin/signing-ledger')
 }
 
-export function getDocumentApprovals(limit = 50): Promise<DocumentApprovalsResponse> {
-  const params = new URLSearchParams({
-    limit: String(limit),
-  })
-
-  return apiFetch<DocumentApprovalsResponse>(`/admin/document-approvals?${params.toString()}`)
-}
-
-export async function approveDocument(
-  documentId: number,
-  payload: {
-    approvalNote?: string | null
-    requirements: DocumentApprovalRequirementDraft[]
-    signatureOrderEnforced: boolean
-  },
-): Promise<DocumentApprovalApproveResponse> {
-  const { csrfToken } = await getCsrfToken()
-
-  return apiFetch<DocumentApprovalApproveResponse>(
-    `/admin/document-approvals/${documentId}/approve`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': csrfToken,
-      },
-      body: JSON.stringify(payload),
-    },
-  )
-}
-
-export async function rejectDocument(
-  documentId: number,
-  payload: {
-    reason?: string | null
-  } = {},
-): Promise<DocumentApprovalRejectResponse> {
-  const { csrfToken } = await getCsrfToken()
-
-  return apiFetch<DocumentApprovalRejectResponse>(
-    `/admin/document-approvals/${documentId}/reject`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': csrfToken,
-      },
-      body: JSON.stringify(payload),
-    },
-  )
+export function getMigrantSigningLedger(): Promise<MigrantSigningLedgerResponse> {
+  return apiFetch<MigrantSigningLedgerResponse>('/admin/migrant-signing-ledger')
 }
 
 export async function startVerificationPackageSigningKeyRotation(

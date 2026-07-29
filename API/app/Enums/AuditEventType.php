@@ -32,6 +32,7 @@ enum AuditEventType: string
     case DocumentDeleteChallengeStarted = 'document.delete.challenge.started';
     case DocumentSignatureChallengeStarted = 'document.signature.challenge.started';
     case DocumentSigned = 'document.signed';
+    case DocumentSignaturePolicyUpdated = 'document.signature_policy.updated';
     case DocumentDeleted = 'document.deleted';
     case DocumentVerificationBundleDownloaded = 'document.verification_bundle.downloaded';
     case DocumentVerificationPackageDownloaded = 'document.verification_package.downloaded';
@@ -63,6 +64,9 @@ enum AuditEventType: string
     case VcsEntryAmended = 'vcs.entry.amended';
     case VcsEntryDeleted = 'vcs.entry.deleted';
     case MigrantRegistryCreated = 'migrant.registry.created';
+    case MigrantRegistryDraftCreated = 'migrant.registry.draft.created';
+    case MigrantRegistryDraftDiscarded = 'migrant.registry.draft.discarded';
+    case MigrantRegistryDraftExpired = 'migrant.registry.draft.expired';
     case MigrantRegistrySubmitted = 'migrant.registry.submitted';
     case MigrantRegistryUpdateRequested = 'migrant.registry.update.requested';
     case MigrantRegistryReviewChallengeStarted = 'migrant.registry.review.challenge.started';
@@ -81,6 +85,7 @@ enum AuditEventType: string
     case MigrantArcoCancellationExecuted = 'migrant.arco.cancellation.executed';
     case MigrantArcoArtifactsPurged = 'migrant.arco.artifacts.purged';
     case MigrantDocumentUploaded = 'migrant.registry.document.uploaded';
+    case MigrantDocumentDownloadChallengeStarted = 'migrant.registry.document.download.challenge.started';
     case MigrantDocumentDownloaded = 'migrant.registry.document.downloaded';
     case MigrantDocumentDeleted = 'migrant.registry.document.deleted';
     case MigrantDocumentsPurged = 'migrant.registry.documents.purged';

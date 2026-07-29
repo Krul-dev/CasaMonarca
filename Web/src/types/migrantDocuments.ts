@@ -8,6 +8,7 @@ export type MigrantDocumentUploader = {
 }
 
 export type MigrantDocument = {
+  arco_access_completed: boolean
   created_at: string
   id: number
   label?: string | null

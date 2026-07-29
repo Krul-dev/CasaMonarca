@@ -6,11 +6,9 @@ import { ApiRequestError } from '../lib/api'
 import { APP_DOCUMENTS_PATH } from '../config/appRoutes'
 import {
   getAdminUsers,
-  approveDocument,
-  getDocumentApprovals,
+  getMigrantSigningLedger,
   getSigningLedger,
   getVerificationPackageSigningKey,
-  rejectDocument,
   startAdminUserRecovery,
   startAdminUserRoleUpdate,
   startAdminUserStatusUpdate,
@@ -24,9 +22,8 @@ import {
   type AdminUserListResponse,
   type AdminUserStatusAction,
   type AdminUserSummary,
-  type DocumentApprovalRequirementDraft,
-  type DocumentApprovalSigningUser,
-  type DocumentApprovalSummary,
+  type MigrantSigningLedgerRegistration,
+  type MigrantSigningLedgerSigner,
   type SigningLedgerDocument,
   type SigningLedgerRevision,
   type SigningLedgerSigner,
@@ -57,6 +54,13 @@ const formatOptionalDate = (value?: string | null) => {
 
 const formatFingerprint = (value?: string | null) => value || 'Not configured'
 
+const formatLedgerLabel = (value: string) =>
+  value
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+
 const getDefaultSigningKeyId = () => `cm-package-${new Date().toISOString().slice(0, 10)}`
 
 const getSigningKeyProvisionCommand = (keyId?: string | null) =>
@@ -81,17 +85,7 @@ const ASSIGNABLE_ROLES: AssignableUserRole[] = [
   'volunteer',
 ]
 
-const SIGNING_REQUIREMENT_ROLES: Array<'admin' | 'coordinator'> = [
-  'admin',
-  'coordinator',
-]
-
-const createDefaultRequirementDraft = (): DocumentApprovalRequirementDraft => ({
-  type: 'role',
-  role: 'coordinator',
-})
-
-type AdminTabId = 'accounts' | 'approvals' | 'security' | 'signing' | 'system' | 'audit'
+type AdminTabId = 'accounts' | 'security' | 'signing' | 'migrant-signing' | 'system' | 'audit'
 
 const ADMIN_TABS: Array<{
   copy: string
@@ -104,11 +98,6 @@ const ADMIN_TABS: Array<{
     copy: 'Users, roles, enrollment recovery, and account status.',
   },
   {
-    id: 'approvals',
-    label: 'Document Approvals',
-    copy: 'Review uploads and assign required signatures.',
-  },
-  {
     id: 'security',
     label: 'Security Keys',
     copy: 'Package signing trust anchor and key rotation.',
@@ -117,6 +106,11 @@ const ADMIN_TABS: Array<{
     id: 'signing',
     label: 'Signing Trust',
     copy: 'Users, signatures, and signed document revisions.',
+  },
+  {
+    id: 'migrant-signing',
+    label: 'Migrant Signing Trust',
+    copy: 'Registration submissions, reviews, approvals, and signing keys.',
   },
   {
     id: 'system',
@@ -409,18 +403,6 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
   const [directory, setDirectory] = useState<AdminUserSummary[]>([])
   const [directoryError, setDirectoryError] = useState<string | null>(null)
   const [isDirectoryLoading, setIsDirectoryLoading] = useState(true)
-  const [approvalDocuments, setApprovalDocuments] = useState<DocumentApprovalSummary[]>([])
-  const [approvalSigningUsers, setApprovalSigningUsers] = useState<DocumentApprovalSigningUser[]>([])
-  const [approvalError, setApprovalError] = useState<string | null>(null)
-  const [approvalMessage, setApprovalMessage] = useState<string | null>(null)
-  const [isApprovalsLoading, setIsApprovalsLoading] = useState(true)
-  const [approvingDocumentId, setApprovingDocumentId] = useState<number | null>(null)
-  const [rejectingDocumentId, setRejectingDocumentId] = useState<number | null>(null)
-  const [approvalNotesByDocumentId, setApprovalNotesByDocumentId] = useState<Record<number, string>>({})
-  const [approvalOrderByDocumentId, setApprovalOrderByDocumentId] = useState<Record<number, boolean>>({})
-  const [approvalRequirementsByDocumentId, setApprovalRequirementsByDocumentId] = useState<
-    Record<number, DocumentApprovalRequirementDraft[]>
-  >({})
   const [roleDraftByUserId, setRoleDraftByUserId] = useState<Record<number, AssignableUserRole>>({})
   const [roleUpdateError, setRoleUpdateError] = useState<string | null>(null)
   const [roleUpdateMessage, setRoleUpdateMessage] = useState<string | null>(null)
@@ -437,6 +419,10 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
   const [signingLedger, setSigningLedger] = useState<SigningLedgerSigner[]>([])
   const [signingLedgerError, setSigningLedgerError] = useState<string | null>(null)
   const [isSigningLedgerLoading, setIsSigningLedgerLoading] = useState(true)
+  const [migrantSigningRegistrations, setMigrantSigningRegistrations] = useState<MigrantSigningLedgerRegistration[]>([])
+  const [migrantSigningSigners, setMigrantSigningSigners] = useState<MigrantSigningLedgerSigner[]>([])
+  const [migrantSigningError, setMigrantSigningError] = useState<string | null>(null)
+  const [isMigrantSigningLoading, setIsMigrantSigningLoading] = useState(true)
   const [updatingStatusUserId, setUpdatingStatusUserId] = useState<number | null>(null)
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<number | null>(null)
   const signingGraphBodyRef = useRef<HTMLDivElement | null>(null)
@@ -592,192 +578,6 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
     }
   }, [onSessionExpired])
 
-  const loadDocumentApprovals = useCallback(async () => {
-    setIsApprovalsLoading(true)
-    setApprovalError(null)
-
-    try {
-      const response = await getDocumentApprovals()
-      setApprovalDocuments(response.documents)
-      setApprovalSigningUsers(response.signingUsers)
-      setApprovalRequirementsByDocumentId((currentDrafts) => {
-        const nextDrafts = { ...currentDrafts }
-
-        response.documents.forEach((document) => {
-          if (!nextDrafts[document.id]) {
-            nextDrafts[document.id] = [createDefaultRequirementDraft()]
-          }
-        })
-
-        return nextDrafts
-      })
-    } catch (error) {
-      if (error instanceof ApiRequestError && error.status === 401) {
-        onSessionExpired?.()
-        return
-      }
-
-      setApprovalError(
-        error instanceof Error ? error.message : 'Unable to load document approvals.',
-      )
-    } finally {
-      setIsApprovalsLoading(false)
-    }
-  }, [onSessionExpired])
-
-  const updateApprovalRequirement = (
-    documentId: number,
-    index: number,
-    requirement: DocumentApprovalRequirementDraft,
-  ) => {
-    setApprovalRequirementsByDocumentId((currentDrafts) => {
-      const documentDrafts = currentDrafts[documentId] ?? [createDefaultRequirementDraft()]
-
-      return {
-        ...currentDrafts,
-        [documentId]: documentDrafts.map((currentRequirement, currentIndex) =>
-          currentIndex === index ? requirement : currentRequirement,
-        ),
-      }
-    })
-  }
-
-  const addApprovalRequirement = (documentId: number) => {
-    setApprovalRequirementsByDocumentId((currentDrafts) => ({
-      ...currentDrafts,
-      [documentId]: [
-        ...(currentDrafts[documentId] ?? [createDefaultRequirementDraft()]),
-        createDefaultRequirementDraft(),
-      ],
-    }))
-  }
-
-  const removeApprovalRequirement = (documentId: number, index: number) => {
-    setApprovalRequirementsByDocumentId((currentDrafts) => {
-      const nextDocumentDrafts = (currentDrafts[documentId] ?? [])
-        .filter((_, currentIndex) => currentIndex !== index)
-
-      return {
-        ...currentDrafts,
-        [documentId]: nextDocumentDrafts.length > 0 ? nextDocumentDrafts : [createDefaultRequirementDraft()],
-      }
-    })
-  }
-
-  const handleDocumentApproval = async (document: DocumentApprovalSummary) => {
-    const requirements = approvalRequirementsByDocumentId[document.id] ?? []
-    const normalizedRequirements = requirements
-      .map((requirement): DocumentApprovalRequirementDraft | null => {
-        if (requirement.type === 'user') {
-          return requirement.userId
-            ? {
-                type: 'user' as const,
-                userId: requirement.userId,
-              }
-            : null
-        }
-
-        return {
-          type: 'role' as const,
-          role: requirement.role ?? 'coordinator',
-        }
-      })
-      .filter((requirement): requirement is DocumentApprovalRequirementDraft => requirement !== null)
-
-    const confirmed = window.confirm(
-      `Approve "${document.title}" with ${normalizedRequirements.length} required signature${normalizedRequirements.length === 1 ? '' : 's'}?`,
-    )
-
-    if (!confirmed) {
-      return
-    }
-
-    setApprovingDocumentId(document.id)
-    setApprovalError(null)
-    setApprovalMessage(null)
-
-    try {
-      const response = await approveDocument(document.id, {
-        approvalNote: approvalNotesByDocumentId[document.id]?.trim() || null,
-        requirements: normalizedRequirements,
-        signatureOrderEnforced: approvalOrderByDocumentId[document.id] ?? false,
-      })
-
-      setApprovalDocuments((currentDocuments) =>
-        currentDocuments.filter((currentDocument) => currentDocument.id !== document.id),
-      )
-      setApprovalMessage(response.message)
-      setApprovalRequirementsByDocumentId((currentDrafts) => {
-        const nextDrafts = { ...currentDrafts }
-        delete nextDrafts[document.id]
-        return nextDrafts
-      })
-    } catch (error) {
-      if (error instanceof ApiRequestError && error.status === 401) {
-        onSessionExpired?.()
-        return
-      }
-
-      setApprovalError(
-        error instanceof Error ? error.message : 'Unable to approve document.',
-      )
-    } finally {
-      setApprovingDocumentId(null)
-    }
-  }
-
-  const handleDocumentReject = async (document: DocumentApprovalSummary) => {
-    const confirmed = window.confirm(
-      `Reject and permanently remove "${document.title}" from the approval queue?`,
-    )
-
-    if (!confirmed) {
-      return
-    }
-
-    setRejectingDocumentId(document.id)
-    setApprovalError(null)
-    setApprovalMessage(null)
-
-    try {
-      const response = await rejectDocument(document.id, {
-        reason: approvalNotesByDocumentId[document.id]?.trim() || null,
-      })
-
-      setApprovalDocuments((currentDocuments) =>
-        currentDocuments.filter((currentDocument) => currentDocument.id !== document.id),
-      )
-      void loadDocumentApprovals()
-      setApprovalRequirementsByDocumentId((currentDrafts) => {
-        const nextDrafts = { ...currentDrafts }
-        delete nextDrafts[document.id]
-        return nextDrafts
-      })
-      setApprovalNotesByDocumentId((currentNotes) => {
-        const nextNotes = { ...currentNotes }
-        delete nextNotes[document.id]
-        return nextNotes
-      })
-      setApprovalOrderByDocumentId((currentOrders) => {
-        const nextOrders = { ...currentOrders }
-        delete nextOrders[document.id]
-        return nextOrders
-      })
-      setApprovalMessage(response.message)
-    } catch (error) {
-      if (error instanceof ApiRequestError && error.status === 401) {
-        onSessionExpired?.()
-        return
-      }
-
-      const message = error instanceof Error ? error.message : 'Unable to reject document.'
-      setApprovalError(message)
-      window.alert(message)
-    } finally {
-      setRejectingDocumentId(null)
-    }
-  }
-
   const loadSigningKey = useCallback(async () => {
     setIsSigningKeyLoading(true)
     setSigningKeyError(null)
@@ -822,6 +622,30 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       )
     } finally {
       setIsSigningLedgerLoading(false)
+    }
+  }, [onSessionExpired])
+
+  const loadMigrantSigningLedger = useCallback(async () => {
+    setIsMigrantSigningLoading(true)
+    setMigrantSigningError(null)
+
+    try {
+      const response = await getMigrantSigningLedger()
+      setMigrantSigningRegistrations(response.registrations)
+      setMigrantSigningSigners(response.signers)
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      setMigrantSigningError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to load migrant signing trust ledger.',
+      )
+    } finally {
+      setIsMigrantSigningLoading(false)
     }
   }, [onSessionExpired])
 
@@ -1084,16 +908,18 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
   }, [loadDirectory])
 
   useEffect(() => {
-    void loadDocumentApprovals()
-  }, [loadDocumentApprovals])
-
-  useEffect(() => {
     void loadSigningKey()
   }, [loadSigningKey])
 
   useEffect(() => {
     void loadSigningLedger()
   }, [loadSigningLedger])
+
+  useEffect(() => {
+    if (activeTab === 'migrant-signing' && migrantSigningRegistrations.length === 0) {
+      void loadMigrantSigningLedger()
+    }
+  }, [activeTab, loadMigrantSigningLedger, migrantSigningRegistrations.length])
 
   const signingLedgerGraph = useMemo(
     () => buildSigningLedgerGraph(signingLedgerDocuments, signingLedger),
@@ -1443,216 +1269,6 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
           </button>
         ))}
       </nav>
-
-      {activeTab === 'approvals' ? (
-        <section className="workspace-panel workspace-panel--account-directory" aria-label="Document approvals">
-          <div className="admin-directory-toolbar">
-            <div>
-              <h2 className="workspace-panel__title">Document approvals</h2>
-              <p className="workspace-panel__copy">
-                Review uploaded documents before they appear in the document workspace, then define who must sign them.
-              </p>
-            </div>
-            <button
-              className="audit-toolbar__button"
-              disabled={isApprovalsLoading}
-              onClick={() => void loadDocumentApprovals()}
-              type="button"
-            >
-              <AppIcon name="refresh" size={18} />
-              {isApprovalsLoading ? 'Refreshing...' : 'Refresh approvals'}
-            </button>
-          </div>
-
-          {approvalError ? (
-            <div className="auth-feedback auth-feedback--error">
-              <span aria-hidden="true" />
-              <p>{approvalError}</p>
-            </div>
-          ) : null}
-
-          {approvalMessage ? (
-            <div className="auth-feedback auth-feedback--success">
-              <span aria-hidden="true" />
-              <p>{approvalMessage}</p>
-            </div>
-          ) : null}
-
-          {isApprovalsLoading && approvalDocuments.length === 0 ? (
-            <p className="workspace-panel__copy">Loading pending uploads...</p>
-          ) : null}
-
-          {!isApprovalsLoading && approvalDocuments.length === 0 && !approvalError ? (
-            <p className="workspace-panel__copy">No documents are waiting for approval.</p>
-          ) : null}
-
-          <div className="approval-list">
-            {approvalDocuments.map((document) => {
-              const requirementDrafts =
-                approvalRequirementsByDocumentId[document.id] ?? [createDefaultRequirementDraft()]
-
-              return (
-                <article className="approval-card" key={document.id}>
-                  <header className="approval-card__header">
-                    <div>
-                      <h3>{document.title}</h3>
-                      <p>
-                        Uploaded by {document.uploadedBy?.email ?? document.uploadedBy?.name ?? 'Unknown user'} ·{' '}
-                        {formatOptionalDate(document.createdAt)}
-                      </p>
-                    </div>
-                    <span className="admin-user-status admin-user-status--suspended">
-                      Pending approval
-                    </span>
-                  </header>
-
-                  <div className="admin-user-facts">
-                    <span>
-                      <small>File</small>
-                      <strong>{document.currentRevision?.originalFileName ?? 'Not available'}</strong>
-                    </span>
-                    <span>
-                      <small>Revision</small>
-                      <strong>#{document.currentRevision?.revisionNumber ?? 1}</strong>
-                    </span>
-                    <span>
-                      <small>Hash</small>
-                      <strong>{document.currentRevision?.sha256?.slice(0, 16) ?? 'Not available'}</strong>
-                    </span>
-                  </div>
-
-                  <label className="login-field approval-card__note">
-                    <span className="login-field__label">Approval note</span>
-                    <textarea
-                      className="login-field__input"
-                      onChange={(event) =>
-                        setApprovalNotesByDocumentId((currentNotes) => ({
-                          ...currentNotes,
-                          [document.id]: event.target.value,
-                        }))
-                      }
-                      placeholder="Optional review note for the audit trail."
-                      rows={3}
-                      value={approvalNotesByDocumentId[document.id] ?? ''}
-                    />
-                  </label>
-
-                  <div className="approval-order-toggle">
-                    <label>
-                      <input
-                        checked={approvalOrderByDocumentId[document.id] ?? false}
-                        onChange={(event) =>
-                          setApprovalOrderByDocumentId((currentOrders) => ({
-                            ...currentOrders,
-                            [document.id]: event.target.checked,
-                          }))
-                        }
-                        type="checkbox"
-                      />
-                      Force signatures in this order
-                    </label>
-                  </div>
-
-                  <div className="approval-requirements" aria-label={`Signature requirements for ${document.title}`}>
-                    {requirementDrafts.map((requirement, index) => (
-                      <div className="approval-requirement" key={`${document.id}:${index}`}>
-                        <span className="approval-requirement__sequence">{index + 1}</span>
-                        <select
-                          aria-label="Requirement type"
-                          onChange={(event) =>
-                            updateApprovalRequirement(document.id, index, {
-                              type: event.target.value as 'role' | 'user',
-                              role: event.target.value === 'role' ? 'coordinator' : undefined,
-                              userId: event.target.value === 'user' ? approvalSigningUsers[0]?.id : undefined,
-                            })
-                          }
-                          value={requirement.type}
-                        >
-                          <option value="role">Role</option>
-                          <option value="user">Specific user</option>
-                        </select>
-
-                        {requirement.type === 'role' ? (
-                          <select
-                            aria-label="Required signer role"
-                            onChange={(event) =>
-                              updateApprovalRequirement(document.id, index, {
-                                type: 'role',
-                                role: event.target.value as 'admin' | 'coordinator',
-                              })
-                            }
-                            value={requirement.role ?? 'coordinator'}
-                          >
-                            {SIGNING_REQUIREMENT_ROLES.map((role) => (
-                              <option key={role} value={role}>
-                                {getRoleLabel(role)}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <select
-                            aria-label="Required signer user"
-                            onChange={(event) =>
-                              updateApprovalRequirement(document.id, index, {
-                                type: 'user',
-                                userId: Number(event.target.value),
-                              })
-                            }
-                            value={requirement.userId ?? approvalSigningUsers[0]?.id ?? ''}
-                          >
-                            {approvalSigningUsers.map((signer) => (
-                              <option key={signer.id} value={signer.id}>
-                                {signer.name} · {signer.email} · {getRoleLabel(signer.role)}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-
-                        <button
-                          className="audit-toolbar__button"
-                          onClick={() => removeApprovalRequirement(document.id, index)}
-                          type="button"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="approval-card__actions">
-                    <button
-                      className="audit-toolbar__button"
-                      onClick={() => addApprovalRequirement(document.id)}
-                      type="button"
-                    >
-                      <AppIcon name="admin" size={17} />
-                      Add signature
-                    </button>
-                    <button
-                      className="audit-toolbar__button audit-toolbar__button--danger"
-                      disabled={rejectingDocumentId === document.id || approvingDocumentId === document.id}
-                      onClick={() => void handleDocumentReject(document)}
-                      type="button"
-                    >
-                      <AppIcon name="delete" size={17} />
-                      {rejectingDocumentId === document.id ? 'Removing...' : 'Reject/remove'}
-                    </button>
-                    <button
-                      className="login-submit approval-card__approve"
-                      disabled={approvingDocumentId === document.id || rejectingDocumentId === document.id}
-                      onClick={() => void handleDocumentApproval(document)}
-                      type="button"
-                    >
-                      <AppIcon name="verify" />
-                      {approvingDocumentId === document.id ? 'Approving...' : 'Approve document'}
-                    </button>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-      ) : null}
 
       {activeTab === 'system' ? (
         <section className="workspace-panel workspace-panel--accent">
@@ -2157,6 +1773,107 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                       ))}
                     </div>
                   </article>
+                ))}
+              </section>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {activeTab === 'migrant-signing' ? (
+        <section className="workspace-panel" aria-label="Migrant signing trust ledger">
+          <div className="admin-directory-toolbar">
+            <div>
+              <h2 className="workspace-panel__title">Migrant Signing Trust</h2>
+              <p className="workspace-panel__copy">
+                Trace registration submissions, reviews, and decisions to the user and passkey that signed each action.
+              </p>
+            </div>
+            <button
+              className="audit-toolbar__button"
+              disabled={isMigrantSigningLoading}
+              onClick={() => void loadMigrantSigningLedger()}
+              type="button"
+            >
+              <AppIcon name="refresh" size={18} />
+              {isMigrantSigningLoading ? 'Refreshing...' : 'Refresh ledger'}
+            </button>
+          </div>
+
+          {migrantSigningError ? (
+            <div className="auth-feedback auth-feedback--error">
+              <span aria-hidden="true" />
+              <p>{migrantSigningError}</p>
+            </div>
+          ) : null}
+
+          {isMigrantSigningLoading && migrantSigningRegistrations.length === 0 ? (
+            <p className="workspace-panel__copy">Loading migrant signing ledger...</p>
+          ) : null}
+
+          {!isMigrantSigningLoading && migrantSigningRegistrations.length === 0 && !migrantSigningError ? (
+            <p className="workspace-panel__copy">No migrant registrations found yet.</p>
+          ) : null}
+
+          {migrantSigningRegistrations.length > 0 ? (
+            <div className="migrant-signing-ledger">
+              <section className="migrant-signing-ledger__signers" aria-label="Migrant registration signers">
+                {migrantSigningSigners.map((signer) => (
+                  <article className="migrant-signing-ledger__signer" key={signer.id}>
+                    <span className="signing-ledger__node-icon">
+                      <AppIcon name="admin" size={17} />
+                    </span>
+                    <div>
+                      <strong>{signer.name}</strong>
+                      <small>{signer.email}</small>
+                    </div>
+                    <div className="signing-ledger__signer-badges">
+                      <RoleBadge role={signer.role} />
+                      <span>{signer.signatureCount} signatures</span>
+                    </div>
+                  </article>
+                ))}
+              </section>
+
+              <section className="migrant-signing-ledger__registrations" aria-label="Signed migrant registrations">
+                {migrantSigningRegistrations.map((registration) => (
+                  <details className={`migrant-signing-ledger__registration${registration.isPurged ? ' migrant-signing-ledger__registration--purged' : ''}`} key={registration.id}>
+                    <summary>
+                      <span className="migrant-signing-ledger__registration-title">
+                        <AppIcon name="sign" size={18} />
+                        <span>
+                          <strong>{registration.fullName}</strong>
+                          <small>Registration #{registration.id} · {formatLedgerLabel(registration.status)}</small>
+                        </span>
+                      </span>
+                      <span className="migrant-signing-ledger__signature-count">
+                        {registration.isPurged ? <small>Purged {formatOptionalDate(registration.purgedAt)}</small> : null}
+                        {registration.signatures.length} signatures
+                      </span>
+                    </summary>
+
+                    <div className="migrant-signing-ledger__chain">
+                      {registration.signatures.length > 0 ? registration.signatures.map((signature) => (
+                        <article className="migrant-signing-ledger__signature" key={signature.id}>
+                          <span className="migrant-signing-ledger__action">{formatLedgerLabel(signature.actionType)}</span>
+                          <div className="migrant-signing-ledger__actor">
+                            <strong>{signature.actor?.name ?? 'Unknown signer'}</strong>
+                            <small>{signature.actor?.email ?? signature.actor?.role ?? 'Account unavailable'}</small>
+                            {signature.actor ? <RoleBadge role={signature.actor.role} /> : null}
+                          </div>
+                          <div className="migrant-signing-ledger__key">
+                            <span><AppIcon name="key" size={15} /> {signature.algorithm}</span>
+                            <code title={signature.publicKeyRef ?? undefined}>
+                              {signature.publicKeyRef ? signature.publicKeyRef.slice(0, 24) : 'Key reference unavailable'}
+                            </code>
+                          </div>
+                          <time>{formatOptionalDate(signature.verifiedAt)}</time>
+                        </article>
+                      )) : (
+                        <p className="workspace-panel__copy">This registration has no recorded signatures.</p>
+                      )}
+                    </div>
+                  </details>
                 ))}
               </section>
             </div>

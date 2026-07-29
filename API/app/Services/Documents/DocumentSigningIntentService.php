@@ -69,6 +69,7 @@ class DocumentSigningIntentService
             'purpose' => 'document-sign',
             'revisionId' => (int) $revision->getKey(),
             'revisionNumber' => (int) $revision->revision_number,
+            'signaturePolicyVersion' => (int) $revision->signature_policy_version,
             'revisionSha256' => (string) $revision->sha256,
             'rpId' => $rpId,
             'userId' => (int) $user->getKey(),

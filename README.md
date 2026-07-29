@@ -147,3 +147,4 @@ More detailed project-specific docs remain in:
 
 - `API/README.md`
 - `Web/README.md`
+- `API/docs/operations/data-at-rest-encryption.md`
