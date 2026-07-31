@@ -29,9 +29,7 @@ class AccountInviteApiTest extends TestCase
 
     public function test_admin_can_create_coordinator_invite_link(): void
     {
-        $admin = User::factory()->create([
-            'role' => UserRole::Admin->value,
-        ]);
+        $admin = $this->createEnrolledAdmin();
 
         $response = $this->actingAs($admin)
             ->postJson('/admin/invites', [
@@ -74,9 +72,7 @@ class AccountInviteApiTest extends TestCase
 
     public function test_admin_can_create_non_coordinator_invite_link(): void
     {
-        $admin = User::factory()->create([
-            'role' => UserRole::Admin->value,
-        ]);
+        $admin = $this->createEnrolledAdmin();
 
         $response = $this->actingAs($admin)
             ->postJson('/admin/invites', [
@@ -120,9 +116,7 @@ class AccountInviteApiTest extends TestCase
     public function test_admin_can_create_admin_invite_only_in_dev_environment(): void
     {
         config(['app.temporary_dev_admin_invites' => true]);
-        $admin = User::factory()->create([
-            'role' => UserRole::Admin->value,
-        ]);
+        $admin = $this->createEnrolledAdmin();
 
         $response = $this->actingAs($admin)
             ->postJson('/admin/invites', [
@@ -151,9 +145,7 @@ class AccountInviteApiTest extends TestCase
     public function test_admin_invite_role_is_rejected_outside_dev_environment(): void
     {
         config(['app.temporary_dev_admin_invites' => false]);
-        $admin = User::factory()->create([
-            'role' => UserRole::Admin->value,
-        ]);
+        $admin = $this->createEnrolledAdmin();
 
         $this->actingAs($admin)
             ->postJson('/admin/invites', [
@@ -226,9 +218,7 @@ class AccountInviteApiTest extends TestCase
 
     public function test_admin_can_verify_and_issue_coordinator_invite_link(): void
     {
-        $admin = User::factory()->create([
-            'role' => UserRole::Admin->value,
-        ]);
+        $admin = $this->createEnrolledAdmin();
 
         $createResponse = $this->actingAs($admin)
             ->postJson('/admin/invites', [
@@ -335,9 +325,8 @@ class AccountInviteApiTest extends TestCase
 
     public function test_coordinator_cannot_verify_volunteer_invite_created_by_someone_else(): void
     {
-        $admin = User::factory()->create([
-            'role' => UserRole::Admin->value,
-        ]);
+        $admin = $this->createEnrolledAdmin();
+
         $coordinator = $this->createEnrolledCoordinator();
 
         $createResponse = $this->actingAs($admin)
@@ -367,9 +356,7 @@ class AccountInviteApiTest extends TestCase
 
     public function test_admin_can_revoke_pending_invite(): void
     {
-        $admin = User::factory()->create([
-            'role' => UserRole::Admin->value,
-        ]);
+        $admin = $this->createEnrolledAdmin();
 
         $invite = AccountInvite::query()->create([
             'email' => 'to-revoke@casamonarca.local',
@@ -452,6 +439,28 @@ class AccountInviteApiTest extends TestCase
             UserRole::Volunteer->value,
         ], collect($invites)->pluck('role')->sort()->values()->all());
     }
+
+    private function createEnrolledAdmin(): User
+    {
+        $admin = User::factory()->create([
+            'role' => UserRole::Admin->value,
+            'two_factor_enabled' => true,
+            'two_factor_secret' => 'JBSWY3DPEHPK3PXP',
+        ]);
+
+        $admin->webauthnCredentials()->create([
+            'credential_id' => app(Base64UrlService::class)->encode(random_bytes(16)),
+            'public_key' => app(Base64UrlService::class)->encode(random_bytes(48)),
+            'public_key_algorithm' => -7,
+            'name' => 'Admin key',
+            'transports' => ['usb'],
+            'attestation_object' => app(Base64UrlService::class)->encode(random_bytes(32)),
+            'client_data_json' => app(Base64UrlService::class)->encode(random_bytes(32)),
+        ]);
+
+        return $admin;
+    }
+
 
     private function createEnrolledCoordinator(): User
     {
