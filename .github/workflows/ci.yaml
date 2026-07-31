@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+
+  pull_request:
+    branches:
+      - main
+      - staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — PHP 8.3 / MySQL 5.7.44
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: API
+
+    services:
+      mysql:
+        image: mysql:5.7.44
+
+        env:
+          MYSQL_DATABASE: casamonarca_api_test
+          MYSQL_USER: casamonarca
+          MYSQL_PASSWORD: test_password
+          MYSQL_ROOT_PASSWORD: test_root_password
+
+        ports:
+          - 3306:3306
+
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ptest_root_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+          --health-start-period=20s
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP 8.3 and Composer 2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, gd, intl, mbstring, pdo_mysql, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Show backend runtime versions
+        run: |
+          php --version
+          composer --version
+
+      - name: Validate Composer files
+        run: composer validate --strict
+
+      - name: Install PHP dependencies
+        run: >
+          composer install
+          --prefer-dist
+          --no-interaction
+          --no-progress
+
+      - name: Create testing environment
+        run: |
+          cat > .env.testing <<'EOF'
+          APP_NAME="Casa Monarca"
+          APP_ENV=testing
+          APP_KEY=base64:kVoVQrZenq0r2RE2W/6NzNbT0V/irOqoh4OIqiyuZhQ=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+
+          LOG_CHANNEL=stderr
+          LOG_LEVEL=debug
+
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=casamonarca_api_test
+          DB_USERNAME=casamonarca
+          DB_PASSWORD=test_password
+
+          CACHE_STORE=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          MAIL_MAILER=array
+          EOF
+
+      - name: Clear cached Laravel configuration
+        run: php artisan config:clear
+
+      - name: Run backend tests
+        run: php artisan test
+
+  frontend:
+    name: Frontend — Node 22
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: Web
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Web/package-lock.json
+
+      - name: Show frontend runtime versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Type-check frontend
+        run: npm run typecheck
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Build production frontend
+        run: npm run build
