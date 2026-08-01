@@ -61,11 +61,11 @@ const DEFAULT_PAGINATION: AuditEventPagination = {
 }
 
 const AUDIT_CATEGORIES: Array<{ label: string; value: AuditEventCategory }> = [
-  { label: 'Account invites', value: 'account' },
-  { label: 'Admin actions', value: 'admin' },
-  { label: 'Authentication', value: 'auth' },
-  { label: 'Documents', value: 'document' },
-  { label: 'Security challenges', value: 'security' },
+  { label: 'Invitaciones de cuenta', value: 'account' },
+  { label: 'Acciones administrativas', value: 'admin' },
+  { label: 'Autenticación', value: 'auth' },
+  { label: 'Documentos', value: 'document' },
+  { label: 'Retos de seguridad', value: 'security' },
   { label: 'VCS', value: 'vcs' },
 ]
 
@@ -544,9 +544,9 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
       <section className="workspace-panel">
         <div className="audit-toolbar">
           <div>
-            <h2 className="workspace-panel__title">Admin audit feed</h2>
+            <h2 className="workspace-panel__title">Bitácora de auditoría administrativa</h2>
             <p className="workspace-panel__copy">
-              Recent append-only security and document activity from the API.
+              Actividad reciente de seguridad y documentos registrada por la API en modo solo anexar.
             </p>
           </div>
 
@@ -556,25 +556,25 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
             type="button"
           >
             <AppIcon name="refresh" />
-            Refresh feed
+            Actualizar bitácora
           </button>
         </div>
 
-        <div className="audit-controls" aria-label="Audit event filters">
+        <div className="audit-controls" aria-label="Filtros de eventos de auditoría">
           <label className="audit-control audit-control--search">
-            <span>Search</span>
+            <span>Buscar</span>
             <input
               onChange={(event) => {
                 setSearchInput(event.target.value)
               }}
-              placeholder="Event, actor, resource, or IP"
+              placeholder="Evento, actor, recurso o IP"
               type="search"
               value={searchInput}
             />
           </label>
 
           <label className="audit-control">
-            <span>Outcome</span>
+            <span>Resultado</span>
             <select
               onChange={(event) => {
                 setIsLoading(true)
@@ -584,15 +584,15 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
               }}
               value={outcomeFilter}
             >
-              <option value="">All outcomes</option>
-              <option value="success">Success</option>
-              <option value="failure">Failure</option>
-              <option value="denied">Denied</option>
+              <option value="">Todos los resultados</option>
+              <option value="success">Exitoso</option>
+              <option value="failure">Fallido</option>
+              <option value="denied">Denegado</option>
             </select>
           </label>
 
           <label className="audit-control">
-            <span>Category</span>
+            <span>Categoría</span>
             <select
               onChange={(event) => {
                 setIsLoading(true)
@@ -602,7 +602,7 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
               }}
               value={categoryFilter}
             >
-              <option value="">All categories</option>
+              <option value="">Todas las categorías</option>
               {AUDIT_CATEGORIES.map((category) => (
                 <option key={category.value} value={category.value}>
                   {category.label}
@@ -612,7 +612,7 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
           </label>
 
           <label className="audit-control audit-control--size">
-            <span>Rows</span>
+            <span>Filas</span>
             <select
               onChange={(event) => {
                 setIsLoading(true)
@@ -636,13 +636,13 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
             onClick={resetFilters}
             type="button"
           >
-            Clear filters
+            Limpiar filtros
           </button>
         </div>
 
         <div className="audit-pagination">
           <p>
-            Showing <strong>{firstVisibleEvent}-{lastVisibleEvent}</strong> of{' '}
+            Mostrando <strong>{firstVisibleEvent}-{lastVisibleEvent}</strong> de{' '}
             <strong>{pagination.total}</strong>
           </p>
 
@@ -656,10 +656,10 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
               }}
               type="button"
             >
-              Previous
+              Anterior
             </button>
             <span>
-              Page {pagination.page} of {pagination.totalPages}
+              Página {pagination.page} de {pagination.totalPages}
             </span>
             <button
               disabled={isLoading || !pagination.hasNextPage}
@@ -670,7 +670,7 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
               }}
               type="button"
             >
-              Next
+              Siguiente
             </button>
           </div>
         </div>
@@ -678,14 +678,14 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
         {error ? <div className="login-feedback login-feedback--error">{error}</div> : null}
 
         {isLoading ? (
-          <p className="workspace-panel__copy">Loading audit events...</p>
+          <p className="workspace-panel__copy">Cargando eventos de auditoría...</p>
         ) : null}
 
         {!isLoading && !error && events.length === 0 ? (
           <p className="workspace-panel__copy">
             {hasActiveFilters
-              ? 'No audit events match the current filters.'
-              : 'No audit events are recorded yet in this environment.'}
+              ? 'Ningún evento de auditoría coincide con los filtros actuales.'
+              : 'Todavía no hay eventos de auditoría registrados en este entorno.'}
           </p>
         ) : null}
       </section>
@@ -719,7 +719,7 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
 
                 <div className="audit-card__context">
                   <span className="audit-context-item">
-                    <span>Occurred</span>
+                    <span>Ocurrió</span>
                     <strong>{formatDateTime(event.occurredAt)}</strong>
                   </span>
                   <span className="audit-context-item">
@@ -727,7 +727,7 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
                     <strong>{renderActor(event, onNavigate)}</strong>
                   </span>
                   <span className="audit-context-item">
-                    <span>Resource</span>
+                    <span>Recurso</span>
                     <strong>
                       {documentUrl ? (
                         <a
@@ -751,7 +751,7 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
                   </span>
                   <span className="audit-context-item">
                     <span>IP</span>
-                    <strong>{event.request.ipAddress || 'Not available'}</strong>
+                    <strong>{event.request.ipAddress || 'No disponible'}</strong>
                   </span>
                 </div>
 
@@ -796,11 +796,11 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
                       })}
                     </div>
                   ) : (
-                    <span className="audit-metadata-empty">No metadata preview</span>
+                    <span className="audit-metadata-empty">Sin vista previa de metadatos</span>
                   )}
 
                   <details className="audit-card__details">
-                    <summary>Raw</summary>
+                    <summary>Sin procesar</summary>
                     <pre className="audit-card__code">
                       {JSON.stringify(event.metadata, null, 2)}
                     </pre>

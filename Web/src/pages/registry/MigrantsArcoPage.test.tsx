@@ -74,15 +74,15 @@ describe('MigrantsArcoPage', () => {
     vi.mocked(arco.verifyArcoDecision).mockResolvedValue({ data: { id: 17 }, message: 'ARCO decision signed and completed.' } as never)
     render(<MigrantsArcoPage user={user} />)
 
-    await browserUser.click(await screen.findByRole('button', { name: 'Reject' }))
+    await browserUser.click(await screen.findByRole('button', { name: 'Rechazar' }))
 
-    const dialog = screen.getByRole('dialog', { name: 'Reject ARCO request' })
+    const dialog = screen.getByRole('dialog', { name: 'Rechazar solicitud ARCO' })
     expect(dialog).toBeInTheDocument()
     expect(arco.startArcoDecision).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Reject with passkey' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Rechazar con llave de acceso' })).toBeDisabled()
 
-    await browserUser.type(screen.getByLabelText(/Resolution reason/), 'The proposed correction is not supported.')
-    await browserUser.click(screen.getByRole('button', { name: 'Reject with passkey' }))
+    await browserUser.type(screen.getByLabelText(/Motivo de resolución/), 'The proposed correction is not supported.')
+    await browserUser.click(screen.getByRole('button', { name: 'Rechazar con llave de acceso' }))
 
     await waitFor(() => expect(arco.startArcoDecision).toHaveBeenCalledWith(17, 'coordinator', {
       decision: 'reject',

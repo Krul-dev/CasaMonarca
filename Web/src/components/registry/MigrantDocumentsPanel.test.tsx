@@ -66,7 +66,7 @@ describe('MigrantDocumentsPanel', () => {
 
     await waitFor(() => expect(screen.getByText('covered.pdf')).toBeInTheDocument())
 
-    expect(screen.getAllByRole('button', { name: /download/i })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /descargar/i })).toHaveLength(1)
     expect(screen.getByText('uncovered.pdf')).toBeInTheDocument()
   })
 })

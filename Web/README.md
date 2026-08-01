@@ -1,8 +1,8 @@
-# CasaMonarca Web
+# Casa Monarca Web
 
-Frontend project for the CasaMonarca access control system.
+Frontend project for the Casa Monarca access control system.
 
-This project lives inside the CasaMonarca monorepo under `Web/`.
+This project lives inside the Casa Monarca monorepo under `Web/`.
 
 This project uses `React + Vite + TypeScript` and is deployed as a static frontend.
 
@@ -80,7 +80,7 @@ php artisan serve --host=127.0.0.1 --port=8000
 Default frontend env file:
 
 ```env
-VITE_APP_NAME="CasaMonarca Web"
+VITE_APP_NAME="Casa Monarca Web"
 VITE_APP_CHANNEL=dev
 VITE_API_BASE_URL=/api
 API_PROXY_TARGET=http://127.0.0.1:8000

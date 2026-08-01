@@ -198,13 +198,13 @@ export function InviteManagementPage({
     const normalizedEmail = createForm.email.trim().toLowerCase()
 
     if (!normalizedEmail) {
-      setError('Enter the target email before creating an invite.')
+      setError('Ingresa el correo de destino antes de crear una invitación.')
       setSuccess(null)
       return
     }
 
     if (!allowedRoles.includes(createForm.role)) {
-      setError('This role is not allowed for the current account.')
+      setError('Este rol no está permitido para la cuenta actual.')
       setSuccess(null)
       return
     }
@@ -234,7 +234,7 @@ export function InviteManagementPage({
       setError(
         createError instanceof Error
           ? createError.message
-          : 'Failed to create invite draft.',
+          : 'No se pudo crear el borrador de invitación.',
       )
     } finally {
       setIsCreating(false)
@@ -263,7 +263,7 @@ export function InviteManagementPage({
       setError(
         verifyError instanceof Error
           ? verifyError.message
-          : 'Failed to record out-of-band verification.',
+          : 'No se pudo registrar la verificación fuera de banda.',
       )
     } finally {
       setActiveInviteId(null)
@@ -274,7 +274,7 @@ export function InviteManagementPage({
     const expiresInHours = Number.parseInt(issueExpiryHours, 10)
 
     if (!Number.isFinite(expiresInHours) || expiresInHours < 1 || expiresInHours > 48) {
-      setError('Issue duration must be between 1 and 48 hours.')
+      setError('La duración del enlace debe estar entre 1 y 48 horas.')
       setSuccess(null)
       return
     }
@@ -303,7 +303,7 @@ export function InviteManagementPage({
       setError(
         issueError instanceof Error
           ? issueError.message
-          : 'Failed to issue registration link.',
+          : 'No se pudo emitir el enlace de registro.',
       )
     } finally {
       setActiveInviteId(null)
@@ -328,7 +328,7 @@ export function InviteManagementPage({
       setError(
         revokeError instanceof Error
           ? revokeError.message
-          : 'Failed to revoke invite.',
+          : 'No se pudo revocar la invitación.',
       )
     } finally {
       setActiveInviteId(null)
@@ -344,10 +344,10 @@ export function InviteManagementPage({
 
     try {
       await navigator.clipboard.writeText(link)
-      setSuccess('Invite link copied to clipboard.')
+      setSuccess('Enlace de invitación copiado al portapapeles.')
       setError(null)
     } catch {
-      setError('Clipboard access is unavailable. Copy the link manually.')
+      setError('El acceso al portapapeles no está disponible. Copia el enlace manualmente.')
       setSuccess(null)
     }
   }
@@ -357,10 +357,10 @@ export function InviteManagementPage({
       <section className="workspace-panel">
         <div className="audit-toolbar">
           <div>
-            <h2 className="workspace-panel__title">Account invites</h2>
+            <h2 className="workspace-panel__title">Invitaciones de cuenta</h2>
             <p className="workspace-panel__copy">
-              Create role-bound invites, record out-of-band verification, issue
-              short-lived registration links, and revoke pending invites.
+              Crea invitaciones vinculadas a un rol, registra verificaciones fuera de banda,
+              emite enlaces de registro de corta duración y revoca invitaciones pendientes.
             </p>
           </div>
 
@@ -370,13 +370,13 @@ export function InviteManagementPage({
             type="button"
           >
             <AppIcon name="refresh" />
-            Refresh invites
+            Actualizar invitaciones
           </button>
         </div>
 
         <form className="invite-create-form" onSubmit={handleCreateInvite}>
           <label className="login-field">
-            <span className="login-field__label">Target email</span>
+            <span className="login-field__label">Correo de destino</span>
             <input
               className="login-field__input"
               onChange={(event) =>
@@ -385,14 +385,14 @@ export function InviteManagementPage({
                   email: event.target.value,
                 }))
               }
-              placeholder="new.user@casamonarca.local"
+              placeholder="nuevo.usuario@casamonarca.local"
               type="email"
               value={createForm.email}
             />
           </label>
 
           <label className="login-field">
-            <span className="login-field__label">Role</span>
+            <span className="login-field__label">Rol</span>
             <select
               className="login-field__input"
               onChange={(event) =>
@@ -406,7 +406,7 @@ export function InviteManagementPage({
               {allowedRoles.map((role) => (
                 <option key={role} value={role}>
                   {role === 'admin'
-                    ? 'Admin (temporary dev only)'
+                    ? 'Administrador (temporal solo en desarrollo)'
                     : formatRoleLabel(role)}
                 </option>
               ))}
@@ -415,19 +415,19 @@ export function InviteManagementPage({
 
           <button className="session-action" disabled={isCreating} type="submit">
             <AppIcon name="invite" />
-            {isCreating ? 'Creating invite...' : 'Create invite draft'}
+            {isCreating ? 'Creando invitación...' : 'Crear borrador de invitación'}
           </button>
         </form>
 
         {canCreateTemporaryAdminInvites ? (
           <div className="login-feedback login-feedback--warning">
-            Temporary dev-only measure: admin invites are available in this dev build
-            only and must be removed before production or staging promotion.
+            Medida temporal solo para desarrollo: las invitaciones de administrador están disponibles
+            únicamente en esta compilación de desarrollo y deben eliminarse antes de promover a staging o producción.
           </div>
         ) : null}
 
         <label className="login-field invite-issue-window">
-          <span className="login-field__label">Issue link duration (hours)</span>
+          <span className="login-field__label">Duración del enlace emitido (horas)</span>
           <input
             className="login-field__input"
             max={48}
@@ -444,14 +444,14 @@ export function InviteManagementPage({
 
       {isLoading ? (
         <section className="workspace-panel">
-          <p className="workspace-panel__copy">Loading account invites...</p>
+          <p className="workspace-panel__copy">Cargando invitaciones de cuenta...</p>
         </section>
       ) : null}
 
       {!isLoading && invites.length === 0 ? (
         <section className="workspace-panel">
           <p className="workspace-panel__copy">
-            No invites have been created yet.
+            Todavía no se han creado invitaciones.
           </p>
         </section>
       ) : null}
@@ -470,7 +470,7 @@ export function InviteManagementPage({
               <article className="workspace-panel invite-card" key={invite.id}>
                 <div className="audit-card__header">
                   <div>
-                    <p className="workspace-sidebar__eyebrow">Invite #{invite.id}</p>
+                    <p className="workspace-sidebar__eyebrow">Invitación #{invite.id}</p>
                     <h3 className="workspace-panel__title">{invite.email}</h3>
                   </div>
                   <span className={getStatusClassName(invite.status)}>
@@ -478,29 +478,29 @@ export function InviteManagementPage({
                   </span>
                 </div>
 
-                <dl className="invite-meta-list" aria-label={`Invite ${invite.id} metadata`}>
+                <dl className="invite-meta-list" aria-label={`Metadatos de invitación ${invite.id}`}>
                   <div className="invite-meta-list__item invite-meta-list__item--role">
-                    <dt>Role</dt>
+                    <dt>Rol</dt>
                     <dd><RoleBadge role={invite.role} /></dd>
                   </div>
                   <div className="invite-meta-list__item">
-                    <dt>Created</dt>
+                    <dt>Creada</dt>
                     <dd>{formatDateTime(invite.createdAt)}</dd>
                   </div>
                   <div className="invite-meta-list__item">
-                    <dt>Verified</dt>
+                    <dt>Verificada</dt>
                     <dd>{formatDateTime(invite.verifiedOutOfBandAt)}</dd>
                   </div>
                   <div className="invite-meta-list__item">
-                    <dt>Issued</dt>
+                    <dt>Emitida</dt>
                     <dd>{formatDateTime(invite.issuedAt)}</dd>
                   </div>
                   <div className="invite-meta-list__item">
-                    <dt>Expires</dt>
+                    <dt>Vence</dt>
                     <dd>{formatDateTime(invite.expiresAt)}</dd>
                   </div>
                   <div className="invite-meta-list__item">
-                    <dt>Redeemed</dt>
+                    <dt>Canjeada</dt>
                     <dd>{formatDateTime(invite.usedAt)}</dd>
                   </div>
                 </dl>
@@ -508,7 +508,7 @@ export function InviteManagementPage({
                 {canVerify ? (
                   <div className="invite-verify-form">
                     <label className="login-field">
-                      <span className="login-field__label">Verification method</span>
+                      <span className="login-field__label">Método de verificación</span>
                       <select
                         className="login-field__input"
                         onChange={(event) =>
@@ -519,13 +519,13 @@ export function InviteManagementPage({
                         }
                         value={verificationMethodByInvite[invite.id] ?? 'phone'}
                       >
-                        <option value="phone">Phone</option>
-                        <option value="in_person">In person</option>
+                        <option value="phone">Teléfono</option>
+                        <option value="in_person">En persona</option>
                       </select>
                     </label>
 
                     <label className="login-field">
-                      <span className="login-field__label">Verification note (optional)</span>
+                      <span className="login-field__label">Nota de verificación (opcional)</span>
                       <input
                         className="login-field__input"
                         onChange={(event) =>
@@ -534,7 +534,7 @@ export function InviteManagementPage({
                             [invite.id]: event.target.value,
                           }))
                         }
-                        placeholder="Reference for identity validation"
+                        placeholder="Referencia para validar identidad"
                         type="text"
                         value={verificationNoteByInvite[invite.id] ?? ''}
                       />
@@ -551,7 +551,7 @@ export function InviteManagementPage({
                       type="button"
                     >
                       <AppIcon name="verify" />
-                      {isBusy ? 'Recording...' : 'Record verification'}
+                      {isBusy ? 'Registrando...' : 'Registrar verificación'}
                     </button>
                   ) : null}
 
@@ -563,7 +563,7 @@ export function InviteManagementPage({
                       type="button"
                     >
                       <AppIcon name="key" />
-                      {isBusy ? 'Issuing...' : 'Issue registration link'}
+                      {isBusy ? 'Emitiendo...' : 'Emitir enlace de registro'}
                     </button>
                   ) : null}
 
@@ -575,14 +575,14 @@ export function InviteManagementPage({
                       type="button"
                     >
                       <AppIcon name="delete" />
-                      {isBusy ? 'Revoking...' : 'Revoke invite'}
+                      {isBusy ? 'Revocando...' : 'Revocar invitación'}
                     </button>
                   ) : null}
                 </div>
 
                 {issuedLink ? (
                   <div className="invite-link-preview">
-                    <p className="workspace-sidebar__eyebrow">Issued registration link</p>
+                    <p className="workspace-sidebar__eyebrow">Enlace de registro emitido</p>
                     <code>{issuedLink}</code>
                     <button
                       className="session-action session-action--inline"
@@ -590,7 +590,7 @@ export function InviteManagementPage({
                       type="button"
                     >
                       <AppIcon name="copy" />
-                      Copy link
+                      Copiar enlace
                     </button>
                   </div>
                 ) : null}

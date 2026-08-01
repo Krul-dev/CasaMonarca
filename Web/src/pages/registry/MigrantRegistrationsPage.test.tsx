@@ -111,11 +111,11 @@ describe('MigrantRegistrationsPage', () => {
     expect(await screen.findByText('Maria Doe')).toBeInTheDocument()
     expect(listMigrantDocumentsMock).not.toHaveBeenCalled()
 
-    await browserUser.click(screen.getByText('View registration details'))
+    await browserUser.click(screen.getByText('Ver detalles del registro'))
 
     await waitFor(() => expect(listMigrantDocumentsMock).toHaveBeenCalledWith(42))
     expect(await screen.findByText('Identification — passport.pdf')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Download' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Descargar' })).not.toBeInTheDocument()
   })
 
   it('searches registration text without requiring accents', async () => {
@@ -130,7 +130,7 @@ describe('MigrantRegistrationsPage', () => {
     })
     render(<MigrantRegistrationsPage user={user} />)
 
-    await browserUser.type(await screen.findByLabelText('Search'), 'maria lopez mexico')
+    await browserUser.type(await screen.findByLabelText('Buscar'), 'maria lopez mexico')
     await waitFor(() => expect(JSON.parse(window.sessionStorage.getItem('casa-monarca.migrant-registrations.filters') ?? '{}').search).toBe('maria lopez mexico'))
 
     expect(screen.getByText('María López')).toBeInTheDocument()
@@ -169,13 +169,13 @@ describe('MigrantRegistrationsPage', () => {
     const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
 
     render(<MigrantRegistrationsPage user={coordinator} />)
-    await browserUser.click(await screen.findByText('View registration details'))
-    await browserUser.click(await screen.findByRole('button', { name: 'Download' }))
+    await browserUser.click(await screen.findByText('Ver detalles del registro'))
+    await browserUser.click(await screen.findByRole('button', { name: 'Descargar' }))
 
-    expect(screen.getByRole('dialog', { name: 'Document outside completed ARCO Access' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Documento fuera de Acceso ARCO completado' })).toBeInTheDocument()
     expect(startMigrantDocumentDownloadMock).not.toHaveBeenCalled()
 
-    await browserUser.click(screen.getByRole('button', { name: 'Continue to passkey' }))
+    await browserUser.click(screen.getByRole('button', { name: 'Continuar con llave de acceso' }))
 
     await waitFor(() => expect(verifyMigrantDocumentDownloadMock).toHaveBeenCalledWith(42, 9, assertion))
     expect(startMigrantDocumentDownloadMock).toHaveBeenCalledWith(42, 9)

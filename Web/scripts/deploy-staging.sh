@@ -4,7 +4,7 @@ set -euo pipefail
 
 show_help() {
   cat <<'EOF'
-Build the CasaMonarca Web app locally and upload the static files to the staging VPS.
+Build the Casa Monarca Web app locally and upload the static files to the staging VPS.
 
 Usage:
   ./scripts/deploy-staging.sh

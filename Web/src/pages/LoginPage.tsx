@@ -27,7 +27,7 @@ export function LoginPage({
 }: LoginPageProps) {
   const [healthState, setHealthState] = useState<HealthState>({
     status: 'checking',
-    message: 'Checking backend availability...',
+    message: 'Verificando disponibilidad del backend...',
   })
 
   useEffect(() => {
@@ -65,9 +65,9 @@ export function LoginPage({
       <section className="login-layout login-layout--single">
         <section className="login-panel" aria-labelledby="login-panel-title">
           <div className="login-panel__header">
-            <p className="login-panel__eyebrow">Sign in</p>
+            <p className="login-panel__eyebrow">Inicio de sesión</p>
             <h2 className="login-panel__title" id="login-panel-title">
-              Sign in to the system
+              Inicia sesión en el sistema
             </h2>
           </div>
 

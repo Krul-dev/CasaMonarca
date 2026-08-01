@@ -79,11 +79,11 @@ export function validateQuestionAnswer(
 ) {
   if (question.required && !answerHasValue(answer)) return 'Esta respuesta es obligatoria.'
   if (!answerHasValue(answer)) return null
-  if (question.numeric && !Number.isFinite(Number(answer?.value))) return 'Ingrese un número válido.'
+  if (question.numeric && !Number.isFinite(Number(answer?.value))) return 'Ingresa un número válido.'
 
   const selected = Array.isArray(answer?.value) ? answer.value : [answer?.value]
   const usesOther = question.choices.some((choice) => choice.custom && selected.includes(choice.value))
-  if (usesOther && !answer?.otherText?.trim()) return 'Especifique la respuesta en español.'
+  if (usesOther && !answer?.otherText?.trim()) return 'Especifica la respuesta.'
 
   return null
 }
@@ -113,9 +113,9 @@ function upgradeLegacyAnswers(
       ? 'Venezuela (República Bolivariana de)'
       : payload.countryOfOrigin,
     departmentState: payload.departmentState,
-    civilStatus: ({ single: 'Soltera / Soltero', married: 'Casado / Casado', common_law_union: 'Unión Libre', union: 'Unión Libre', separated: 'Separada / Separado', divorced: 'Divorciada / Divorciado', widowed: 'Viuda / Viudo', other: 'Otro' } as Record<string, string>)[payload.civilStatus ?? ''],
+    civilStatus: ({ single: 'Soltera / Soltero', married: 'Casada / Casado', common_law_union: 'Unión libre', union: 'Unión libre', separated: 'Separada / Separado', divorced: 'Divorciada / Divorciado', widowed: 'Viuda / Viudo', other: 'Otro' } as Record<string, string>)[payload.civilStatus ?? ''],
     birthDate: payload.birthDate,
-    populationGroup: ({ adult: 'Adulto (18-59 años)', older_adult: 'Adulto mayor (+60 años)', accompanied_girl: 'Niña acompañada', accompanied_boy: 'Niño acompañado', accompanied_adolescent_boy: 'Adolescente hombre acompañado', accompanied_adolescent_girl: 'Adolescente mujer acompañada', unaccompanied_minor: 'NNA No acompañado' } as Record<string, string>)[payload.populationGroup ?? ''],
+    populationGroup: ({ adult: 'Adulto (18-59 años)', older_adult: 'Adulto mayor (+60 años)', accompanied_girl: 'Niña acompañada', accompanied_boy: 'Niño acompañado', accompanied_adolescent_boy: 'Adolescente hombre acompañado', accompanied_adolescent_girl: 'Adolescente mujer acompañada', unaccompanied_minor: 'NNA no acompañado' } as Record<string, string>)[payload.populationGroup ?? ''],
     notes: payload.notes,
   }
 

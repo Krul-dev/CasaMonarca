@@ -62,23 +62,23 @@ export function ResetPasswordPage({
 
   const validate = (): string | null => {
     if (!form.token.trim()) {
-      return 'Password reset token is required.'
+      return 'El token para restablecer contraseña es obligatorio.'
     }
 
     if (!form.email.trim()) {
-      return 'Email is required.'
+      return 'El correo electrónico es obligatorio.'
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      return 'Use a valid email format.'
+      return 'Usa un formato de correo electrónico válido.'
     }
 
     if (form.password.length < 8) {
-      return 'Password must contain at least 8 characters.'
+      return 'La contraseña debe tener al menos 8 caracteres.'
     }
 
     if (form.password !== form.passwordConfirmation) {
-      return 'Password confirmation does not match.'
+      return 'La confirmación de contraseña no coincide.'
     }
 
     return null
@@ -117,7 +117,7 @@ export function ResetPasswordPage({
       setError(
         submitError instanceof ApiRequestError || submitError instanceof Error
           ? submitError.message
-          : 'Password reset could not be completed.',
+          : 'No se pudo restablecer la contraseña.',
       )
     } finally {
       setStatus('idle')
@@ -129,56 +129,56 @@ export function ResetPasswordPage({
       <section className="login-layout login-layout--single">
         <section className="login-panel" aria-labelledby="reset-password-panel-title">
           <div className="login-panel__header">
-            <p className="login-panel__eyebrow">Account recovery</p>
+            <p className="login-panel__eyebrow">Recuperación de cuenta</p>
             <h2 className="login-panel__title" id="reset-password-panel-title">
-              Reset your password
+              Restablece tu contraseña
             </h2>
             <p className="workspace-panel__copy">
-              Use the admin-issued recovery link to set a new password. The token is single-use and expires quickly.
+              Usa el enlace de recuperación emitido por administración para definir una nueva contraseña. El token es de un solo uso y vence pronto.
             </p>
           </div>
 
           <form className="login-form" noValidate onSubmit={handleSubmit}>
             <div className="login-form__fields">
               <label className="login-field">
-                <span className="login-field__label">Reset token</span>
+                <span className="login-field__label">Token de restablecimiento</span>
                 <input
                   className="login-field__input"
                   onChange={(event) => setField('token', event.target.value)}
-                  placeholder="Paste reset token"
+                  placeholder="Pega el token de restablecimiento"
                   type="text"
                   value={form.token}
                 />
               </label>
 
               <label className="login-field">
-                <span className="login-field__label">Email</span>
+                <span className="login-field__label">Correo electrónico</span>
                 <input
                   className="login-field__input"
                   onChange={(event) => setField('email', event.target.value)}
-                  placeholder="your.email@casamonarca.local"
+                  placeholder="tu.correo@casamonarca.local"
                   type="email"
                   value={form.email}
                 />
               </label>
 
               <label className="login-field">
-                <span className="login-field__label">New password</span>
+                <span className="login-field__label">Nueva contraseña</span>
                 <input
                   className="login-field__input"
                   onChange={(event) => setField('password', event.target.value)}
-                  placeholder="Set a new password"
+                  placeholder="Define una nueva contraseña"
                   type="password"
                   value={form.password}
                 />
               </label>
 
               <label className="login-field">
-                <span className="login-field__label">Confirm new password</span>
+                <span className="login-field__label">Confirma la nueva contraseña</span>
                 <input
                   className="login-field__input"
                   onChange={(event) => setField('passwordConfirmation', event.target.value)}
-                  placeholder="Repeat new password"
+                  placeholder="Repite la nueva contraseña"
                   type="password"
                   value={form.passwordConfirmation}
                 />
@@ -187,7 +187,7 @@ export function ResetPasswordPage({
 
             <button className="login-submit" disabled={status === 'submitting'} type="submit">
               <AppIcon name="key" />
-              {status === 'submitting' ? 'Resetting password...' : 'Reset password'}
+              {status === 'submitting' ? 'Restableciendo contraseña...' : 'Restablecer contraseña'}
             </button>
           </form>
 
@@ -205,7 +205,7 @@ export function ResetPasswordPage({
             type="button"
           >
             <AppIcon name="login" />
-            {successMessage ? 'Continue to sign in' : 'Go to sign in'}
+            {successMessage ? 'Continuar al inicio de sesión' : 'Ir al inicio de sesión'}
           </button>
         </section>
       </section>

@@ -8,35 +8,35 @@ RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF
 TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW
 `.trim().split(/\s+/)
 
-const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
+const regionNames = new Intl.DisplayNames(['es-MX'], { type: 'region' })
 
 export const COUNTRY_OPTIONS = ISO_COUNTRY_CODES
   .map((code) => regionNames.of(code))
   .filter((name): name is string => Boolean(name))
-  .sort((left, right) => left.localeCompare(right))
+  .sort((left, right) => left.localeCompare(right, 'es-MX'))
 
 export const CIVIL_STATUS_OPTIONS = [
-  { label: 'Single', value: 'single' },
-  { label: 'Married', value: 'married' },
-  { label: 'Common-law union', value: 'common_law_union' },
-  { label: 'Separated', value: 'separated' },
-  { label: 'Divorced', value: 'divorced' },
-  { label: 'Widowed', value: 'widowed' },
+  { label: 'Soltera / Soltero', value: 'single' },
+  { label: 'Casada / Casado', value: 'married' },
+  { label: 'Unión libre', value: 'common_law_union' },
+  { label: 'Separada / Separado', value: 'separated' },
+  { label: 'Divorciada / Divorciado', value: 'divorced' },
+  { label: 'Viuda / Viudo', value: 'widowed' },
 ] as const
 
 export const GENDER_OPTIONS = [
-  { label: 'Female', value: 'female' },
-  { label: 'Male', value: 'male' },
-  { label: 'Non-binary', value: 'non_binary' },
+  { label: 'Femenino', value: 'female' },
+  { label: 'Masculino', value: 'male' },
+  { label: 'No binario', value: 'non_binary' },
   { label: 'LGBTQ+', value: 'lgbtq_plus' },
 ] as const
 
 export const POPULATION_GROUP_OPTIONS = [
-  { label: 'Adult (18-59 years)', value: 'adult' },
-  { label: 'Older adult (60+ years)', value: 'older_adult' },
-  { label: 'Accompanied girl', value: 'accompanied_girl' },
-  { label: 'Accompanied boy', value: 'accompanied_boy' },
-  { label: 'Accompanied adolescent boy', value: 'accompanied_adolescent_boy' },
-  { label: 'Accompanied adolescent girl', value: 'accompanied_adolescent_girl' },
-  { label: 'Unaccompanied child or adolescent', value: 'unaccompanied_minor' },
+  { label: 'Adulto (18-59 años)', value: 'adult' },
+  { label: 'Adulto mayor (+60 años)', value: 'older_adult' },
+  { label: 'Niña acompañada', value: 'accompanied_girl' },
+  { label: 'Niño acompañado', value: 'accompanied_boy' },
+  { label: 'Adolescente hombre acompañado', value: 'accompanied_adolescent_boy' },
+  { label: 'Adolescente mujer acompañada', value: 'accompanied_adolescent_girl' },
+  { label: 'NNA no acompañado', value: 'unaccompanied_minor' },
 ] as const
