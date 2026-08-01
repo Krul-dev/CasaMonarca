@@ -70,7 +70,7 @@ const rawP256SignatureToDer = (value: ArrayBuffer) => {
   const raw = new Uint8Array(value)
 
   if (raw.length !== 64) {
-    throw new Error('Expected a 64-byte raw P-256 signature.')
+    throw new Error('Se esperaba una firma P-256 sin procesar de 64 bytes.')
   }
 
   const r = trimUnsignedInteger(raw.slice(0, 32))
@@ -119,7 +119,7 @@ const sha256Bytes = async (value: BufferSource | string) => {
 }
 
 async function createBundleFixture() {
-  const fileBytes = encoder.encode('CasaMonarca document revision payload.')
+  const fileBytes = encoder.encode('Carga útil de la revisión del documento Casa Monarca.')
   const fileHash = bytesToHex(await sha256Bytes(fileBytes))
 
   const intent = {
@@ -179,7 +179,7 @@ async function createBundleFixture() {
   const bundle: DocumentVerificationBundle = {
     document: {
       id: intent.documentId,
-      title: 'Legal intake letter',
+      title: 'Carta de admisión legal',
     },
     revision: {
       id: intent.revisionId,
@@ -204,7 +204,7 @@ async function createBundleFixture() {
         challenge,
         credential: {
           id: 'credential-local-1',
-          name: 'Coordinator Security Key',
+          name: 'Llave de seguridad de coordinación',
           publicKey: bytesToBase64Url(publicKeySpki),
           publicKeyAlgorithm: -7,
           publicKeyFingerprintSha256: 'unused-in-test',
@@ -218,7 +218,7 @@ async function createBundleFixture() {
         signedAt: '2026-04-22T18:11:00Z',
         signedBy: {
           id: intent.userId,
-          name: 'Coordinator Local',
+          name: 'Coordinación local',
           email: 'coordinator@casamonarca.local',
         },
         verificationStatus: 'verified',
@@ -234,7 +234,7 @@ async function createBundleFixture() {
 }
 
 describe('verifyDocumentBundleLocally', () => {
-  it('verifies a stored bundle against the downloaded revision', async () => {
+  it('verifica un paquete almacenado contra la revisión descargada', async () => {
     const { bundle, fileBytes } = await createBundleFixture()
 
     const report = await verifyDocumentBundleLocally(bundle, fileBytes.buffer)
@@ -244,7 +244,7 @@ describe('verifyDocumentBundleLocally', () => {
     expect(report.signatures).toHaveLength(1)
     expect(report.signatures[0]).toMatchObject({
       verified: true,
-      message: 'Signature verified locally against the downloaded revision.',
+      message: 'Firma verificada localmente contra la revisión descargada.',
       checks: {
         challengeMatches: true,
         clientDataChallenge: true,
@@ -260,10 +260,10 @@ describe('verifyDocumentBundleLocally', () => {
     })
   })
 
-  it('fails local verification when the downloaded file no longer matches the signed revision', async () => {
+  it('falla la verificación local cuando el archivo descargado ya no coincide con la revisión firmada', async () => {
     const { bundle } = await createBundleFixture()
     const tamperedFileBytes = encoder.encode(
-      'CasaMonarca tampered revision payload.',
+      'Carga útil alterada de la revisión de Casa Monarca.',
     )
 
     const report = await verifyDocumentBundleLocally(
@@ -277,7 +277,7 @@ describe('verifyDocumentBundleLocally', () => {
     expect(report.signatures[0].checks.documentHashMatches).toBe(false)
     expect(report.signatures[0].checks.cryptographicSignature).toBe(true)
     expect(report.signatures[0].message).toBe(
-      'One or more local verification checks failed.',
+      'Falló una o más verificaciones locales.',
     )
   })
 })

@@ -48,11 +48,11 @@ export function DocumentUploadPage({
       setSelectedFile(null)
       setFieldErrors((current) => ({
         ...current,
-        file: `Choose a file smaller than ${MAX_DOCUMENT_UPLOAD_LABEL}.`,
+        file: `Elige un archivo menor a ${MAX_DOCUMENT_UPLOAD_LABEL}.`,
       }))
       setFeedback({
         kind: 'error',
-        message: `This document is too large. The upload limit is ${MAX_DOCUMENT_UPLOAD_LABEL}.`,
+        message: `Este documento es demasiado grande. El límite de carga es ${MAX_DOCUMENT_UPLOAD_LABEL}.`,
       })
       return
     }
@@ -124,9 +124,9 @@ export function DocumentUploadPage({
     const nextFieldErrors: { file?: string; title?: string } = {}
 
     if (!selectedFile) {
-      nextFieldErrors.file = 'Choose a document file before submitting.'
+      nextFieldErrors.file = 'Elige un archivo de documento antes de enviar.'
     } else if (selectedFile.size > MAX_DOCUMENT_UPLOAD_BYTES) {
-      nextFieldErrors.file = `Choose a file smaller than ${MAX_DOCUMENT_UPLOAD_LABEL}.`
+      nextFieldErrors.file = `Elige un archivo menor a ${MAX_DOCUMENT_UPLOAD_LABEL}.`
     }
 
     setFieldErrors(nextFieldErrors)
@@ -170,10 +170,10 @@ export function DocumentUploadPage({
         kind: 'error',
         message:
           error instanceof ApiRequestError && error.status === 413
-            ? `This document is too large for the server upload limit. Use a file smaller than ${MAX_DOCUMENT_UPLOAD_LABEL}.`
+            ? `Este documento supera el límite de carga del servidor. Usa un archivo menor a ${MAX_DOCUMENT_UPLOAD_LABEL}.`
             : error instanceof Error
               ? error.message
-              : 'The document could not be uploaded.',
+              : 'No se pudo cargar el documento.',
       })
     } finally {
       setIsSubmitting(false)
@@ -183,17 +183,17 @@ export function DocumentUploadPage({
   return (
     <section className="workspace-stack">
       <section className="workspace-panel">
-        <h2 className="workspace-panel__title">Upload a confidential document</h2>
+        <h2 className="workspace-panel__title">Cargar un documento confidencial</h2>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="login-form__fields">
             <label className="login-field">
-              <span className="login-field__label">Document title</span>
+              <span className="login-field__label">Título del documento</span>
               <input
                 className="login-field__input"
                 name="title"
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="Optional. Defaults to the file name."
+                placeholder="Opcional. Usa el nombre del archivo si se deja vacío."
                 type="text"
                 value={title}
               />
@@ -211,7 +211,7 @@ export function DocumentUploadPage({
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
-              <span className="login-field__label">File</span>
+              <span className="login-field__label">Archivo</span>
               <input
                 key={fileInputKey}
                 className="login-field__input upload-dropzone__input"
@@ -221,19 +221,19 @@ export function DocumentUploadPage({
               />
               <span className="upload-dropzone__surface">
                 <strong className="upload-dropzone__headline">
-                  {isDragActive ? 'Release to attach the document' : 'Drag and drop a file here'}
+                  {isDragActive ? 'Suelta para adjuntar el documento' : 'Arrastra y suelta un archivo aquí'}
                 </strong>
                 <span className="upload-dropzone__copy">
-                  Or click to browse the local file system.
+                  O haz clic para buscar en tu equipo.
                 </span>
               </span>
               {selectedFile ? (
                 <span className="upload-form__hint">
-                  Selected file: {selectedFile.name}
+                  Archivo seleccionado: {selectedFile.name}
                 </span>
               ) : (
                 <span className="upload-form__hint">
-                  Accepted up to {MAX_DOCUMENT_UPLOAD_LABEL} as a confidential intake artifact.
+                  Se aceptan archivos de hasta {MAX_DOCUMENT_UPLOAD_LABEL} como evidencia confidencial de ingreso.
                 </span>
               )}
               {fieldErrors.file ? (
@@ -244,7 +244,7 @@ export function DocumentUploadPage({
 
           <button className="login-submit" disabled={isSubmitting} type="submit">
             <AppIcon name="upload" />
-            {isSubmitting ? 'Uploading document...' : 'Upload document'}
+            {isSubmitting ? 'Cargando documento...' : 'Cargar documento'}
           </button>
         </form>
 
@@ -262,28 +262,28 @@ export function DocumentUploadPage({
       </section>
 
       <section className="workspace-panel workspace-panel--accent">
-        <h2 className="workspace-panel__title">Current intake policy</h2>
+        <h2 className="workspace-panel__title">Política actual de recepción</h2>
         <ul className="route-checklist">
-          <li>Every role can upload a document.</li>
-          <li>Uploads are immediately available in the document workspace.</li>
-          <li>The uploader becomes the initial owner.</li>
-          <li>Files are stored outside the public web root on the private disk.</li>
+          <li>Todos los roles pueden cargar un documento.</li>
+          <li>Las cargas quedan disponibles de inmediato en el espacio de documentos.</li>
+          <li>La persona que carga el archivo queda como propietaria inicial.</li>
+          <li>Los archivos se guardan en el disco privado, fuera de la raíz pública.</li>
         </ul>
       </section>
 
       {feedback?.kind === 'success' ? (
         <section className="workspace-panel">
-          <h2 className="workspace-panel__title">Upload registered</h2>
+          <h2 className="workspace-panel__title">Carga registrada</h2>
           <ul className="route-checklist">
-            <li>Document: {feedback.document.title}</li>
-            <li>Status: Available in VCS</li>
+            <li>Documento: {feedback.document.title}</li>
+            <li>Estado: Disponible en VCS</li>
             <li>
-              Current revision:{' '}
-              {feedback.document.currentRevision?.revisionNumber ?? 'Not available'}
+              Revisión actual:{' '}
+              {feedback.document.currentRevision?.revisionNumber ?? 'No disponible'}
             </li>
             <li>
               SHA-256:{' '}
-              {feedback.document.currentRevision?.sha256 ?? 'Not available'}
+              {feedback.document.currentRevision?.sha256 ?? 'No disponible'}
             </li>
           </ul>
 
@@ -299,7 +299,7 @@ export function DocumentUploadPage({
                 type="button"
               >
                 <AppIcon name="document" />
-                Open document workspace
+                Abrir espacio de documentos
               </button>
             </div>
           ) : null}

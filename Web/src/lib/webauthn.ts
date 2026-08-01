@@ -44,7 +44,7 @@ export async function getWebauthnAssertion(
     !('credentials' in navigator)
   ) {
     throw new Error(
-      'WebAuthn is only available in a secure context and supported browser.',
+      'WebAuthn solo está disponible en un contexto seguro y en un navegador compatible.',
     )
   }
 
@@ -61,13 +61,13 @@ export async function getWebauthnAssertion(
   })
 
   if (!(credential instanceof PublicKeyCredential)) {
-    throw new Error('The security key did not return a valid WebAuthn assertion.')
+    throw new Error('La llave de seguridad no devolvió una aserción WebAuthn válida.')
   }
 
   const response = credential.response
 
   if (!(response instanceof AuthenticatorAssertionResponse)) {
-    throw new Error('WebAuthn assertion response is invalid for this action.')
+    throw new Error('La respuesta de aserción WebAuthn no es válida para esta acción.')
   }
 
   return {

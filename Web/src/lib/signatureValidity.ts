@@ -47,7 +47,7 @@ export const getSignatureValidityState = (
 
   if (expiresAtDate == null) {
     return {
-      countdownLabel: 'Not available',
+      countdownLabel: 'No disponible',
       expired: false,
       expiresAt: null,
       remainingMs: null,
@@ -59,7 +59,7 @@ export const getSignatureValidityState = (
 
   return {
     countdownLabel: expired
-      ? `Expired ${formatDuration(remainingMs)} ago`
+      ? `Venció hace ${formatDuration(remainingMs)}`
       : formatDuration(remainingMs),
     expired,
     expiresAt: expiresAtDate.toISOString(),

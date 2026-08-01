@@ -26,13 +26,13 @@ const validateCredentials = ({
   const errors: FieldErrors = {}
 
   if (!email.trim()) {
-    errors.email = 'Enter your institutional email.'
+    errors.email = 'Ingresa tu correo institucional.'
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.email = 'Use a valid email format.'
+    errors.email = 'Usa un formato de correo electrónico válido.'
   }
 
   if (!password.trim()) {
-    errors.password = 'Enter your password.'
+    errors.password = 'Ingresa tu contraseña.'
   }
 
   return errors
@@ -42,9 +42,9 @@ const validateTotpCredentials = ({ code }: TotpCredentials): FieldErrors => {
   const errors: FieldErrors = {}
 
   if (!code.trim()) {
-    errors.code = 'Enter your 6-digit authentication code.'
+    errors.code = 'Ingresa tu código de autenticación de 6 dígitos.'
   } else if (!/^\d{6}$/.test(code.trim())) {
-    errors.code = 'Use a valid 6-digit authentication code.'
+    errors.code = 'Usa un código de autenticación válido de 6 dígitos.'
   }
 
   return errors
@@ -170,7 +170,7 @@ export function LoginForm({
 
       setSubmitSuccess(
         response.user.name
-          ? `Login successful. Signed in as ${response.user.name}.`
+          ? `Inicio de sesión exitoso. Sesión iniciada como ${response.user.name}.`
           : response.message,
       )
     } catch (error) {
@@ -185,7 +185,7 @@ export function LoginForm({
       setSubmitError(
         error instanceof Error
           ? error.message
-          : 'The authentication request could not be completed.',
+          : 'No se pudo completar la solicitud de autenticación.',
       )
       setFormStatus('idle')
     }
@@ -219,7 +219,7 @@ export function LoginForm({
 
       setSubmitSuccess(
         response.user.name
-          ? `Login successful. Signed in as ${response.user.name}.`
+          ? `Inicio de sesión exitoso. Sesión iniciada como ${response.user.name}.`
           : response.message,
       )
     } catch (error) {
@@ -239,7 +239,7 @@ export function LoginForm({
       setSubmitError(
         error instanceof Error
           ? error.message
-          : 'The authentication request could not be completed.',
+          : 'No se pudo completar la solicitud de autenticación.',
       )
       setFormStatus('idle')
     }
@@ -263,7 +263,7 @@ export function LoginForm({
       !('credentials' in navigator)
     ) {
       setSubmitError(
-        'WebAuthn sign-in is only available in a secure context and supported browser.',
+        'El inicio de sesión WebAuthn solo está disponible en un contexto seguro y un navegador compatible.',
       )
       setSubmitSuccess(null)
       return
@@ -271,7 +271,7 @@ export function LoginForm({
 
     if (isIpHostname(window.location.hostname)) {
       setSubmitError(
-        'WebAuthn sign-in requires localhost or a domain name. Open this app from localhost or your staging domain.',
+        'El inicio de sesión WebAuthn requiere localhost o un nombre de dominio. Abre esta app desde localhost o tu dominio de staging.',
       )
       setSubmitSuccess(null)
       return
@@ -301,13 +301,13 @@ export function LoginForm({
       })
 
       if (!(credential instanceof PublicKeyCredential)) {
-        throw new Error('The security key did not return a valid WebAuthn assertion.')
+        throw new Error('La llave de seguridad no devolvió una aserción WebAuthn válida.')
       }
 
       const response = credential.response
 
       if (!(response instanceof AuthenticatorAssertionResponse)) {
-        throw new Error('WebAuthn assertion response is invalid for sign-in.')
+        throw new Error('La respuesta de aserción WebAuthn no es válida para iniciar sesión.')
       }
 
       const loginResponse = await verifyWebauthnLogin({
@@ -333,16 +333,16 @@ export function LoginForm({
 
       setSubmitSuccess(
         loginResponse.user.name
-          ? `Login successful. Signed in as ${loginResponse.user.name}.`
+          ? `Inicio de sesión exitoso. Sesión iniciada como ${loginResponse.user.name}.`
           : loginResponse.message,
       )
     } catch (error) {
       const message =
         error instanceof Error
           ? error.name === 'NotAllowedError'
-            ? 'Security key sign-in was cancelled.'
+            ? 'Se canceló el inicio de sesión con llave de seguridad.'
             : error.message
-          : 'The WebAuthn sign-in request could not be completed.'
+          : 'No se pudo completar la solicitud de inicio de sesión WebAuthn.'
 
       setSubmitError(message)
       setFormStatus('idle')
@@ -350,7 +350,7 @@ export function LoginForm({
   }
 
   const submitButtonLabel =
-    authenticationStep === 'credentials' ? 'Sign in' : 'Verify code'
+    authenticationStep === 'credentials' ? 'Iniciar sesión' : 'Verificar código'
 
   return (
     <form className="login-form" onSubmit={handleSubmit} noValidate>
@@ -358,7 +358,7 @@ export function LoginForm({
         {authenticationStep === 'credentials' ? (
           <>
             <label className="login-field">
-              <span className="login-field__label">Email</span>
+              <span className="login-field__label">Correo electrónico</span>
               <input
                 autoComplete="username"
                 className="login-field__input"
@@ -376,12 +376,12 @@ export function LoginForm({
             </label>
 
             <label className="login-field">
-              <span className="login-field__label">Password</span>
+              <span className="login-field__label">Contraseña</span>
               <input
                 autoComplete="current-password"
                 className="login-field__input"
                 name="password"
-                placeholder="Your institutional access"
+                placeholder="Tu acceso institucional"
                 type="password"
                 value={credentials.password}
                 onChange={(event) =>
@@ -395,16 +395,16 @@ export function LoginForm({
           </>
         ) : (
           <>
-            <div className="route-panel" aria-label="Two-factor challenge">
-              <h3 className="route-panel__title">Two-factor verification</h3>
+            <div className="route-panel" aria-label="Reto de dos factores">
+              <h3 className="route-panel__title">Verificación de dos factores</h3>
               <ul className="route-checklist">
-                <li>Open your authenticator app for this account.</li>
-                <li>Enter the current 6-digit TOTP code below.</li>
+                <li>Abre tu app de autenticación para esta cuenta.</li>
+                <li>Ingresa abajo el código TOTP actual de 6 dígitos.</li>
               </ul>
             </div>
 
             <label className="login-field">
-              <span className="login-field__label">Authentication code</span>
+              <span className="login-field__label">Código de autenticación</span>
               <input
                 autoComplete="one-time-code"
                 className="login-field__input"
@@ -430,7 +430,7 @@ export function LoginForm({
         type="submit"
       >
         <AppIcon name="login" />
-        {formStatus === 'submitting' ? 'Testing...' : submitButtonLabel}
+        {formStatus === 'submitting' ? 'Verificando...' : submitButtonLabel}
       </button>
 
       {authenticationStep === 'credentials' ? (
@@ -441,7 +441,7 @@ export function LoginForm({
           type="button"
         >
           <AppIcon name="key" />
-          Sign in with security key
+          Iniciar sesión con llave de seguridad
         </button>
       ) : null}
 

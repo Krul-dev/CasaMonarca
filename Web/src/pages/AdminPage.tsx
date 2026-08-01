@@ -94,33 +94,33 @@ const ADMIN_TABS: Array<{
 }> = [
   {
     id: 'accounts',
-    label: 'Account Management',
-    copy: 'Users, roles, enrollment recovery, and account status.',
+    label: 'Gestión de cuentas',
+    copy: 'Usuarios, roles, recuperación de inscripción y estado de cuenta.',
   },
   {
     id: 'security',
-    label: 'Security Keys',
-    copy: 'Package signing trust anchor and key rotation.',
+    label: 'Llaves de seguridad',
+    copy: 'Ancla de confianza para firma de paquetes y rotación de llaves.',
   },
   {
     id: 'signing',
-    label: 'Signing Trust',
-    copy: 'Users, signatures, and signed document revisions.',
+    label: 'Confianza de firma',
+    copy: 'Usuarios, firmas y revisiones de documentos firmadas.',
   },
   {
     id: 'migrant-signing',
-    label: 'Migrant Signing Trust',
-    copy: 'Registration submissions, reviews, approvals, and signing keys.',
+    label: 'Confianza de firma de migrantes',
+    copy: 'Envíos de registros, revisiones, aprobaciones y llaves de firma.',
   },
   {
     id: 'system',
-    label: 'System Configuration',
-    copy: 'Privileged security, invite, and operational policies.',
+    label: 'Configuración del sistema',
+    copy: 'Políticas privilegiadas de seguridad, invitaciones y operación.',
   },
   {
     id: 'audit',
-    label: 'Audit Overview',
-    copy: 'Admin-facing summaries for privileged activity.',
+    label: 'Resumen de auditoría',
+    copy: 'Resúmenes administrativos de actividad privilegiada.',
   },
 ]
 
@@ -571,7 +571,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       }
 
       setDirectoryError(
-        error instanceof Error ? error.message : 'Unable to load account directory.',
+        error instanceof Error ? error.message : 'No se pudo cargar el directorio de cuentas.',
       )
     } finally {
       setIsDirectoryLoading(false)
@@ -594,7 +594,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       setSigningKeyError(
         error instanceof Error
           ? error.message
-          : 'Unable to load verification package signing key.',
+          : 'No se pudo cargar la llave de firma del paquete de verificación.',
       )
     } finally {
       setIsSigningKeyLoading(false)
@@ -618,7 +618,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       setSigningLedgerError(
         error instanceof Error
           ? error.message
-          : 'Unable to load signing trust ledger.',
+          : 'No se pudo cargar el libro de confianza de firma.',
       )
     } finally {
       setIsSigningLedgerLoading(false)
@@ -642,7 +642,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       setMigrantSigningError(
         error instanceof Error
           ? error.message
-          : 'Unable to load migrant signing trust ledger.',
+          : 'No se pudo cargar el libro de confianza de firma de migrantes.',
       )
     } finally {
       setIsMigrantSigningLoading(false)
@@ -657,18 +657,18 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
     }
 
     const confirmed = window.confirm(
-      `Change ${account.email} from ${getRoleLabel(account.role)} to ${getRoleLabel(nextRole)}?`,
+      `¿Cambiar ${account.email} de ${getRoleLabel(account.role)} a ${getRoleLabel(nextRole)}?`,
     )
 
     if (!confirmed) {
       return
     }
 
-    const reason = window.prompt('Optional audit reason for this role change.')
+    const reason = window.prompt('Motivo de auditoría opcional para este cambio de rol.')
 
     setUpdatingRoleUserId(account.id)
     setRoleUpdateError(null)
-    setRoleUpdateMessage('Confirm the role change with your admin security key.')
+    setRoleUpdateMessage('Confirma el cambio de rol con tu llave de seguridad administrativa.')
 
     try {
       const optionsResponse = await startAdminUserRoleUpdate(account.id, {
@@ -694,7 +694,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       }
 
       setRoleUpdateError(
-        error instanceof Error ? error.message : 'Unable to update user role.',
+        error instanceof Error ? error.message : 'No se pudo actualizar el rol del usuario.',
       )
     } finally {
       setUpdatingRoleUserId(null)
@@ -706,25 +706,25 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
     action: AdminUserRecoveryAction,
   ) => {
     const actionLabel = action === 'reset_totp'
-      ? 'reset TOTP enrollment'
+      ? 'restablecer la inscripción TOTP'
       : action === 'reset_password'
-        ? 'issue a password reset link'
-        : 'revoke all passkeys'
+        ? 'emitir un enlace para restablecer contraseña'
+        : 'revocar todas las llaves de acceso'
     const confirmed = window.confirm(
-      `Authenticate to ${actionLabel} for ${account.email}? This will force the user through enrollment again.`,
+      `¿Autenticar para ${actionLabel} de ${account.email}? Esto obligará al usuario a pasar de nuevo por inscripción.`,
     )
 
     if (!confirmed) {
       return
     }
 
-    const reason = window.prompt(`Optional audit reason to ${actionLabel} for ${account.email}.`)
+    const reason = window.prompt(`Motivo de auditoría opcional para ${actionLabel} de ${account.email}.`)
 
     setRecoveringUserId(account.id)
     setRecoveryAction(action)
     setRoleUpdateError(null)
     setPasswordResetLink(null)
-    setRoleUpdateMessage('Confirm account recovery with your admin security key.')
+    setRoleUpdateMessage('Confirma la recuperación de cuenta con tu llave de seguridad administrativa.')
 
     try {
       const optionsResponse = await startAdminUserRecovery(account.id, {
@@ -751,7 +751,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       }
 
       setRoleUpdateError(
-        error instanceof Error ? error.message : 'Unable to complete account recovery.',
+        error instanceof Error ? error.message : 'No se pudo completar la recuperación de cuenta.',
       )
     } finally {
       setRecoveringUserId(null)
@@ -763,12 +763,12 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
     account: AdminUserSummary,
     action: AdminUserStatusAction,
   ) => {
-    const actionLabel = action === 'suspend' ? 'suspend' : 'reactivate'
+    const actionLabel = action === 'suspend' ? 'suspensión' : 'reactivación'
     let reason: string | null = null
 
     if (action === 'suspend') {
       const promptedReason = window.prompt(
-        `Reason for suspending ${account.email}? This is stored in the audit trail and account directory.`,
+        `¿Motivo para suspender ${account.email}? Esto se guarda en la auditoría y en el directorio de cuentas.`,
       )
 
       if (promptedReason === null) {
@@ -777,7 +777,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
 
       reason = promptedReason.trim() || null
     } else {
-      const confirmed = window.confirm(`Authenticate to reactivate ${account.email}?`)
+      const confirmed = window.confirm(`¿Autenticar para reactivar ${account.email}?`)
 
       if (!confirmed) {
         return
@@ -787,7 +787,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
     setUpdatingStatusUserId(account.id)
     setStatusAction(action)
     setRoleUpdateError(null)
-    setRoleUpdateMessage(`Confirm account ${actionLabel} with your admin security key.`)
+    setRoleUpdateMessage(`Confirma la ${actionLabel} de cuenta con tu llave de seguridad administrativa.`)
     let challengeIntentId: string | null = null
 
     try {
@@ -819,7 +819,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       }
 
       setRoleUpdateError(
-        error instanceof Error ? error.message : 'Unable to update account status.',
+        error instanceof Error ? error.message : 'No se pudo actualizar el estado de la cuenta.',
       )
     } finally {
       setUpdatingStatusUserId(null)
@@ -830,9 +830,9 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
   const handleSigningKeyRotation = async () => {
     const isInitialGeneration = signingKey ? !signingKey.configured : false
     const defaultKeyId = signingKey?.keyId || getDefaultSigningKeyId()
-    const actionLabel = isInitialGeneration ? 'generate' : 'rotate'
+    const actionLabel = isInitialGeneration ? 'generar' : 'rotar'
     const keyId = window.prompt(
-      `${isInitialGeneration ? 'New' : 'Replacement'} package signing key id. Use a stable id that can be published with the fingerprint.`,
+      `${isInitialGeneration ? 'Nuevo' : 'Reemplazo de'} ID de llave de firma de paquete. Usa un ID estable que pueda publicarse con la huella.`,
       defaultKeyId,
     )
 
@@ -843,13 +843,13 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
     const normalizedKeyId = keyId.trim()
 
     if (!/^[A-Za-z0-9._-]+$/.test(normalizedKeyId)) {
-      setSigningKeyError('Key id can only contain letters, numbers, dots, underscores, and hyphens.')
+      setSigningKeyError('El ID de llave solo puede contener letras, números, puntos, guiones bajos y guiones.')
       return
     }
 
     const reason = window.prompt(
-      `Reason for ${actionLabel}ing the verification package signing key. This is stored in the audit trail.`,
-      isInitialGeneration ? 'Initial verification package signing key generation' : undefined,
+      `Motivo para ${actionLabel} la llave de firma del paquete de verificación. Esto se guarda en auditoría.`,
+      isInitialGeneration ? 'Generación inicial de llave de firma del paquete de verificación' : undefined,
     )
 
     if (reason === null) {
@@ -859,14 +859,14 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
     const normalizedReason = reason.trim()
 
     if (normalizedReason.length < 8) {
-      setSigningKeyError('Rotation reason must be at least 8 characters.')
+      setSigningKeyError('El motivo de rotación debe tener al menos 8 caracteres.')
       return
     }
 
     const confirmed = window.confirm(
       isInitialGeneration
-        ? 'Generate the verification package signing key? Newly exported packages will become server-signed.'
-        : 'Rotate the verification package signing key? Newly exported packages will use the new fingerprint. Keep old fingerprints for old exports.',
+        ? '¿Generar la llave de firma del paquete de verificación? Los paquetes exportados nuevos quedarán firmados por el servidor.'
+        : '¿Rotar la llave de firma del paquete de verificación? Los paquetes exportados nuevos usarán la nueva huella. Conserva las huellas anteriores para exportaciones antiguas.',
     )
 
     if (!confirmed) {
@@ -875,7 +875,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
 
     setIsRotatingSigningKey(true)
     setSigningKeyError(null)
-    setSigningKeyMessage(`Confirm package signing key ${isInitialGeneration ? 'generation' : 'rotation'} with your admin security key.`)
+    setSigningKeyMessage(`Confirma la ${isInitialGeneration ? 'generación' : 'rotación'} de la llave de firma de paquetes con tu llave de seguridad administrativa.`)
 
     try {
       const optionsResponse = await startVerificationPackageSigningKeyRotation({
@@ -896,7 +896,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       setSigningKeyError(
         error instanceof Error
           ? error.message
-          : 'Unable to rotate verification package signing key.',
+          : 'No se pudo rotar la llave de firma del paquete de verificación.',
       )
     } finally {
       setIsRotatingSigningKey(false)
@@ -1242,15 +1242,15 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
   return (
     <section className="workspace-stack">
       <section className="workspace-panel">
-        <h2 className="workspace-panel__title">Admin-only module</h2>
+        <h2 className="workspace-panel__title">Módulo solo para administración</h2>
         <p className="workspace-panel__copy">
-          This route remains restricted to admins while the rest of the shell becomes role-aware.
+          Esta ruta permanece restringida a administración mientras el resto del entorno responde por rol.
         </p>
         <ul className="route-checklist">
-          <li>Name: {user.name}</li>
-          <li>Email: {user.email}</li>
+          <li>Nombre: {user.name}</li>
+          <li>Correo: {user.email}</li>
           <li>
-            Role: <RoleBadge role={user.role} />
+            Rol: <RoleBadge role={user.role} />
           </li>
         </ul>
       </section>
@@ -1272,10 +1272,10 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
 
       {activeTab === 'system' ? (
         <section className="workspace-panel workspace-panel--accent">
-          <h2 className="workspace-panel__title">System Configuration</h2>
+          <h2 className="workspace-panel__title">Configuración del sistema</h2>
           <p className="workspace-panel__copy">
-            Privileged settings, including invite creation and redemption policy, should stay explicit,
-            audited, and passkey-gated before becoming mutable from the browser.
+            Las configuraciones privilegiadas, incluida la creación y canje de invitaciones, deben seguir siendo explícitas,
+            auditadas y protegidas con llave de acceso antes de poder modificarse desde el navegador.
           </p>
 
           <div className="admin-surface-grid">
@@ -1284,8 +1284,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 <AppIcon name="verify" />
               </span>
               <div>
-                <h3>Signature policy</h3>
-                <p>Signature validity duration, verification package export rules, and future manifest trust history.</p>
+                <h3>Política de firma</h3>
+                <p>Duración de validez de firmas, reglas de exportación de paquetes de verificación e historial futuro de confianza del manifiesto.</p>
               </div>
             </article>
 
@@ -1294,8 +1294,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 <AppIcon name="key" />
               </span>
               <div>
-                <h3>Authentication policy</h3>
-                <p>Coordinator/admin passkey requirements, TOTP enforcement, session limits, and recovery constraints.</p>
+                <h3>Política de autenticación</h3>
+                <p>Requisitos de llave de acceso para coordinación/administración, exigencia TOTP, límites de sesión y restricciones de recuperación.</p>
               </div>
             </article>
 
@@ -1304,8 +1304,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 <AppIcon name="upload" />
               </span>
               <div>
-                <h3>Document policy</h3>
-                <p>Allowed file types, maximum upload size, retention rules, and irreversible deletion controls.</p>
+                <h3>Política documental</h3>
+                <p>Tipos de archivo permitidos, tamaño máximo de carga, reglas de retención y controles de eliminación irreversible.</p>
               </div>
             </article>
 
@@ -1314,8 +1314,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 <AppIcon name="admin" />
               </span>
               <div>
-                <h3>Admin safeguards</h3>
-                <p>Future two-person rules, admin creation restrictions, and sensitive-setting approval windows.</p>
+                <h3>Salvaguardas administrativas</h3>
+                <p>Reglas futuras de doble aprobación, restricciones de creación de administradores y ventanas de aprobación para configuraciones sensibles.</p>
               </div>
             </article>
 
@@ -1324,8 +1324,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 <AppIcon name="invite" />
               </span>
               <div>
-                <h3>Invite policy</h3>
-                <p>Allowed invite roles, expiration windows, single-use redemption, email binding, and invite audit alerts.</p>
+                <h3>Política de invitaciones</h3>
+                <p>Roles permitidos en invitaciones, ventanas de vencimiento, canje de un solo uso, vinculación por correo y alertas de auditoría.</p>
               </div>
             </article>
           </div>
@@ -1334,10 +1334,10 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
 
       {activeTab === 'audit' ? (
         <section className="workspace-panel workspace-panel--accent">
-          <h2 className="workspace-panel__title">Audit Overview</h2>
+          <h2 className="workspace-panel__title">Resumen de auditoría</h2>
           <p className="workspace-panel__copy">
-            Summary cards should complement the full Logging module instead of
-            duplicating the raw event feed.
+            Las tarjetas de resumen deben complementar el módulo completo de bitácora en lugar de
+            duplicar el flujo de eventos sin procesar.
           </p>
 
           <div className="admin-surface-grid">
@@ -1346,8 +1346,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 <AppIcon name="admin" />
               </span>
               <div>
-                <h3>Privileged changes</h3>
-                <p>Recent role updates, suspensions, recovery actions, and system configuration changes.</p>
+                <h3>Cambios privilegiados</h3>
+                <p>Actualizaciones recientes de rol, suspensiones, acciones de recuperación y cambios de configuración del sistema.</p>
               </div>
             </article>
 
@@ -1356,8 +1356,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 <AppIcon name="key" />
               </span>
               <div>
-                <h3>Authentication risk</h3>
-                <p>Failed login spikes, passkey challenge failures, missing enrollment, and suspicious recovery activity.</p>
+                <h3>Riesgo de autenticación</h3>
+                <p>Picos de inicios fallidos, fallas de retos con llave de acceso, inscripción faltante y actividad sospechosa de recuperación.</p>
               </div>
             </article>
 
@@ -1366,8 +1366,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 <AppIcon name="document" />
               </span>
               <div>
-                <h3>Document trust</h3>
-                <p>Unsigned revisions, expired signatures, verification-package exports, and signing activity.</p>
+                <h3>Confianza documental</h3>
+                <p>Revisiones sin firma, firmas vencidas, exportaciones de paquetes de verificación y actividad de firma.</p>
               </div>
             </article>
 
@@ -1376,8 +1376,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 <AppIcon name="verify" />
               </span>
               <div>
-                <h3>Invite lifecycle</h3>
-                <p>Created, verified, issued, redeemed, expired, and revoked invitation activity.</p>
+                <h3>Ciclo de vida de invitaciones</h3>
+                <p>Actividad de invitaciones creadas, verificadas, emitidas, canjeadas, vencidas y revocadas.</p>
               </div>
             </article>
           </div>
@@ -1388,10 +1388,10 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
         <section className="workspace-panel" aria-label="Verification package signing key">
           <div className="admin-directory-toolbar">
             <div>
-              <h2 className="workspace-panel__title">Security Keys</h2>
+              <h2 className="workspace-panel__title">Llaves de seguridad</h2>
               <p className="workspace-panel__copy">
-                Published trust anchors and rotation controls for verification
-                packages. Compare the fingerprint with external review evidence.
+                Anclas de confianza publicadas y controles de rotación para paquetes
+                de verificación. Compara la huella con evidencia externa de revisión.
               </p>
             </div>
             <button
@@ -1401,7 +1401,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
               type="button"
             >
               <AppIcon name="refresh" size={18} />
-              {isSigningKeyLoading ? 'Refreshing...' : 'Refresh key'}
+              {isSigningKeyLoading ? 'Actualizando...' : 'Actualizar llave'}
             </button>
           </div>
 
@@ -1423,40 +1423,40 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
             <div className="admin-signing-key">
               <div className="admin-signing-key__facts">
                 <span>
-                  <small>Status</small>
-                  <strong>{signingKey.configured ? 'Configured' : 'No signing key'}</strong>
+                  <small>Estado</small>
+                  <strong>{signingKey.configured ? 'Configurada' : 'Sin llave de firma'}</strong>
                 </span>
                 <span>
-                  <small>Key ID</small>
-                  <strong>{signingKey.keyId || 'Not configured'}</strong>
+                  <small>ID de llave</small>
+                  <strong>{signingKey.keyId || 'No configurada'}</strong>
                 </span>
                 <span>
-                  <small>Algorithm</small>
+                  <small>Algoritmo</small>
                   <strong>{signingKey.algorithm}</strong>
                 </span>
                 <span>
-                  <small>Rotation</small>
-                  <strong>{signingKey.rotationSupported ? 'Available' : 'Manual only'}</strong>
+                  <small>Rotación</small>
+                  <strong>{signingKey.rotationSupported ? 'Disponible' : 'Solo manual'}</strong>
                 </span>
               </div>
 
               <div className="admin-signing-key__fingerprint">
-                <small>Public key SHA-256 fingerprint</small>
+                <small>Huella SHA-256 de llave pública</small>
                 <code>{formatFingerprint(signingKey.publicKeyFingerprint)}</code>
               </div>
 
               <ul className="admin-user-enrollment" aria-label="Package signing key state">
                 <li className={signingKey.privateKeyConfigured ? 'is-complete' : 'is-missing'}>
-                  Private key {signingKey.privateKeyConfigured ? 'configured' : 'missing'}
+                  Llave privada {signingKey.privateKeyConfigured ? 'configurada' : 'faltante'}
                 </li>
                 <li className={signingKey.publicKeyConfigured ? 'is-complete' : 'is-missing'}>
-                  Public key {signingKey.publicKeyConfigured ? 'configured' : 'missing'}
+                  Llave pública {signingKey.publicKeyConfigured ? 'configurada' : 'faltante'}
                 </li>
                 <li className={signingKey.envWritable ? 'is-complete' : 'is-missing'}>
-                  .env {signingKey.envWritable ? 'writable' : 'not writable'}
+                  .env {signingKey.envWritable ? 'escribible' : 'no escribible'}
                 </li>
                 <li className={signingKey.configCached ? 'is-missing' : 'is-complete'}>
-                  Config {signingKey.configCached ? 'cached' : 'live'}
+                  Configuración {signingKey.configCached ? 'en caché' : 'activa'}
                 </li>
               </ul>
 
@@ -1469,28 +1469,28 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 >
                   <AppIcon name="key" size={17} />
                   {isRotatingSigningKey
-                    ? 'Authenticating...'
+                    ? 'Autenticando...'
                     : signingKey.configured
-                      ? 'Rotate key'
-                      : 'Generate key'}
+                      ? 'Rotar llave'
+                      : 'Generar llave'}
                 </button>
                 <p className="admin-role-assignment__note">
                   {signingKey.configured
-                    ? 'Rotation is passkey-gated and writes a new keypair to '
-                    : 'Generation is passkey-gated and writes the first keypair to '}
+                    ? 'La rotación está protegida con llave de acceso y escribe un nuevo par de llaves en '
+                    : 'La generación está protegida con llave de acceso y escribe el primer par de llaves en '}
                   <code>.env</code>
                   {signingKey.configured
-                    ? '. Keep old fingerprints for previously exported packages.'
-                    : '. Exported packages will stay unsigned until this key exists.'}
+                    ? '. Conserva las huellas anteriores para paquetes exportados previamente.'
+                    : '. Los paquetes exportados permanecerán sin firma hasta que exista esta llave.'}
                 </p>
               </div>
 
               {!signingKey.configured && !signingKey.rotationSupported ? (
                 <div className="admin-signing-key__manual">
-                  <strong>Manual provisioning required</strong>
+                  <strong>Se requiere aprovisionamiento manual</strong>
                   <p>
-                    The app process cannot write <code>.env</code>, so generate the
-                    first package signing key from the API checkout and then clear config.
+                    El proceso de la app no puede escribir en <code>.env</code>, así que genera la
+                    primera llave de firma de paquetes desde el checkout de la API y luego limpia la configuración.
                   </p>
                   <pre><code>{getSigningKeyProvisionCommand(signingKey.keyId)}</code></pre>
                   <pre><code>php artisan optimize:clear</code></pre>
@@ -1498,7 +1498,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
               ) : null}
             </div>
           ) : (
-            <p className="workspace-panel__copy">Loading package signing key...</p>
+            <p className="workspace-panel__copy">Cargando llave de firma de paquetes...</p>
           )}
         </section>
       ) : null}
@@ -1507,9 +1507,9 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
         <section className="workspace-panel" aria-label="Signing trust ledger">
           <div className="admin-directory-toolbar">
             <div>
-              <h2 className="workspace-panel__title">Signing Trust</h2>
+              <h2 className="workspace-panel__title">Confianza de firma</h2>
               <p className="workspace-panel__copy">
-                Trace each signing-capable user to their document signatures, grouped by document and revision.
+                Rastrea cada usuario con capacidad de firma hasta sus firmas documentales, agrupadas por documento y revisión.
               </p>
             </div>
             <button
@@ -1519,7 +1519,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
               type="button"
             >
               <AppIcon name="refresh" size={18} />
-              {isSigningLedgerLoading ? 'Refreshing...' : 'Refresh ledger'}
+              {isSigningLedgerLoading ? 'Actualizando...' : 'Actualizar libro'}
             </button>
           </div>
 
@@ -1531,21 +1531,21 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
           ) : null}
 
           {isSigningLedgerLoading && signingLedger.length === 0 && signingLedgerDocuments.length === 0 ? (
-            <p className="workspace-panel__copy">Loading signing ledger...</p>
+            <p className="workspace-panel__copy">Cargando libro de firmas...</p>
           ) : null}
 
           {!isSigningLedgerLoading && signingLedger.length === 0 && signingLedgerDocuments.length === 0 && !signingLedgerError ? (
-            <p className="workspace-panel__copy">No signing ledger records found yet.</p>
+            <p className="workspace-panel__copy">Todavía no se encontraron registros en el libro de firmas.</p>
           ) : null}
 
           {signingLedger.length > 0 || signingLedgerDocuments.length > 0 ? (
             <div className="signing-ledger">
-              <div className="signing-ledger__graph-scroll" aria-label="Scrollable signing trust graph" tabIndex={0}>
+              <div className="signing-ledger__graph-scroll" aria-label="Gráfica desplazable de confianza de firma" tabIndex={0}>
                 <article className="signing-ledger__graph">
                   <div className="signing-ledger__graph-head" aria-hidden="true">
-                    <span>User</span>
-                    <span>Keys</span>
-                    <span>Document revisions</span>
+                    <span>Usuario</span>
+                    <span>Llaves</span>
+                    <span>Revisiones de documentos</span>
                   </div>
 
                   <div
@@ -1574,11 +1574,11 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                         />
                       ))}
                     </svg>
-                    <section className="signing-ledger__user-column" aria-label="Signing users">
+                    <section className="signing-ledger__user-column" aria-label="Usuarios firmantes">
                       {signingLedgerGraph.signerGroups.map(({ signer }) => (
                         <section
                           className="signing-ledger__user-node"
-                          aria-label={`${signer.name} signer`}
+                          aria-label={`${signer.name} firmante`}
                           data-signer-id={signer.id}
                           key={signer.id}
                           ref={(node) => setSigningUserNodeRef(String(signer.id), node)}
@@ -1595,14 +1595,14 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                           </div>
                           <div className="signing-ledger__signer-badges">
                             <RoleBadge role={signer.role} />
-                            <span>{signer.signatureCount} signatures</span>
+                            <span>{signer.signatureCount} firmas</span>
                           </div>
                         </section>
                       ))}
 
                     </section>
 
-                  <section className="signing-ledger__key-column" aria-label="Signature keys">
+                  <section className="signing-ledger__key-column" aria-label="Llaves de firma">
                       {signingLedgerGraph.signerGroups.map(({ edges, signer }) => {
                         const keyIdentifier = getSigningKeyIdentifier(edges)
 
@@ -1616,24 +1616,24 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                               '--signing-node-offset': `${signingLedgerNodeOffsets.key[String(signer.id)] ?? 0}px`,
                             } as CSSProperties}
                           >
-                            <strong>{signer.name} security key</strong>
-                            <span>passkey</span>
+                            <strong>Llave de seguridad de {signer.name}</strong>
+                            <span>llave de acceso</span>
                             <code>{signer.email}</code>
-                            <small title={keyIdentifier.title}>key id {keyIdentifier.label}</small>
-                            <small>{edges.length} signed revisions</small>
+                            <small title={keyIdentifier.title}>id de llave {keyIdentifier.label}</small>
+                            <small>{edges.length} revisiones firmadas</small>
                           </span>
                         )
                       })}
                   </section>
 
-                    <section className="signing-ledger__document-column" aria-label="Document revisions">
+                    <section className="signing-ledger__document-column" aria-label="Revisiones de documentos">
                       {signingLedgerGraph.documentGroups.map((documentGroup) => (
                         <article className="signing-ledger__document-group" key={documentGroup.id}>
                           <header className="signing-ledger__document-title">
                             <AppIcon name="document" size={18} />
                             <div>
                               <h4>{documentGroup.document.title}</h4>
-                              <p>Document #{documentGroup.document.id} · {documentGroup.document.status}</p>
+                              <p>Documento #{documentGroup.document.id} · {documentGroup.document.status}</p>
                             </div>
                           </header>
 
@@ -1646,7 +1646,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                                 ref={(node) => setSigningRevisionNodeRef(revisionGroup.id, node)}
                               >
                                 <summary>
-                                  <strong>Revision {revisionGroup.revision.revisionNumber}</strong>
+                                  <strong>Revisión {revisionGroup.revision.revisionNumber}</strong>
                                   <a
                                     className="signing-ledger__revision-link"
                                     href={getRevisionDocumentUrl(documentGroup.document.id, revisionGroup.revision.id)}
@@ -1660,18 +1660,18 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                                       onNavigate(getRevisionDocumentUrl(documentGroup.document.id, revisionGroup.revision.id))
                                     }}
                                   >
-                                    Open
+                                    Abrir
                                   </a>
                                 </summary>
                                 <div className="signing-ledger__revision-details">
-                                  <span>{revisionGroup.revision.originalFileName || 'No file name'}</span>
-                                  <code>{revisionGroup.revision.sha256?.slice(0, 16) || 'No hash'}</code>
+                                  <span>{revisionGroup.revision.originalFileName || 'Sin nombre de archivo'}</span>
+                                  <code>{revisionGroup.revision.sha256?.slice(0, 16) || 'Sin hash'}</code>
                                   <div className="signing-ledger__revision-meta">
                                     {revisionGroup.edges.map((revisionEdge) => (
                                       <span key={revisionEdge.id}>
                                         {revisionEdge.signer
-                                          ? `${revisionEdge.signer.name} · Signed ${formatOptionalDate(revisionEdge.signature?.signedAt)} · Expires ${formatOptionalDate(revisionEdge.signature?.expiresAt)}`
-                                          : `Unsigned · ${revisionEdge.revision.signatureStatus}`}
+                                          ? `${revisionEdge.signer.name} · Firmado ${formatOptionalDate(revisionEdge.signature?.signedAt)} · Vence ${formatOptionalDate(revisionEdge.signature?.expiresAt)}`
+                                          : `Sin firma · ${revisionEdge.revision.signatureStatus}`}
                                       </span>
                                     ))}
                                   </div>
@@ -1687,10 +1687,10 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
               </div>
 
               {signingLedgerGraph.unsignedSigners.length > 0 ? (
-                <section className="signing-ledger__unsigned" aria-label="Signing users without signatures">
+                <section className="signing-ledger__unsigned" aria-label="Usuarios firmantes sin firmas">
                   <header className="signing-ledger__unsigned-header">
-                    <h3>Signing-capable users without signatures</h3>
-                    <p>These accounts can sign after enrollment and permissions are complete, but have no signed revisions yet.</p>
+                    <h3>Usuarios con capacidad de firma sin firmas</h3>
+                    <p>Estas cuentas pueden firmar cuando completen inscripción y permisos, pero todavía no tienen revisiones firmadas.</p>
                   </header>
                   <div className="signing-ledger__unsigned-list">
                     {signingLedgerGraph.unsignedSigners.map((signer) => (
@@ -1704,7 +1704,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                         </div>
                         <div className="signing-ledger__signer-badges">
                           <RoleBadge role={signer.role} />
-                          <span>{signer.signatureCount} signatures</span>
+                          <span>{signer.signatureCount} firmas</span>
                         </div>
                       </article>
                     ))}
@@ -1712,14 +1712,14 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 </section>
               ) : null}
 
-              <section className="signing-ledger__compact" aria-label="Compact signing trust ledger">
+              <section className="signing-ledger__compact" aria-label="Libro compacto de confianza de firma">
                 {signingLedgerGraph.documentGroups.map((documentGroup) => (
                   <article className="signing-ledger__compact-document" key={documentGroup.id}>
                     <header className="signing-ledger__compact-title">
                       <AppIcon name="document" size={18} />
                       <div>
                         <h3>{documentGroup.document.title}</h3>
-                        <p>Document #{documentGroup.document.id} · {documentGroup.document.status}</p>
+                        <p>Documento #{documentGroup.document.id} · {documentGroup.document.status}</p>
                       </div>
                     </header>
 
@@ -1727,7 +1727,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                       {documentGroup.revisions.map((revisionGroup) => (
                         <details className="signing-ledger__compact-revision" key={revisionGroup.id}>
                           <summary>
-                            <strong>Revision {revisionGroup.revision.revisionNumber}</strong>
+                            <strong>Revisión {revisionGroup.revision.revisionNumber}</strong>
                             <a
                               className="signing-ledger__revision-link"
                               href={getRevisionDocumentUrl(documentGroup.document.id, revisionGroup.revision.id)}
@@ -1741,12 +1741,12 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                                 onNavigate(getRevisionDocumentUrl(documentGroup.document.id, revisionGroup.revision.id))
                               }}
                             >
-                              Open
+                              Abrir
                             </a>
                           </summary>
                           <div className="signing-ledger__compact-revision-details">
-                            <span>{revisionGroup.revision.originalFileName || 'No file name'}</span>
-                            <code>{revisionGroup.revision.sha256?.slice(0, 16) || 'No hash'}</code>
+                            <span>{revisionGroup.revision.originalFileName || 'Sin nombre de archivo'}</span>
+                            <code>{revisionGroup.revision.sha256?.slice(0, 16) || 'Sin hash'}</code>
                             <div className="signing-ledger__compact-signatures">
                               {revisionGroup.edges.map((revisionEdge) => (
                                 <span
@@ -1757,11 +1757,11 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                                     <>
                                       <strong>{revisionEdge.signer.name}</strong>
                                       <small>{revisionEdge.signer.email}</small>
-                                      <small>Signed {formatOptionalDate(revisionEdge.signature?.signedAt)} · Expires {formatOptionalDate(revisionEdge.signature?.expiresAt)}</small>
+                                      <small>Firmado {formatOptionalDate(revisionEdge.signature?.signedAt)} · Vence {formatOptionalDate(revisionEdge.signature?.expiresAt)}</small>
                                     </>
                                   ) : (
                                     <>
-                                      <strong>Unsigned</strong>
+                                      <strong>Sin firma</strong>
                                       <small>{revisionEdge.revision.signatureStatus}</small>
                                     </>
                                   )}
@@ -1781,12 +1781,12 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       ) : null}
 
       {activeTab === 'migrant-signing' ? (
-        <section className="workspace-panel" aria-label="Migrant signing trust ledger">
+        <section className="workspace-panel" aria-label="Libro de confianza de firma de migrantes">
           <div className="admin-directory-toolbar">
             <div>
-              <h2 className="workspace-panel__title">Migrant Signing Trust</h2>
+              <h2 className="workspace-panel__title">Confianza de firma de migrantes</h2>
               <p className="workspace-panel__copy">
-                Trace registration submissions, reviews, and decisions to the user and passkey that signed each action.
+                Rastrea envíos, revisiones y decisiones de registros hasta el usuario y la llave de acceso que firmaron cada acción.
               </p>
             </div>
             <button
@@ -1796,7 +1796,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
               type="button"
             >
               <AppIcon name="refresh" size={18} />
-              {isMigrantSigningLoading ? 'Refreshing...' : 'Refresh ledger'}
+              {isMigrantSigningLoading ? 'Actualizando...' : 'Actualizar libro'}
             </button>
           </div>
 
@@ -1808,16 +1808,16 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
           ) : null}
 
           {isMigrantSigningLoading && migrantSigningRegistrations.length === 0 ? (
-            <p className="workspace-panel__copy">Loading migrant signing ledger...</p>
+            <p className="workspace-panel__copy">Cargando libro de firma de migrantes...</p>
           ) : null}
 
           {!isMigrantSigningLoading && migrantSigningRegistrations.length === 0 && !migrantSigningError ? (
-            <p className="workspace-panel__copy">No migrant registrations found yet.</p>
+            <p className="workspace-panel__copy">Todavía no se encontraron registros de migrantes.</p>
           ) : null}
 
           {migrantSigningRegistrations.length > 0 ? (
             <div className="migrant-signing-ledger">
-              <section className="migrant-signing-ledger__signers" aria-label="Migrant registration signers">
+              <section className="migrant-signing-ledger__signers" aria-label="Firmantes de registros de migrantes">
                 {migrantSigningSigners.map((signer) => (
                   <article className="migrant-signing-ledger__signer" key={signer.id}>
                     <span className="signing-ledger__node-icon">
@@ -1829,13 +1829,13 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                     </div>
                     <div className="signing-ledger__signer-badges">
                       <RoleBadge role={signer.role} />
-                      <span>{signer.signatureCount} signatures</span>
+                      <span>{signer.signatureCount} firmas</span>
                     </div>
                   </article>
                 ))}
               </section>
 
-              <section className="migrant-signing-ledger__registrations" aria-label="Signed migrant registrations">
+              <section className="migrant-signing-ledger__registrations" aria-label="Registros de migrantes firmados">
                 {migrantSigningRegistrations.map((registration) => (
                   <details className={`migrant-signing-ledger__registration${registration.isPurged ? ' migrant-signing-ledger__registration--purged' : ''}`} key={registration.id}>
                     <summary>
@@ -1843,12 +1843,12 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                         <AppIcon name="sign" size={18} />
                         <span>
                           <strong>{registration.fullName}</strong>
-                          <small>Registration #{registration.id} · {formatLedgerLabel(registration.status)}</small>
+                          <small>Registro #{registration.id} · {formatLedgerLabel(registration.status)}</small>
                         </span>
                       </span>
                       <span className="migrant-signing-ledger__signature-count">
-                        {registration.isPurged ? <small>Purged {formatOptionalDate(registration.purgedAt)}</small> : null}
-                        {registration.signatures.length} signatures
+                        {registration.isPurged ? <small>Purgado {formatOptionalDate(registration.purgedAt)}</small> : null}
+                        {registration.signatures.length} firmas
                       </span>
                     </summary>
 
@@ -1857,20 +1857,20 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                         <article className="migrant-signing-ledger__signature" key={signature.id}>
                           <span className="migrant-signing-ledger__action">{formatLedgerLabel(signature.actionType)}</span>
                           <div className="migrant-signing-ledger__actor">
-                            <strong>{signature.actor?.name ?? 'Unknown signer'}</strong>
-                            <small>{signature.actor?.email ?? signature.actor?.role ?? 'Account unavailable'}</small>
+                            <strong>{signature.actor?.name ?? 'Firmante desconocido'}</strong>
+                            <small>{signature.actor?.email ?? signature.actor?.role ?? 'Cuenta no disponible'}</small>
                             {signature.actor ? <RoleBadge role={signature.actor.role} /> : null}
                           </div>
                           <div className="migrant-signing-ledger__key">
                             <span><AppIcon name="key" size={15} /> {signature.algorithm}</span>
                             <code title={signature.publicKeyRef ?? undefined}>
-                              {signature.publicKeyRef ? signature.publicKeyRef.slice(0, 24) : 'Key reference unavailable'}
+                              {signature.publicKeyRef ? signature.publicKeyRef.slice(0, 24) : 'Referencia de llave no disponible'}
                             </code>
                           </div>
                           <time>{formatOptionalDate(signature.verifiedAt)}</time>
                         </article>
                       )) : (
-                        <p className="workspace-panel__copy">This registration has no recorded signatures.</p>
+                        <p className="workspace-panel__copy">Este registro no tiene firmas registradas.</p>
                       )}
                     </div>
                   </details>
@@ -1883,12 +1883,12 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
 
       {activeTab === 'accounts' ? (
         <>
-          <section className="workspace-panel workspace-panel--account-directory" aria-label="Account directory">
+          <section className="workspace-panel workspace-panel--account-directory" aria-label="Directorio de cuentas">
             <div className="admin-directory-toolbar">
           <div>
-            <h2 className="workspace-panel__title">Account directory</h2>
+            <h2 className="workspace-panel__title">Directorio de cuentas</h2>
             <p className="workspace-panel__copy">
-              Role, enrollment, last sign-in, and status visibility for current accounts.
+              Visibilidad de rol, inscripción, último inicio de sesión y estado de las cuentas actuales.
             </p>
           </div>
           <button
@@ -1898,7 +1898,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
             type="button"
           >
             <AppIcon name="refresh" size={18} />
-            {isDirectoryLoading ? 'Refreshing...' : 'Refresh users'}
+            {isDirectoryLoading ? 'Actualizando...' : 'Actualizar usuarios'}
           </button>
         </div>
 
@@ -1923,7 +1923,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                       <p>{roleUpdateMessage}</p>
                       {passwordResetLink ? (
                         <p>
-                          Password reset link:{' '}
+                          Enlace para restablecer contraseña:{' '}
                           <a href={passwordResetLink}>{passwordResetLink}</a>
                         </p>
                       ) : null}
@@ -1932,11 +1932,11 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                 ) : null}
 
         {isDirectoryLoading && directory.length === 0 ? (
-          <p className="workspace-panel__copy">Loading account directory...</p>
+          <p className="workspace-panel__copy">Cargando directorio de cuentas...</p>
         ) : null}
 
         {!isDirectoryLoading && directory.length === 0 && !directoryError ? (
-          <p className="workspace-panel__copy">No accounts found yet.</p>
+          <p className="workspace-panel__copy">Todavía no se encontraron cuentas.</p>
         ) : null}
 
         <div className="admin-user-list">
@@ -1961,48 +1961,48 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
               <div className="admin-user-card__body">
                 <div className="admin-user-facts">
                   <span>
-                    <small>Role</small>
+                    <small>Rol</small>
                     <RoleBadge role={account.role} />
                   </span>
                   <span>
-                    <small>Devices</small>
+                    <small>Dispositivos</small>
                     <strong>{account.devices.count}</strong>
                   </span>
                   <span>
-                    <small>Last sign-in</small>
+                    <small>Último inicio de sesión</small>
                     <strong>{formatOptionalDate(account.lastSignInAt)}</strong>
                   </span>
                 </div>
 
-                <ul className="admin-user-enrollment" aria-label={`${account.name} enrollment state`}>
+                <ul className="admin-user-enrollment" aria-label={`Estado de inscripción de ${account.name}`}>
                   <li className={account.enrollment.isFullyEnrolled ? 'is-complete' : 'is-missing'}>
                     <strong>{getEnrollmentLabel(account)}</strong>
                     <span>
-                      TOTP {account.enrollment.enrolled.totp ? 'enabled' : 'missing'} · {account.enrollment.passkeyCount}{' '}
-                      {account.enrollment.passkeyCount === 1 ? 'passkey' : 'passkeys'}
+                      TOTP {account.enrollment.enrolled.totp ? 'activado' : 'faltante'} · {account.enrollment.passkeyCount}{' '}
+                      {account.enrollment.passkeyCount === 1 ? 'llave de acceso' : 'llaves de acceso'}
                     </span>
                   </li>
                   {account.status !== 'active' ? (
                     <li>
-                      Suspended {formatOptionalDate(account.suspendedAt)}
+                      Suspendida {formatOptionalDate(account.suspendedAt)}
                     </li>
                   ) : null}
                 </ul>
 
                 <div className="admin-user-devices">
-                  <small>Recent devices</small>
+                  <small>Dispositivos recientes</small>
                   {account.devices.recent.length > 0 ? (
-                    <ul aria-label={`${account.name} recent devices`}>
+                    <ul aria-label={`Dispositivos recientes de ${account.name}`}>
                       {account.devices.recent.map((device) => (
                         <li key={device.id}>
-                          <strong>{device.alias || 'Unknown browser'}</strong>
+                          <strong>{device.alias || 'Navegador desconocido'}</strong>
                           <span>#{device.deviceId}</span>
                           <span>{formatOptionalDate(device.lastLoginAt)}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p>No remembered devices yet.</p>
+                    <p>Todavía no hay dispositivos recordados.</p>
                   )}
                 </div>
               </div>
@@ -2010,7 +2010,7 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
               <div className="admin-user-actions">
                 <div className="admin-role-assignment">
                   <div>
-                    <label htmlFor={`role-${account.id}`}>Assign role</label>
+                    <label htmlFor={`role-${account.id}`}>Asignar rol</label>
                     <select
                       disabled={account.role === 'admin' || account.id === user.id || updatingRoleUserId === account.id}
                       id={`role-${account.id}`}
@@ -2045,16 +2045,16 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                     type="button"
                   >
                     <AppIcon name="verify" size={17} />
-                    {updatingRoleUserId === account.id ? 'Authenticating...' : 'Apply role'}
+                    {updatingRoleUserId === account.id ? 'Autenticando...' : 'Aplicar rol'}
                   </button>
                 </div>
                 {isCoordinatorPromotionBlocked(account, roleDraftByUserId) ? (
                   <p className="admin-role-assignment__note admin-role-assignment__note--warning">
-                    Coordinator promotion requires the target user to register a passkey first.
+                    La promoción a coordinación requiere que el usuario destino registre primero una llave de acceso.
                   </p>
                 ) : null}
 
-                <div className="admin-recovery-actions" aria-label={`${account.name} recovery and status controls`}>
+                <div className="admin-recovery-actions" aria-label={`Controles de recuperación y estado de ${account.name}`}>
                   <button
                     className="admin-recovery-actions__button"
                     disabled={
@@ -2068,8 +2068,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                   >
                     <AppIcon name="key" size={16} />
                     {recoveringUserId === account.id && recoveryAction === 'reset_totp'
-                      ? 'Authenticating...'
-                      : 'Reset TOTP'}
+                      ? 'Autenticando...'
+                      : 'Restablecer TOTP'}
                   </button>
                   <button
                     className="admin-recovery-actions__button"
@@ -2083,8 +2083,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                   >
                     <AppIcon name="keyReset" size={16} />
                     {recoveringUserId === account.id && recoveryAction === 'reset_password'
-                      ? 'Authenticating...'
-                      : 'Reset password'}
+                      ? 'Autenticando...'
+                      : 'Restablecer contraseña'}
                   </button>
                   <button
                     className="admin-recovery-actions__button admin-recovery-actions__button--destructive"
@@ -2099,8 +2099,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                   >
                     <AppIcon name="delete" size={16} />
                     {recoveringUserId === account.id && recoveryAction === 'revoke_passkeys'
-                      ? 'Authenticating...'
-                      : 'Revoke keys'}
+                      ? 'Autenticando...'
+                      : 'Revocar llaves'}
                   </button>
                   {account.status === 'active' ? (
                     <button
@@ -2115,8 +2115,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                     >
                       <AppIcon name="suspend" size={16} />
                       {updatingStatusUserId === account.id && statusAction === 'suspend'
-                        ? 'Authenticating...'
-                        : 'Suspend'}
+                        ? 'Autenticando...'
+                        : 'Suspender'}
                     </button>
                   ) : (
                     <button
@@ -2131,8 +2131,8 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
                     >
                       <AppIcon name="verify" size={16} />
                       {updatingStatusUserId === account.id && statusAction === 'reactivate'
-                        ? 'Authenticating...'
-                        : 'Reactivate'}
+                        ? 'Autenticando...'
+                        : 'Reactivar'}
                     </button>
                   )}
                 </div>
@@ -2140,13 +2140,13 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
 
               {account.status !== 'active' && account.suspensionReason ? (
                 <p className="admin-role-assignment__note">
-                  Suspension reason: {account.suspensionReason}
+                  Motivo de suspensión: {account.suspensionReason}
                 </p>
               ) : null}
 
               {account.role === 'admin' ? (
                 <p className="admin-role-assignment__note">
-                  Admin account role, recovery, and status changes are locked for the later hardened admin-account flow.
+                  Los cambios de rol, recuperación y estado de cuentas administradoras están bloqueados para el flujo reforzado posterior de cuentas administradoras.
                 </p>
               ) : null}
             </article>

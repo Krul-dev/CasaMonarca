@@ -95,12 +95,12 @@ describe('ArcoRequestForm', () => {
 
     render(<ArcoRequestForm entries={[entry]} onCreated={vi.fn()} user={user} />)
 
-    expect(screen.getByRole('option', { name: 'Access' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Rectification' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Cancellation' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'Opposition' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Acceso' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Rectificación' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Cancelación' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Oposición' })).not.toBeInTheDocument()
 
-    await browserUser.selectOptions(screen.getByLabelText('Registration'), '42')
+    await browserUser.selectOptions(screen.getByLabelText('Registro'), '42')
 
     expect(screen.getByText('Covered documents for registration 42')).toBeInTheDocument()
   })
@@ -110,16 +110,16 @@ describe('ArcoRequestForm', () => {
     vi.mocked(arco.startArcoRequest).mockRejectedValue(new Error('Authentication options failed.'))
     render(<ArcoRequestForm entries={[entry]} onCreated={vi.fn()} user={user} />)
 
-    await browserUser.selectOptions(screen.getByLabelText('Registration'), '42')
-    await browserUser.selectOptions(screen.getByLabelText('Right'), 'rectification')
-    await browserUser.type(screen.getByLabelText('Reason'), 'Correct the registered surname')
+    await browserUser.selectOptions(screen.getByLabelText('Registro'), '42')
+    await browserUser.selectOptions(screen.getByLabelText('Derecho'), 'rectification')
+    await browserUser.type(screen.getByLabelText('Motivo'), 'Correct the registered surname')
 
     expect(submitRectification).not.toBeNull()
     await act(async () => {
       await expect(submitRectification?.()).rejects.toThrow('Authentication options failed.')
     })
-    expect(screen.getByLabelText('Registration')).toHaveValue('42')
-    expect(screen.getByLabelText('Reason')).toHaveValue('Correct the registered surname')
+    expect(screen.getByLabelText('Registro')).toHaveValue('42')
+    expect(screen.getByLabelText('Motivo')).toHaveValue('Correct the registered surname')
   })
 
   it('requests and verifies a passkey before completing a rectification', async () => {
@@ -138,9 +138,9 @@ describe('ArcoRequestForm', () => {
     vi.mocked(arco.verifyArcoRequest).mockResolvedValue({ data: { id: 9 }, message: 'Rectification request submitted.' } as never)
     render(<ArcoRequestForm entries={[entry]} onCreated={onCreated} user={user} />)
 
-    await browserUser.selectOptions(screen.getByLabelText('Registration'), '42')
-    await browserUser.selectOptions(screen.getByLabelText('Right'), 'rectification')
-    await browserUser.type(screen.getByLabelText('Reason'), 'Correct the registered surname')
+    await browserUser.selectOptions(screen.getByLabelText('Registro'), '42')
+    await browserUser.selectOptions(screen.getByLabelText('Derecho'), 'rectification')
+    await browserUser.type(screen.getByLabelText('Motivo'), 'Correct the registered surname')
     await act(async () => { await submitRectification?.() })
 
     expect(webauthn.getWebauthnAssertion).toHaveBeenCalledTimes(1)

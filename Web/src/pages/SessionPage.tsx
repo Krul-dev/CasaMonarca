@@ -260,8 +260,8 @@ export function SessionPage({
         )
 
         newItems.slice(0, 3).forEach((item) => {
-          new Notification('Document ready to sign', {
-            body: `${item.document.title} is available for your signature.`,
+          new Notification('Documento listo para firmar', {
+            body: `${item.document.title} está disponible para tu firma.`,
             tag: `document-signature-${item.document.id}`,
           })
         })
@@ -347,7 +347,7 @@ export function SessionPage({
         return
       }
 
-      setMigrantCorrectionsError(error instanceof Error ? error.message : 'Unable to load migrant corrections.')
+      setMigrantCorrectionsError(error instanceof Error ? error.message : 'No se pudieron cargar las correcciones de migrantes.')
     } finally {
       setIsMigrantCorrectionsLoading(false)
     }
@@ -496,7 +496,7 @@ export function SessionPage({
     if (!window.isSecureContext || !('PublicKeyCredential' in window)) {
       setWebauthnResult({
         kind: 'error',
-        message: 'WebAuthn is only available in a secure context and supported browser.',
+        message: 'WebAuthn solo está disponible en un contexto seguro y un navegador compatible.',
       })
       return
     }
@@ -505,7 +505,7 @@ export function SessionPage({
       setWebauthnResult({
         kind: 'error',
         message:
-          'WebAuthn registration requires localhost or a domain name. Open this app from localhost or your staging domain.',
+          'El registro WebAuthn requiere localhost o un nombre de dominio. Abre esta app desde localhost o tu dominio de staging.',
       })
       return
     }
@@ -534,13 +534,13 @@ export function SessionPage({
       })
 
       if (!(credential instanceof PublicKeyCredential)) {
-        throw new Error('The security key did not return a valid WebAuthn credential.')
+        throw new Error('La llave de seguridad no devolvió una credencial WebAuthn válida.')
       }
 
       const response = credential.response
 
       if (!(response instanceof AuthenticatorAttestationResponse)) {
-        throw new Error('WebAuthn attestation response is not valid for registration.')
+        throw new Error('La respuesta de certificación WebAuthn no es válida para el registro.')
       }
 
       const attestationResponse = response as AuthenticatorAttestationResponse & {
@@ -555,7 +555,7 @@ export function SessionPage({
 
       if (!authenticatorData || !publicKey || typeof publicKeyAlgorithm !== 'number') {
         throw new Error(
-          'Your browser does not expose WebAuthn credential verification metadata. Update the browser and try again.',
+          'Tu navegador no expone los metadatos de verificación de credenciales WebAuthn. Actualiza el navegador e inténtalo de nuevo.',
         )
       }
 
@@ -586,9 +586,9 @@ export function SessionPage({
       const message =
         error instanceof Error
           ? error.name === 'NotAllowedError'
-            ? 'Security key registration was cancelled.'
+            ? 'Se canceló el registro de la llave de seguridad.'
             : error.message
-          : 'Security key registration failed.'
+          : 'Falló el registro de la llave de seguridad.'
 
       setWebauthnResult({
         kind: 'error',
@@ -626,7 +626,7 @@ export function SessionPage({
         message:
           error instanceof Error
             ? error.message
-            : 'Security key removal failed.',
+            : 'Falló la eliminación de la llave de seguridad.',
       })
     } finally {
       setRemovingCredentialId(null)
@@ -643,7 +643,7 @@ export function SessionPage({
       setTotpEnrollmentSecret(response.enrollment.secret)
       setTotpEnrollmentUri(response.enrollment.otpauthUri)
       setTotpEnrollmentQrError(null)
-      setTotpEnrollmentSuccess('TOTP setup secret created. Add it to your authenticator app, then verify the 6-digit code.')
+      setTotpEnrollmentSuccess('Se creó el secreto de configuración TOTP. Agrégalo a tu app de autenticación y verifica el código de 6 dígitos.')
     } catch (error) {
       if (error instanceof ApiRequestError && error.status === 401) {
         onSessionExpired?.()
@@ -653,7 +653,7 @@ export function SessionPage({
       setTotpEnrollmentError(
         error instanceof Error
           ? error.message
-          : 'Failed to create TOTP setup challenge.',
+          : 'No se pudo crear el reto de configuración TOTP.',
       )
     } finally {
       setTotpEnrollmentState('idle')
@@ -662,7 +662,7 @@ export function SessionPage({
 
   const handleTotpEnrollmentVerify = async () => {
     if (!/^\d{6}$/.test(totpEnrollmentCode.trim())) {
-      setTotpEnrollmentError('Use a valid 6-digit authentication code.')
+      setTotpEnrollmentError('Usa un código de autenticación válido de 6 dígitos.')
       setTotpEnrollmentSuccess(null)
       return
     }
@@ -692,7 +692,7 @@ export function SessionPage({
       setTotpEnrollmentError(
         error instanceof Error
           ? error.message
-          : 'TOTP verification failed.',
+          : 'Falló la verificación TOTP.',
       )
     } finally {
       setTotpEnrollmentState('idle')
@@ -701,15 +701,15 @@ export function SessionPage({
 
   return (
     <section className="workspace-stack">
-      <section className="workspace-panel" aria-label="Current session">
-        <h2 className="workspace-panel__title">Current session</h2>
+      <section className="workspace-panel" aria-label="Sesión actual">
+        <h2 className="workspace-panel__title">Sesión actual</h2>
         <ul className="route-checklist">
-          <li>Name: {user.name}</li>
-          <li>Email: {user.email}</li>
+          <li>Nombre: {user.name}</li>
+          <li>Correo: {user.email}</li>
           <li>
-            Role: <RoleBadge role={user.role} />
+            Rol: <RoleBadge role={user.role} />
           </li>
-          <li>User ID: {user.id}</li>
+          <li>ID de usuario: {user.id}</li>
         </ul>
 
         <div className="session-actions">
@@ -720,7 +720,7 @@ export function SessionPage({
             type="button"
           >
             <AppIcon name="logout" />
-            {logoutState === 'submitting' ? 'Signing out...' : 'Sign out'}
+            {logoutState === 'submitting' ? 'Cerrando sesión...' : 'Cerrar sesión'}
           </button>
         </div>
 
@@ -732,20 +732,20 @@ export function SessionPage({
       </section>
 
       {isSecurityEnrollmentPending ? (
-        <section className="workspace-panel workspace-panel--accent" aria-label="Security enrollment">
-          <h2 className="workspace-panel__title">Security enrollment required</h2>
+        <section className="workspace-panel workspace-panel--accent" aria-label="Inscripción de seguridad">
+          <h2 className="workspace-panel__title">Inscripción de seguridad requerida</h2>
           <p className="workspace-panel__copy">
-            Complete the required factors before accessing protected modules for this role.
+            Completa los factores requeridos antes de acceder a los módulos protegidos para este rol.
           </p>
           <ul className="route-checklist">
             {security.requires.totp ? (
               <li>
-                TOTP: {security.enrolled.totp ? 'enrolled' : 'missing'}
+                TOTP: {security.enrolled.totp ? 'inscrito' : 'faltante'}
               </li>
             ) : null}
             {security.requires.passkey ? (
               <li>
-                Passkey: {security.enrolled.passkey ? 'enrolled' : 'missing'}
+                Llave de acceso: {security.enrolled.passkey ? 'inscrita' : 'faltante'}
               </li>
             ) : null}
           </ul>
@@ -753,12 +753,12 @@ export function SessionPage({
       ) : null}
 
       {user.capabilities.modules.documents ? (
-        <section className="workspace-panel dashboard-signature-queue" aria-label="Pending signatures">
+        <section className="workspace-panel dashboard-signature-queue" aria-label="Firmas pendientes">
           <div className="dashboard-signature-queue__header">
             <div>
-              <h2 className="workspace-panel__title">Documents pending signature</h2>
+              <h2 className="workspace-panel__title">Documentos pendientes de firma</h2>
               <p className="workspace-panel__copy">
-                Queue of approved documents that are currently available for this session to sign.
+                Fila de documentos aprobados que esta sesión puede firmar actualmente.
               </p>
             </div>
             <div className="session-actions">
@@ -769,7 +769,7 @@ export function SessionPage({
                   type="button"
                 >
                   <AppIcon name="verify" />
-                  Enable notifications
+                  Activar notificaciones
                 </button>
               ) : null}
               <button
@@ -779,7 +779,7 @@ export function SessionPage({
                 type="button"
               >
                 <AppIcon name="refresh" />
-                {isSignatureQueueLoading ? 'Refreshing...' : 'Refresh queue'}
+                {isSignatureQueueLoading ? 'Actualizando...' : 'Actualizar fila'}
               </button>
             </div>
           </div>
@@ -792,23 +792,23 @@ export function SessionPage({
 
           {!isSignatureQueueLoading && pendingSignatureQueue.length === 0 && !signatureQueueError ? (
             <p className="workspace-panel__copy">
-              There are no documents available for your signature right now.
+              No hay documentos disponibles para tu firma en este momento.
             </p>
           ) : null}
 
           {assignedSignatureQueue.length > 0 ? (
-            <section className="signature-queue-section" aria-label="Assigned signatures">
-              <h3>For you to sign</h3>
+            <section className="signature-queue-section" aria-label="Firmas asignadas">
+              <h3>Para que firmes</h3>
               <div className="signature-queue-list">
                 {assignedSignatureQueue.map((item) => (
                   <article className="signature-queue-card" key={`assigned-${item.document.id}`}>
                     <div>
                       <strong>{item.document.title}</strong>
                       <span>
-                        {getPendingRequirementLabel(item.requirement)} · Revision{' '}
+                        {getPendingRequirementLabel(item.requirement)} · Revisión{' '}
                         {item.document.currentRevision?.revisionNumber ?? 'current'}
                       </span>
-                      <small>Ready since {formatDashboardDate(item.document.approval?.approvedAt)}</small>
+                      <small>Disponible desde {formatDashboardDate(item.document.approval?.approvedAt)}</small>
                     </div>
                     <button
                       className="session-action"
@@ -818,7 +818,7 @@ export function SessionPage({
                       type="button"
                     >
                       <AppIcon name="sign" />
-                      Open to sign
+                      Abrir para firmar
                     </button>
                   </article>
                 ))}
@@ -827,18 +827,18 @@ export function SessionPage({
           ) : null}
 
           {roleSignatureQueue.length > 0 ? (
-            <section className="signature-queue-section" aria-label="Role signatures">
-              <h3>For your role</h3>
+            <section className="signature-queue-section" aria-label="Firmas por rol">
+              <h3>Para tu rol</h3>
               <div className="signature-queue-list">
                 {roleSignatureQueue.map((item) => (
                   <article className="signature-queue-card" key={`role-${item.document.id}`}>
                     <div>
                       <strong>{item.document.title}</strong>
                       <span>
-                        {getPendingRequirementLabel(item.requirement)} · Revision{' '}
+                        {getPendingRequirementLabel(item.requirement)} · Revisión{' '}
                         {item.document.currentRevision?.revisionNumber ?? 'current'}
                       </span>
-                      <small>Ready since {formatDashboardDate(item.document.approval?.approvedAt)}</small>
+                      <small>Disponible desde {formatDashboardDate(item.document.approval?.approvedAt)}</small>
                     </div>
                     <button
                       className="session-action"
@@ -848,7 +848,7 @@ export function SessionPage({
                       type="button"
                     >
                       <AppIcon name="sign" />
-                      Open to sign
+                      Abrir para firmar
                     </button>
                   </article>
                 ))}
@@ -859,12 +859,12 @@ export function SessionPage({
       ) : null}
 
       {canReviewMigrantRegistrations(user.role) ? (
-        <section className="workspace-panel dashboard-signature-queue" aria-label="Pending migrant approvals">
+        <section className="workspace-panel dashboard-signature-queue" aria-label="Aprobaciones de migrantes pendientes">
           <div className="dashboard-signature-queue__header">
             <div>
-              <h2 className="workspace-panel__title">Migrant registrations pending review</h2>
+              <h2 className="workspace-panel__title">Registros de migrantes pendientes de revisión</h2>
               <p className="workspace-panel__copy">
-                Queue of submitted migrant registrations available for review before final coordinator approval.
+                Fila de registros de migrantes enviados y disponibles para revisión antes de la aprobación final de coordinación.
               </p>
             </div>
             <div className="session-actions">
@@ -875,7 +875,7 @@ export function SessionPage({
                 type="button"
               >
                 <AppIcon name="refresh" />
-                {isMigrantReviewQueueLoading ? 'Refreshing...' : 'Refresh queue'}
+                {isMigrantReviewQueueLoading ? 'Actualizando...' : 'Actualizar fila'}
               </button>
             </div>
           </div>
@@ -888,7 +888,7 @@ export function SessionPage({
 
           {!isMigrantReviewQueueLoading && pendingMigrantReviews.length === 0 && !migrantReviewQueueError ? (
             <p className="workspace-panel__copy">
-              There are no migrant registrations available for review right now.
+              No hay registros de migrantes disponibles para revisión en este momento.
             </p>
           ) : null}
 
@@ -901,9 +901,9 @@ export function SessionPage({
                     <span>
                       {entry.payload_json.countryOfOrigin
                         ? String(entry.payload_json.countryOfOrigin)
-                        : 'Country unavailable'}
+                        : 'País no disponible'}
                     </span>
-                    <small>Submitted {formatDashboardDate(entry.created_at)}</small>
+                    <small>Enviado {formatDashboardDate(entry.created_at)}</small>
                   </div>
                   <button
                     className="session-action"
@@ -911,7 +911,7 @@ export function SessionPage({
                     type="button"
                   >
                     <AppIcon name="verify" />
-                    Open review queue
+                    Abrir fila de revisión
                   </button>
                 </article>
               ))}
@@ -921,12 +921,12 @@ export function SessionPage({
       ) : null}
 
       {canApproveMigrantRegistrations(user.role) ? (
-        <section className="workspace-panel dashboard-signature-queue" aria-label="Pending migrant final approvals">
+        <section className="workspace-panel dashboard-signature-queue" aria-label="Aprobaciones finales de migrantes pendientes">
           <div className="dashboard-signature-queue__header">
             <div>
-              <h2 className="workspace-panel__title">Migrant registrations pending final approval</h2>
+              <h2 className="workspace-panel__title">Registros de migrantes pendientes de aprobación final</h2>
               <p className="workspace-panel__copy">
-                Reviewed registrations waiting for a coordinator/admin passkey decision.
+                Registros revisados en espera de una decisión con llave de acceso de coordinación/administración.
               </p>
             </div>
             <button
@@ -936,7 +936,7 @@ export function SessionPage({
               type="button"
             >
               <AppIcon name="refresh" />
-              {isMigrantApprovalQueueLoading ? 'Refreshing...' : 'Refresh queue'}
+              {isMigrantApprovalQueueLoading ? 'Actualizando...' : 'Actualizar fila'}
             </button>
           </div>
 
@@ -945,7 +945,7 @@ export function SessionPage({
           ) : null}
 
           {!isMigrantApprovalQueueLoading && pendingMigrantApprovals.length === 0 && !migrantApprovalQueueError ? (
-            <p className="workspace-panel__copy">There are no migrant registrations available for final approval right now.</p>
+            <p className="workspace-panel__copy">No hay registros de migrantes disponibles para aprobación final en este momento.</p>
           ) : null}
 
           {pendingMigrantApprovals.length > 0 ? (
@@ -954,12 +954,12 @@ export function SessionPage({
                 <article className="signature-queue-card" key={`migrant-approval-${entry.id}`}>
                   <div>
                     <strong>{getMigrantApprovalName(entry)}</strong>
-                    <span>{entry.payload_json.countryOfOrigin ? String(entry.payload_json.countryOfOrigin) : 'Country unavailable'}</span>
-                    <small>Submitted {formatDashboardDate(entry.created_at)}</small>
+                    <span>{entry.payload_json.countryOfOrigin ? String(entry.payload_json.countryOfOrigin) : 'País no disponible'}</span>
+                    <small>Enviado {formatDashboardDate(entry.created_at)}</small>
                   </div>
                   <button className="session-action" onClick={() => onNavigate(APP_MIGRANT_APPROVALS_PATH)} type="button">
                     <AppIcon name="verify" />
-                    Open approval queue
+                    Abrir fila de aprobación
                   </button>
                 </article>
               ))}
@@ -969,15 +969,15 @@ export function SessionPage({
       ) : null}
 
       {migrantCorrections.length > 0 || migrantCorrectionsError ? (
-        <section className="workspace-panel dashboard-signature-queue" aria-label="Migrant registrations needing corrections">
+        <section className="workspace-panel dashboard-signature-queue" aria-label="Registros de migrantes que requieren correcciones">
           <div className="dashboard-signature-queue__header">
             <div>
-              <h2 className="workspace-panel__title">Migrant registrations needing corrections</h2>
-              <p className="workspace-panel__copy">Review the feedback, correct the registration, and submit it for review again.</p>
+              <h2 className="workspace-panel__title">Registros de migrantes que requieren correcciones</h2>
+              <p className="workspace-panel__copy">Revisa los comentarios, corrige el registro y vuelve a enviarlo para revisión.</p>
             </div>
             <button className="session-action session-action--quiet" disabled={isMigrantCorrectionsLoading} onClick={() => void loadMigrantCorrections()} type="button">
               <AppIcon name="refresh" />
-              {isMigrantCorrectionsLoading ? 'Refreshing...' : 'Refresh queue'}
+              {isMigrantCorrectionsLoading ? 'Actualizando...' : 'Actualizar fila'}
             </button>
           </div>
 
@@ -993,12 +993,12 @@ export function SessionPage({
                 <article className="signature-queue-card" key={`migrant-correction-${entry.id}`}>
                   <div>
                     <strong>{getMigrantApprovalName(entry)}</strong>
-                    <span>{correction?.reason || 'Reviewer requested corrections before approval.'}</span>
-                    <small>Returned {formatDashboardDate(correction?.created_at ?? entry.updated_at)}</small>
+                    <span>{correction?.reason || 'La persona revisora solicitó correcciones antes de la aprobación.'}</span>
+                    <small>Devuelto {formatDashboardDate(correction?.created_at ?? entry.updated_at)}</small>
                   </div>
                   <button className="session-action" onClick={() => onNavigate(`${APP_MIGRANT_REGISTRY_PATH}?entryId=${entry.id}`)} type="button">
                     <AppIcon name="sign" />
-                    Correct registration
+                    Corregir registro
                   </button>
                 </article>
               )
@@ -1008,11 +1008,11 @@ export function SessionPage({
       ) : null}
 
       {isSecurityEnrollmentPending && security.requires.totp ? (
-        <section className="workspace-panel" aria-label="TOTP enrollment">
-          <h2 className="workspace-panel__title">TOTP enrollment</h2>
+        <section className="workspace-panel" aria-label="Inscripción TOTP">
+          <h2 className="workspace-panel__title">Inscripción TOTP</h2>
           <ul className="route-checklist">
-            <li>Generate a setup secret for your authenticator app.</li>
-            <li>Verify one 6-digit code to activate TOTP on this account.</li>
+            <li>Genera un secreto de configuración para tu app de autenticación.</li>
+            <li>Verifica un código de 6 dígitos para activar TOTP en esta cuenta.</li>
           </ul>
 
           <div className="session-actions">
@@ -1024,8 +1024,8 @@ export function SessionPage({
             >
               <AppIcon name="verify" />
               {totpEnrollmentState === 'loading'
-                ? 'Generating setup...'
-                : 'Generate TOTP setup'}
+                ? 'Generando configuración...'
+                : 'Generar configuración TOTP'}
             </button>
           </div>
 
@@ -1034,13 +1034,13 @@ export function SessionPage({
               {totpEnrollmentQrCode ? (
                 <figure className="totp-enrollment__qr">
                   <img
-                    alt="TOTP enrollment QR code"
+                    alt="Código QR de inscripción TOTP"
                     className="totp-enrollment__qr-image"
                     height={240}
                     src={totpEnrollmentQrCode}
                     width={240}
                   />
-                  <figcaption>Scan this QR code with your authenticator app.</figcaption>
+                  <figcaption>Escanea este código QR con tu app de autenticación.</figcaption>
                 </figure>
               ) : null}
 
@@ -1048,12 +1048,12 @@ export function SessionPage({
                 <p className="totp-enrollment__qr-error">{totpEnrollmentQrError}</p>
               ) : null}
 
-              <p><strong>Secret:</strong> <code>{totpEnrollmentSecret}</code></p>
+              <p><strong>Secreto:</strong> <code>{totpEnrollmentSecret}</code></p>
               {totpEnrollmentUri ? (
-                <p><strong>OTPAuth URI:</strong> <code>{totpEnrollmentUri}</code></p>
+                <p><strong>URI OTPAuth:</strong> <code>{totpEnrollmentUri}</code></p>
               ) : null}
               <label className="login-field">
-                <span className="login-field__label">Authenticator code</span>
+                <span className="login-field__label">Código de autenticación</span>
                 <input
                   className="login-field__input"
                   inputMode="numeric"
@@ -1073,8 +1073,8 @@ export function SessionPage({
                 >
                   <AppIcon name="sign" />
                   {totpEnrollmentState === 'verifying'
-                    ? 'Verifying code...'
-                    : 'Verify and enable TOTP'}
+                    ? 'Verificando código...'
+                    : 'Verificar y activar TOTP'}
                 </button>
               </div>
             </div>
@@ -1090,11 +1090,11 @@ export function SessionPage({
       ) : null}
 
       {supportsPasskeyEnrollment(user.role) ? (
-        <section className="workspace-panel" aria-label="Security key registration">
-          <h2 className="workspace-panel__title">Security keys (dev preview)</h2>
+        <section className="workspace-panel" aria-label="Registro de llave de seguridad">
+          <h2 className="workspace-panel__title">Llaves de seguridad (vista previa de desarrollo)</h2>
           <ul className="route-checklist">
-            <li>Register your FIDO2/WebAuthn key to the current account.</li>
-            <li>Once registered, this key can be used for passwordless sign-in.</li>
+            <li>Registra tu llave FIDO2/WebAuthn en la cuenta actual.</li>
+            <li>Una vez registrada, esta llave puede usarse para iniciar sesión sin contraseña.</li>
           </ul>
 
           <div className="session-actions">
@@ -1106,8 +1106,8 @@ export function SessionPage({
             >
               <AppIcon name="key" />
               {webauthnState === 'registering'
-                ? 'Registering key...'
-                : 'Register security key'}
+                ? 'Registrando llave...'
+                : 'Registrar llave de seguridad'}
             </button>
           </div>
 
@@ -1132,7 +1132,7 @@ export function SessionPage({
               {registeredCredentials.map((credential) => (
                 <li key={credential.id}>
                   <span>
-                    {credential.name ?? 'Security key'} ({credential.id.slice(0, 12)}...)
+                    {credential.name ?? 'Llave de seguridad'} ({credential.id.slice(0, 12)}...)
                   </span>
                   <button
                     className="session-action session-action--danger session-action--inline"
@@ -1143,14 +1143,14 @@ export function SessionPage({
                     type="button"
                   >
                     <AppIcon name="delete" />
-                    {removingCredentialId === credential.id ? 'Removing...' : 'Remove'}
+                    {removingCredentialId === credential.id ? 'Eliminando...' : 'Eliminar'}
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="workspace-panel__copy">
-              No security keys are registered for this account yet.
+              Todavía no hay llaves de seguridad registradas para esta cuenta.
             </p>
           )}
         </section>

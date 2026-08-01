@@ -226,7 +226,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
     let challengeIntentId: string | null = null
 
     try {
-      const reason = window.prompt('Optional review note')?.trim() || undefined
+      const reason = window.prompt('Nota de revisión opcional')?.trim() || undefined
       const optionsResponse = await startRegistryReview(entry.id, { reason })
       challengeIntentId = optionsResponse.challengeIntent.id
       const assertion = await getWebauthnAssertion(optionsResponse.options)
@@ -246,10 +246,10 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
 
       setReviewError(
         error instanceof Error && error.name === 'NotAllowedError'
-          ? 'Passkey review was cancelled.'
+          ? 'Se canceló la revisión con llave de acceso.'
           : error instanceof Error
             ? error.message
-            : 'Unable to forward the migrant registration for approval.',
+            : 'No se pudo enviar el registro de migrante a aprobación.',
       )
     } finally {
       setActionState(null)
@@ -257,7 +257,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
   }
 
   const handleReviewReturn = async (entry: RegistryEntry) => {
-    const reason = window.prompt('Required correction notes')?.trim()
+    const reason = window.prompt('Notas de corrección obligatorias')?.trim()
 
     if (!reason) {
       return
@@ -277,7 +277,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
         return
       }
 
-      setReviewError(error instanceof Error ? error.message : 'Unable to return the registration for corrections.')
+      setReviewError(error instanceof Error ? error.message : 'No se pudo devolver el registro para correcciones.')
     } finally {
       setActionState(null)
     }
@@ -291,7 +291,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
       return
     }
 
-    const reason = decision === 'reject' ? window.prompt('Rejection reason')?.trim() : undefined
+    const reason = decision === 'reject' ? window.prompt('Motivo de rechazo')?.trim() : undefined
 
     if (decision === 'reject' && !reason) {
       return
@@ -322,10 +322,10 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
 
       setApprovalError(
         error instanceof Error && error.name === 'NotAllowedError'
-          ? 'Passkey approval was cancelled.'
+          ? 'Se canceló la aprobación con llave de acceso.'
           : error instanceof Error
             ? error.message
-            : 'Unable to complete the approval decision.',
+            : 'No se pudo completar la decisión de aprobación.',
       )
     } finally {
       setActionState(null)
@@ -342,7 +342,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
 
     const entryIds = [...selectedApprovalIds].sort((left, right) => left - right)
 
-    if (entryIds.length === 0 || !window.confirm(`Approve ${entryIds.length} selected registrations?`)) {
+    if (entryIds.length === 0 || !window.confirm(`¿Aprobar ${entryIds.length} registros seleccionados?`)) {
       return
     }
 
@@ -372,10 +372,10 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
 
       setApprovalError(
         error instanceof Error && error.name === 'NotAllowedError'
-          ? 'Bulk passkey approval was cancelled.'
+          ? 'Se canceló la aprobación masiva con llave de acceso.'
           : error instanceof Error
             ? error.message
-            : 'Unable to approve the selected registrations.',
+            : 'No se pudieron aprobar los registros seleccionados.',
       )
     } finally {
       setIsBulkApproving(false)
@@ -387,21 +387,21 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
       <section className="workspace-panel dashboard-signature-queue">
         <div className="dashboard-signature-queue__header">
           <div>
-            <h2 className="workspace-panel__title">Registrations pending review</h2>
+            <h2 className="workspace-panel__title">Registros pendientes de revisión</h2>
             <p className="workspace-panel__copy">
-              Forward reviewed registrations with your passkey, or return them to the original submitter for correction.
+              Envía registros revisados con tu llave de acceso o devuélvelos a quien los envió para corrección.
             </p>
           </div>
           <button className="session-action session-action--quiet" disabled={isReviewsLoading} onClick={() => void refreshQueues()} type="button">
             <AppIcon name="refresh" />
-            {isReviewsLoading ? 'Refreshing...' : 'Refresh'}
+            {isReviewsLoading ? 'Actualizando...' : 'Actualizar'}
           </button>
         </div>
 
         {reviewError ? <div className="login-feedback login-feedback--error">{reviewError}</div> : null}
         {message ? <div className="login-feedback login-feedback--success">{message}</div> : null}
         {!isReviewsLoading && reviewEntries.length === 0 && !reviewError ? (
-          <p className="workspace-panel__copy">There are no migrant registrations pending review.</p>
+          <p className="workspace-panel__copy">No hay registros de migrantes pendientes de revisión.</p>
         ) : null}
 
         <div className="signature-queue-list">
@@ -413,17 +413,17 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
                 <div>
                   <strong>{formatEntryName(entry)}</strong>
                   <span>{formatEntrySubtitle(entry)}</span>
-                  <small>Submitted {new Date(entry.created_at).toLocaleString()} by {entry.creator?.email ?? entry.created_by_role}</small>
+                  <small>Enviado {new Date(entry.created_at).toLocaleString()} por {entry.creator?.email ?? entry.created_by_role}</small>
                   <details className="registry-approval-card__details"><summary>Ver cuestionario completo</summary><MigrantQuestionnaireViewer payload={getApprovalPayload(entry)} /></details>
                 </div>
                 <div className="registry-approval-card__actions">
                   <button className="session-action session-action--quiet" disabled={isBusy} onClick={() => void handleReviewReturn(entry)} type="button">
                     <AppIcon name="document" />
-                    {isBusy && actionState?.action === 'return' ? 'Returning...' : 'Request corrections'}
+                    {isBusy && actionState?.action === 'return' ? 'Devolviendo...' : 'Solicitar correcciones'}
                   </button>
                   <button className="session-action" disabled={isBusy} onClick={() => void handleReviewForward(entry)} type="button">
                     <AppIcon name="verify" />
-                    {isBusy && actionState?.action === 'forward' ? 'Forwarding...' : 'Forward to approval'}
+                    {isBusy && actionState?.action === 'forward' ? 'Enviando...' : 'Enviar a aprobación'}
                   </button>
                 </div>
               </article>
@@ -436,18 +436,18 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
         <section className="workspace-panel dashboard-signature-queue">
           <div className="dashboard-signature-queue__header">
             <div>
-              <h2 className="workspace-panel__title">Registrations pending final approval</h2>
-              <p className="workspace-panel__copy">Coordinator/admin decisions require the reviewer passkey.</p>
+              <h2 className="workspace-panel__title">Registros pendientes de aprobación final</h2>
+              <p className="workspace-panel__copy">Las decisiones de coordinación/administración requieren la llave de acceso de la persona revisora.</p>
             </div>
             <button className="session-action session-action--quiet" disabled={isApprovalsLoading} onClick={() => void refreshQueues()} type="button">
               <AppIcon name="refresh" />
-              {isApprovalsLoading ? 'Refreshing...' : 'Refresh'}
+              {isApprovalsLoading ? 'Actualizando...' : 'Actualizar'}
             </button>
           </div>
 
-          <div aria-label="Final approval filters" className="audit-controls registry-approval-filters">
+          <div aria-label="Filtros de aprobación final" className="audit-controls registry-approval-filters">
             <label className="audit-control">
-              <span>Queued from</span>
+              <span>En fila desde</span>
               <input
                 max={approvalDateTo || undefined}
                 onChange={(event) => {
@@ -460,7 +460,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
             </label>
 
             <label className="audit-control">
-              <span>Queued through</span>
+              <span>En fila hasta</span>
               <input
                 min={approvalDateFrom || undefined}
                 onChange={(event) => {
@@ -473,7 +473,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
             </label>
 
             <label className="audit-control">
-              <span>Request type</span>
+              <span>Tipo de solicitud</span>
               <select
                 onChange={(event) => {
                   setApprovalTypeFilter(event.target.value as 'all' | 'create' | 'update')
@@ -481,9 +481,9 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
                 }}
                 value={approvalTypeFilter}
               >
-                <option value="all">All requests</option>
-                <option value="create">New registrations</option>
-                <option value="update">Modifications</option>
+                <option value="all">Todas las solicitudes</option>
+                <option value="create">Nuevos registros</option>
+                <option value="update">Modificaciones</option>
               </select>
             </label>
 
@@ -493,7 +493,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
               onClick={clearApprovalFilters}
               type="button"
             >
-              Clear filters
+              Limpiar filtros
             </button>
           </div>
 
@@ -506,10 +506,10 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
                 ref={selectAllRef}
                 type="checkbox"
               />
-              <span>Select all filtered ({filteredApprovalEntries.length})</span>
+              <span>Seleccionar todos los filtrados ({filteredApprovalEntries.length})</span>
             </label>
             <span className="registry-bulk-approval-toolbar__count">
-              {selectedApprovalIds.size} selected
+              {selectedApprovalIds.size} seleccionados
             </span>
             <button
               className="session-action"
@@ -519,17 +519,17 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
             >
               <AppIcon name="verify" />
               {isBulkApproving
-                ? 'Approving selected...'
-                : `Approve selected (${selectedApprovalIds.size})`}
+                ? 'Aprobando seleccionados...'
+                : `Aprobar seleccionados (${selectedApprovalIds.size})`}
             </button>
           </div>
 
           {approvalError ? <div className="login-feedback login-feedback--error">{approvalError}</div> : null}
           {!isApprovalsLoading && approvalEntries.length === 0 && !approvalError ? (
-            <p className="workspace-panel__copy">There are no migrant registrations pending final approval.</p>
+            <p className="workspace-panel__copy">No hay registros de migrantes pendientes de aprobación final.</p>
           ) : null}
           {!isApprovalsLoading && approvalEntries.length > 0 && filteredApprovalEntries.length === 0 && !approvalError ? (
-            <p className="workspace-panel__copy">No pending registrations match the current filters.</p>
+            <p className="workspace-panel__copy">Ningún registro pendiente coincide con los filtros actuales.</p>
           ) : null}
 
           <div className="signature-queue-list">
@@ -541,7 +541,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
                 <article className={`signature-queue-card registry-approval-card${isSelected ? ' registry-approval-card--selected' : ''}`} key={entry.id}>
                   <label className="registry-approval-card__selector">
                     <input
-                      aria-label={`Select ${formatEntryName(entry)} for bulk approval`}
+                      aria-label={`Seleccionar ${formatEntryName(entry)} para aprobación masiva`}
                       checked={isSelected}
                       disabled={isBusy || isBulkApproving}
                       onChange={() => toggleApprovalSelection(entry.id)}
@@ -551,18 +551,18 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
                   <div>
                     <strong>{formatEntryName(entry)}</strong>
                     <span>{formatEntrySubtitle(entry)}</span>
-                    <span>{entry.pending_action === 'update' ? 'Modification' : 'New registration'}</span>
-                    <small>Queued {new Date(entry.updated_at).toLocaleString()} by {entry.creator?.email ?? entry.created_by_role}</small>
+                    <span>{entry.pending_action === 'update' ? 'Modificación' : 'Nuevo registro'}</span>
+                    <small>En fila {new Date(entry.updated_at).toLocaleString()} por {entry.creator?.email ?? entry.created_by_role}</small>
                     <details className="registry-approval-card__details"><summary>Ver cuestionario completo</summary><MigrantQuestionnaireViewer payload={getApprovalPayload(entry)} /></details>
                   </div>
                   <div className="registry-approval-card__actions">
                     <button className="session-action session-action--quiet" disabled={isBusy || isBulkApproving} onClick={() => void handleApprovalDecision(entry, 'reject')} type="button">
                       <AppIcon name="delete" />
-                      {isBusy && actionState?.action === 'reject' ? 'Rejecting...' : 'Reject'}
+                      {isBusy && actionState?.action === 'reject' ? 'Rechazando...' : 'Rechazar'}
                     </button>
                     <button className="session-action" disabled={isBusy || isBulkApproving} onClick={() => void handleApprovalDecision(entry, 'approve')} type="button">
                       <AppIcon name="verify" />
-                      {isBusy && actionState?.action === 'approve' ? 'Approving...' : 'Approve'}
+                      {isBusy && actionState?.action === 'approve' ? 'Aprobando...' : 'Aprobar'}
                     </button>
                   </div>
                 </article>

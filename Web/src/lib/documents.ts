@@ -509,7 +509,7 @@ const downloadBinary = async (path: string): Promise<ArrayBuffer> => {
       'message' in payload &&
       typeof payload.message === 'string'
         ? payload.message
-        : `Request failed with status ${response.status}`
+        : `La solicitud falló con el estado ${response.status}`
 
     throw new ApiRequestError(message, response.status)
   }

@@ -88,7 +88,7 @@ const concatBytes = (...parts: Uint8Array[]) => {
 
 const readDerLength = (bytes: Uint8Array, offset: number) => {
   if (offset >= bytes.length) {
-    throw new Error('Invalid DER signature length.')
+    throw new Error('La longitud de la firma DER no es válida.')
   }
 
   const firstByte = bytes[offset]
@@ -103,7 +103,7 @@ const readDerLength = (bytes: Uint8Array, offset: number) => {
   const lengthBytes = firstByte & 0x7f
 
   if (lengthBytes === 0 || lengthBytes > 4 || offset + 1 + lengthBytes > bytes.length) {
-    throw new Error('Invalid DER signature length.')
+    throw new Error('La longitud de la firma DER no es válida.')
   }
 
   let length = 0
@@ -128,7 +128,7 @@ const normalizeDerInteger = (bytes: Uint8Array, size: number) => {
   const value = bytes.slice(offset)
 
   if (value.length > size) {
-    throw new Error('Invalid DER integer size in signature.')
+    throw new Error('El tamaño del entero DER en la firma no es válido.')
   }
 
   const normalized = new Uint8Array(size)
@@ -143,7 +143,7 @@ const derEcdsaSignatureToRaw = (signature: Uint8Array, coordinateSize: number) =
   }
 
   if (signature.length < 8 || signature[0] !== 0x30) {
-    throw new Error('The ECDSA signature is not valid DER.')
+    throw new Error('La firma ECDSA no tiene un formato DER válido.')
   }
 
   const sequenceLength = readDerLength(signature, 1)
@@ -151,7 +151,7 @@ const derEcdsaSignatureToRaw = (signature: Uint8Array, coordinateSize: number) =
   const sequenceEnd = offset + sequenceLength.length
 
   if (sequenceEnd !== signature.length || offset >= sequenceEnd || signature[offset] !== 0x02) {
-    throw new Error('The ECDSA signature sequence is invalid.')
+    throw new Error('La secuencia de la firma ECDSA no es válida.')
   }
 
   const rLength = readDerLength(signature, offset + 1)
@@ -159,7 +159,7 @@ const derEcdsaSignatureToRaw = (signature: Uint8Array, coordinateSize: number) =
   const rEnd = rStart + rLength.length
 
   if (rEnd > sequenceEnd || rStart >= rEnd || rEnd >= sequenceEnd || signature[rEnd] !== 0x02) {
-    throw new Error('The ECDSA signature R component is invalid.')
+    throw new Error('El componente R de la firma ECDSA no es válido.')
   }
 
   const sLength = readDerLength(signature, rEnd + 1)
@@ -167,7 +167,7 @@ const derEcdsaSignatureToRaw = (signature: Uint8Array, coordinateSize: number) =
   const sEnd = sStart + sLength.length
 
   if (sEnd !== sequenceEnd || sStart >= sEnd) {
-    throw new Error('The ECDSA signature S component is invalid.')
+    throw new Error('El componente S de la firma ECDSA no es válido.')
   }
 
   const r = normalizeDerInteger(signature.slice(rStart, rEnd), coordinateSize)
@@ -236,7 +236,7 @@ const importPublicKey = async (
   const publicKeyAlgorithm = signature.credential.publicKeyAlgorithm
 
   if (!publicKey || publicKeyAlgorithm == null) {
-    throw new Error('The signature does not expose a public key for local verification.')
+    throw new Error('La firma no expone una llave pública para la verificación local.')
   }
 
   const spki = base64UrlToBytes(publicKey)
@@ -288,7 +288,7 @@ const importPublicKey = async (
       }
     }
     default:
-      throw new Error(`Unsupported public key algorithm: ${publicKeyAlgorithm}`)
+      throw new Error(`Algoritmo de llave pública no compatible: ${publicKeyAlgorithm}`)
   }
 }
 
@@ -305,7 +305,7 @@ const verifySignatureLocally = async (
     return {
       checks,
       message:
-        'This signature does not expose a complete verification bundle yet.',
+        'Esta firma todavía no expone un paquete de verificación completo.',
       signatureId: signature.id,
       verified: false,
     } satisfies LocalSignatureVerificationResult
@@ -343,7 +343,7 @@ const verifySignatureLocally = async (
     )
 
     if (authenticatorDataRaw.length < 37) {
-      throw new Error('Authenticator data is too short for local verification.')
+      throw new Error('Los datos del autenticador son demasiado cortos para la verificación local.')
     }
 
     const rpIdHash = authenticatorDataRaw.slice(0, 32)
@@ -373,8 +373,8 @@ const verifySignatureLocally = async (
     return {
       checks,
       message: verified
-        ? 'Signature verified locally against the downloaded revision.'
-        : 'One or more local verification checks failed.',
+        ? 'Firma verificada localmente contra la revisión descargada.'
+        : 'Falló una o más verificaciones locales.',
       signatureId: signature.id,
       verified,
     } satisfies LocalSignatureVerificationResult
@@ -384,7 +384,7 @@ const verifySignatureLocally = async (
       message:
         error instanceof Error
           ? error.message
-          : 'Local verification failed unexpectedly.',
+          : 'La verificación local falló inesperadamente.',
       signatureId: signature.id,
       verified: false,
     } satisfies LocalSignatureVerificationResult

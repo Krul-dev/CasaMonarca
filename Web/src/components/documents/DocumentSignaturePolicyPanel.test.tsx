@@ -93,10 +93,10 @@ describe('DocumentSignaturePolicyPanel', () => {
 
     fireEvent.click(
       await screen.findByRole('button', {
-        name: 'Add signature requirement',
+        name: 'Agregar requisito de firma',
       }),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Save policy' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar política' }))
 
     await waitFor(() =>
       expect(mockedUpdate).toHaveBeenCalledWith(9, 5, {
@@ -134,8 +134,8 @@ describe('DocumentSignaturePolicyPanel', () => {
     )
 
     expect(screen.getByText('Case Coordinator')).toBeInTheDocument()
-    expect(screen.getByText(/Completed/)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Save policy' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Completado/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Guardar política' })).not.toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 
@@ -156,16 +156,16 @@ describe('DocumentSignaturePolicyPanel', () => {
 
     fireEvent.click(
       await screen.findByRole('button', {
-        name: 'Add signature requirement',
+        name: 'Agregar requisito de firma',
       }),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Save policy' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar política' }))
 
     expect(
       await screen.findByText('The signature policy changed.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Requirement 1 role' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Reload policy' }))
+    expect(screen.getByRole('combobox', { name: 'Rol del requisito 1' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Recargar política' }))
     expect(onReload).toHaveBeenCalled()
   })
 })

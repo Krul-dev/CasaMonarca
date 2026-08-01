@@ -155,11 +155,11 @@ function NotFoundPage({ onNavigate }: { onNavigate: (to: string) => void }) {
   return (
     <main className="route-shell">
       <section className="route-card route-card--compact">
-        <p className="route-kicker">CasaMonarca</p>
-        <h1 className="route-title">Route pending</h1>
+        <p className="route-kicker">Casa Monarca</p>
+        <h1 className="route-title">Ruta pendiente</h1>
         <p className="route-copy">
-          This route does not exist in the web client yet. The current entry
-          point is the authenticated app shell or the sign-in screen.
+          Esta ruta todavía no existe en el cliente web. El punto de entrada
+          actual es la aplicación autenticada o la pantalla de inicio de sesión.
         </p>
         <a
           className="route-link"
@@ -169,7 +169,7 @@ function NotFoundPage({ onNavigate }: { onNavigate: (to: string) => void }) {
             onNavigate(LOGIN_PATH)
           }}
         >
-          Go to /login
+          Ir a /login
         </a>
       </section>
     </main>
@@ -180,10 +180,10 @@ function SessionBootstrapPage() {
   return (
     <main className="route-shell">
       <section className="route-card route-card--compact">
-        <p className="route-kicker">CasaMonarca</p>
-        <h1 className="route-title">Checking session</h1>
+        <p className="route-kicker">Casa Monarca</p>
+        <h1 className="route-title">Verificando sesión</h1>
         <p className="route-copy">
-          Restoring the current browser session before rendering the web client.
+          Restaurando la sesión actual del navegador antes de cargar el cliente web.
         </p>
       </section>
     </main>
@@ -204,9 +204,9 @@ function RedirectPage({
   return (
     <main className="route-shell">
       <section className="route-card route-card--compact">
-        <p className="route-kicker">CasaMonarca</p>
-        <h1 className="route-title">Redirecting</h1>
-        <p className="route-copy">Applying route guard rules...</p>
+        <p className="route-kicker">Casa Monarca</p>
+        <h1 className="route-title">Redirigiendo</h1>
+        <p className="route-copy">Aplicando reglas de protección de rutas...</p>
       </section>
     </main>
   )
@@ -359,12 +359,12 @@ function EnvironmentBadge() {
 
   return (
     <aside
-      aria-label={`Current app channel: ${appChannel}`}
+      aria-label={`Canal actual de la aplicación: ${appChannel}`}
       className="environment-badge"
     >
       <span aria-hidden="true" className="environment-badge__dot" />
       <span className="environment-badge__label">
-        {appChannel.toUpperCase()} branch
+        Rama {appChannel.toUpperCase()}
       </span>
     </aside>
   )
@@ -382,8 +382,8 @@ function DevRoleViewSwitcher({
   const selectedValue = roleOverride ?? DEV_ROLE_REAL_VALUE
 
   return (
-    <aside className="dev-role-switcher" aria-label="Development role mock switcher">
-      <p className="dev-role-switcher__label">Dev role view</p>
+    <aside className="dev-role-switcher" aria-label="Selector de rol simulado de desarrollo">
+      <p className="dev-role-switcher__label">Vista de rol dev</p>
       <select
         className="dev-role-switcher__select"
         onChange={(event) => {
@@ -400,13 +400,13 @@ function DevRoleViewSwitcher({
         }}
         value={selectedValue}
       >
-        <option value={DEV_ROLE_REAL_VALUE}>Real session ({actualRole})</option>
-        <option value="admin">Mock: admin</option>
-        <option value="coordinator">Mock: coordinator</option>
-        <option value="non_coordinator">Mock: non coordinator</option>
-        <option value="volunteer">Mock: volunteer</option>
+        <option value={DEV_ROLE_REAL_VALUE}>Sesión real ({actualRole})</option>
+        <option value="admin">Simulado: admin</option>
+        <option value="coordinator">Simulado: coordinación</option>
+        <option value="non_coordinator">Simulado: no coordinación</option>
+        <option value="volunteer">Simulado: voluntariado</option>
       </select>
-      <p className="dev-role-switcher__hint">UI mock only. Backend authorization is unchanged.</p>
+      <p className="dev-role-switcher__hint">Solo simula la interfaz. La autorización del backend no cambia.</p>
     </aside>
   )
 }
@@ -524,7 +524,7 @@ function App() {
           error:
             error instanceof Error
               ? error.message
-              : 'The current session could not be restored.',
+              : 'No se pudo restaurar la sesión actual.',
           status: 'unauthenticated',
           user: null,
         })
@@ -572,20 +572,20 @@ function App() {
     authState.error != null
       ? { message: authState.error, tone: 'offline' }
       : loginReason === LOGIN_REASON_SIGNED_OUT
-        ? { message: 'Session closed successfully.', tone: 'online' }
+        ? { message: 'Sesión cerrada correctamente.', tone: 'online' }
         : loginReason === LOGIN_REASON_SESSION_EXPIRED
           ? {
-              message: 'Session expired. Sign in again to continue.',
+              message: 'La sesión expiró. Inicia sesión de nuevo para continuar.',
               tone: 'offline',
             }
           : loginReason === LOGIN_REASON_REGISTERED
             ? {
-                message: 'Account created. Sign in to finish required security enrollment.',
+                message: 'Cuenta creada. Inicia sesión para completar el registro de seguridad requerido.',
                 tone: 'online',
               }
             : loginReason === LOGIN_REASON_PASSWORD_RESET
               ? {
-                  message: 'Password reset complete. Sign in with your new password.',
+                  message: 'Restablecimiento de contraseña completado. Inicia sesión con tu nueva contraseña.',
                   tone: 'online',
                 }
           : null

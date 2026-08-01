@@ -223,14 +223,14 @@ export function MigrantsRegistryPage({
     <section className="workspace-stack">
       <section className="workspace-panel">
         <h2 className="workspace-panel__title">
-          {isCorrection ? 'Correct registration' : isEditRequest ? 'Request registration edit' : 'Registration intake'}
+          {isCorrection ? 'Corregir registro' : isEditRequest ? 'Solicitar edición de registro' : 'Ingreso de registro'}
         </h2>
         <p className="workspace-panel__copy">
           {isCorrection
-            ? 'Address the reviewer feedback, then resubmit the registration for review.'
+            ? 'Atiende los comentarios de revisión y vuelve a enviar el registro para revisión.'
             : isEditRequest
-              ? 'Propose changes to the approved record. The current data remains active until the request completes review and final approval.'
-            : 'New submissions enter non-coordinator review before coordinator approval.'}
+              ? 'Propón cambios al registro aprobado. Los datos actuales permanecen activos hasta que la solicitud complete revisión y aprobación final.'
+            : 'Los nuevos envíos pasan por revisión de no coordinador antes de la aprobación de coordinación.'}
         </p>
 
         {!isCorrection && !isEditRequest && !isDraft ? (
@@ -242,7 +242,7 @@ export function MigrantsRegistryPage({
           </section>
         ) : null}
 
-        {isLoadingEntry ? <p className="workspace-panel__copy">Loading registration...</p> : null}
+        {isLoadingEntry ? <p className="workspace-panel__copy">Cargando registro...</p> : null}
         {error ? <div className="login-feedback login-feedback--error">{error}</div> : null}
 
         {!isLoadingEntry && (!requestedEntryId || isRequestedEntryReady) ? (
@@ -268,12 +268,12 @@ export function MigrantsRegistryPage({
             onSubmit={isRequestedEntryReady && !isDraft ? handleUpdateRequest : handleCreate}
             onDraftSaved={() => void loadDrafts()}
             onSaveDraft={!isCorrection && !isEditRequest ? handleSaveDraft : undefined}
-            submitLabel={isCorrection ? 'Resubmit registration' : isEditRequest ? 'Submit edit request' : 'Submit registration'}
+            submitLabel={isCorrection ? 'Reenviar registro' : isEditRequest ? 'Enviar solicitud de edición' : 'Enviar registro'}
             successMessage={isCorrection
-              ? 'Registration resubmitted for review.'
+              ? 'Registro reenviado para revisión.'
               : isEditRequest
-                ? 'Edit request submitted for review.'
-                : 'Registration submitted for review.'}
+                ? 'Solicitud de edición enviada para revisión.'
+                : 'Registro enviado para revisión.'}
           />
         ) : null}
       </section>

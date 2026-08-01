@@ -10,11 +10,11 @@ export function ForbiddenPage({ onNavigate, role }: ForbiddenPageProps) {
   return (
     <main className="route-shell">
       <section className="route-card route-card--compact">
-        <p className="route-kicker">CasaMonarca</p>
-        <h1 className="route-title">Access forbidden</h1>
+        <p className="route-kicker">Casa Monarca</p>
+        <h1 className="route-title">Acceso denegado</h1>
         <p className="route-copy">
-          Your current role (<RoleBadge role={role} />) does not have permission to
-          access this area.
+          Tu rol actual (<RoleBadge role={role} />) no tiene permiso para
+          acceder a esta área.
         </p>
         <a
           className="route-link"
@@ -24,7 +24,7 @@ export function ForbiddenPage({ onNavigate, role }: ForbiddenPageProps) {
             onNavigate('/app')
           }}
         >
-          Go to /app
+          Ir a /app
         </a>
       </section>
     </main>

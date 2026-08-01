@@ -174,7 +174,7 @@ const normalizeAuditEventListResponse = (
 
   return {
     events: rawEvents.map(normalizeAuditEvent),
-    message: asString(response.message, 'Audit events loaded successfully.'),
+    message: asString(response.message, 'Eventos de auditoría cargados correctamente.'),
     pagination: normalizePagination(response.pagination, response.meta, query),
   }
 }

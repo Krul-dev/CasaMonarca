@@ -42,8 +42,8 @@ const ROUTE_ICONS: Record<string, AppIconName> = {
 }
 
 const WORKSPACE_LABELS: Record<AppWorkspace, string> = {
-  internal: 'Internal workspace',
-  migrant: 'Migrant workspace',
+  internal: 'Espacio interno',
+  migrant: 'Espacio de migrantes',
 }
 
 type AppShellPageProps = {
@@ -164,18 +164,18 @@ export function AppShellPage({
       <aside className="workspace-sidebar">
         <div className="workspace-sidebar__brand">
           <p className="workspace-sidebar__eyebrow">Casa Monarca</p>
-          <h1 className="workspace-sidebar__title">Access Control workspace</h1>
+          <h1 className="workspace-sidebar__title">Espacio de control de acceso</h1>
           <p className="workspace-sidebar__copy">
-            Role-aware shell for the first document, history, logging, and admin modules.
+            Entorno por rol para los módulos de documentos, historial, bitácora y administración.
           </p>
         </div>
 
         <section className="workspace-sidebar__role">
-          <span className="workspace-sidebar__role-label">Current role</span>
+          <span className="workspace-sidebar__role-label">Rol actual</span>
           <RoleBadge className="workspace-sidebar__role-value" role={user.role} />
         </section>
 
-        <nav aria-label="App navigation" className="workspace-nav">
+        <nav aria-label="Navegación de la aplicación" className="workspace-nav">
           {(['internal', 'migrant'] as AppWorkspace[]).map((workspace) => {
             const routes = groupedRoutes[workspace]
 

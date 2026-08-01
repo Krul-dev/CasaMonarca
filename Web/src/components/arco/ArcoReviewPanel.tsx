@@ -9,7 +9,7 @@ export function ArcoReviewPanel({ requestId }: Props) {
       <p>Solicitud #{requestId}</p>
       <button type="button">Aprobar</button>
       <button type="button">Rechazar</button>
-      <button type="button">Escalar a admin</button>
+      <button type="button">Escalar a administración</button>
     </div>
   )
 }

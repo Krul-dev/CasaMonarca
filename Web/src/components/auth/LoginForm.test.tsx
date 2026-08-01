@@ -64,7 +64,7 @@ const user = {
   role: 'admin' as const,
 }
 
-const loginButtonLabel = 'Sign in'
+const loginButtonLabel = 'Iniciar sesión'
 
 describe('LoginForm', () => {
   afterEach(() => {
@@ -88,9 +88,9 @@ describe('LoginForm', () => {
     )
 
     expect(
-      await screen.findByText('Enter your institutional email.'),
+      await screen.findByText('Ingresa tu correo institucional.'),
     ).toBeInTheDocument()
-    expect(await screen.findByText('Enter your password.')).toBeInTheDocument()
+    expect(await screen.findByText('Ingresa tu contraseña.')).toBeInTheDocument()
     expect(loginMock).not.toHaveBeenCalled()
   })
 
@@ -106,16 +106,16 @@ describe('LoginForm', () => {
 
     render(<LoginForm />)
 
-    await userInteraction.type(screen.getByLabelText('Email'), credentials.email)
+    await userInteraction.type(screen.getByLabelText('Correo electrónico'), credentials.email)
     await userInteraction.type(
-      screen.getByLabelText('Password'),
+      screen.getByLabelText('Contraseña'),
       credentials.password,
     )
     await userInteraction.click(
       screen.getByRole('button', { name: loginButtonLabel }),
     )
 
-    const submitButton = screen.getByRole('button', { name: 'Testing...' })
+    const submitButton = screen.getByRole('button', { name: 'Verificando...' })
     expect(submitButton).toBeDisabled()
 
     resolveLogin?.({
@@ -143,9 +143,9 @@ describe('LoginForm', () => {
 
     render(<LoginForm />)
 
-    await userInteraction.type(screen.getByLabelText('Email'), credentials.email)
+    await userInteraction.type(screen.getByLabelText('Correo electrónico'), credentials.email)
     await userInteraction.type(
-      screen.getByLabelText('Password'),
+      screen.getByLabelText('Contraseña'),
       credentials.password,
     )
     await userInteraction.click(
@@ -173,9 +173,9 @@ describe('LoginForm', () => {
 
     render(<LoginForm onAuthenticated={onAuthenticated} />)
 
-    await userInteraction.type(screen.getByLabelText('Email'), credentials.email)
+    await userInteraction.type(screen.getByLabelText('Correo electrónico'), credentials.email)
     await userInteraction.type(
-      screen.getByLabelText('Password'),
+      screen.getByLabelText('Contraseña'),
       credentials.password,
     )
     await userInteraction.click(
@@ -204,26 +204,26 @@ describe('LoginForm', () => {
 
     render(<LoginForm onAuthenticated={onAuthenticated} />)
 
-    await userInteraction.type(screen.getByLabelText('Email'), credentials.email)
+    await userInteraction.type(screen.getByLabelText('Correo electrónico'), credentials.email)
     await userInteraction.type(
-      screen.getByLabelText('Password'),
+      screen.getByLabelText('Contraseña'),
       credentials.password,
     )
     await userInteraction.click(
       screen.getByRole('button', { name: loginButtonLabel }),
     )
 
-    expect(await screen.findByText('Two-factor verification')).toBeInTheDocument()
+    expect(await screen.findByText('Verificación de dos factores')).toBeInTheDocument()
     expect(
       await screen.findByText('Two-factor authentication code is required.'),
     ).toBeInTheDocument()
 
     await userInteraction.type(
-      screen.getByLabelText('Authentication code'),
+      screen.getByLabelText('Código de autenticación'),
       '123456',
     )
     await userInteraction.click(
-      screen.getByRole('button', { name: 'Verify code' }),
+      screen.getByRole('button', { name: 'Verificar código' }),
     )
 
     await waitFor(() => {
@@ -297,9 +297,9 @@ describe('LoginForm', () => {
 
     render(<LoginForm onAuthenticated={onAuthenticated} />)
 
-    await userInteraction.type(screen.getByLabelText('Email'), credentials.email)
+    await userInteraction.type(screen.getByLabelText('Correo electrónico'), credentials.email)
     await userInteraction.click(
-      screen.getByRole('button', { name: 'Sign in with security key' }),
+      screen.getByRole('button', { name: 'Iniciar sesión con llave de seguridad' }),
     )
 
     await waitFor(() => {
