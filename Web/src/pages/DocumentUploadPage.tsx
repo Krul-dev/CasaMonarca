@@ -1,3 +1,4 @@
+import { translate as t } from '../lib/i18n'
 import { useRef, useState } from 'react'
 
 import { AppIcon } from '../components/ui/AppIcon'
@@ -48,11 +49,11 @@ export function DocumentUploadPage({
       setSelectedFile(null)
       setFieldErrors((current) => ({
         ...current,
-        file: `Elige un archivo menor a ${MAX_DOCUMENT_UPLOAD_LABEL}.`,
+        file: t(`Choose a file smaller than ${MAX_DOCUMENT_UPLOAD_LABEL}.`, `Elige un archivo menor a ${MAX_DOCUMENT_UPLOAD_LABEL}.`),
       }))
       setFeedback({
         kind: 'error',
-        message: `Este documento es demasiado grande. El límite de carga es ${MAX_DOCUMENT_UPLOAD_LABEL}.`,
+        message: t(`This document is too large. The upload limit is ${MAX_DOCUMENT_UPLOAD_LABEL}.`, `Este documento es demasiado grande. El límite de carga es ${MAX_DOCUMENT_UPLOAD_LABEL}.`),
       })
       return
     }
@@ -124,9 +125,9 @@ export function DocumentUploadPage({
     const nextFieldErrors: { file?: string; title?: string } = {}
 
     if (!selectedFile) {
-      nextFieldErrors.file = 'Elige un archivo de documento antes de enviar.'
+      nextFieldErrors.file = t("Choose a document file before submitting.", "Elige un archivo de documento antes de enviar.")
     } else if (selectedFile.size > MAX_DOCUMENT_UPLOAD_BYTES) {
-      nextFieldErrors.file = `Elige un archivo menor a ${MAX_DOCUMENT_UPLOAD_LABEL}.`
+      nextFieldErrors.file = t(`Choose a file smaller than ${MAX_DOCUMENT_UPLOAD_LABEL}.`, `Elige un archivo menor a ${MAX_DOCUMENT_UPLOAD_LABEL}.`)
     }
 
     setFieldErrors(nextFieldErrors)
@@ -170,10 +171,10 @@ export function DocumentUploadPage({
         kind: 'error',
         message:
           error instanceof ApiRequestError && error.status === 413
-            ? `Este documento supera el límite de carga del servidor. Usa un archivo menor a ${MAX_DOCUMENT_UPLOAD_LABEL}.`
+            ? t(`This document is too large for the server upload limit. Use a file smaller than ${MAX_DOCUMENT_UPLOAD_LABEL}.`, `Este documento supera el límite de carga del servidor. Usa un archivo menor a ${MAX_DOCUMENT_UPLOAD_LABEL}.`)
             : error instanceof Error
               ? error.message
-              : 'No se pudo cargar el documento.',
+              : t("The document could not be uploaded.", "No se pudo cargar el documento."),
       })
     } finally {
       setIsSubmitting(false)
@@ -183,17 +184,17 @@ export function DocumentUploadPage({
   return (
     <section className="workspace-stack">
       <section className="workspace-panel">
-        <h2 className="workspace-panel__title">Cargar un documento confidencial</h2>
+        <h2 className="workspace-panel__title">{t("Upload a confidential document", "Cargar un documento confidencial")}</h2>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="login-form__fields">
             <label className="login-field">
-              <span className="login-field__label">Título del documento</span>
+              <span className="login-field__label">{t("Document title", "Título del documento")}</span>
               <input
                 className="login-field__input"
                 name="title"
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="Opcional. Usa el nombre del archivo si se deja vacío."
+                placeholder={t("Optional. Defaults to the file name.", "Opcional. Usa el nombre del archivo si se deja vacío.")}
                 type="text"
                 value={title}
               />
@@ -211,7 +212,7 @@ export function DocumentUploadPage({
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
-              <span className="login-field__label">Archivo</span>
+              <span className="login-field__label">{t("File", "Archivo")}</span>
               <input
                 key={fileInputKey}
                 className="login-field__input upload-dropzone__input"
@@ -221,20 +222,18 @@ export function DocumentUploadPage({
               />
               <span className="upload-dropzone__surface">
                 <strong className="upload-dropzone__headline">
-                  {isDragActive ? 'Suelta para adjuntar el documento' : 'Arrastra y suelta un archivo aquí'}
+                  {isDragActive ? t("Release to attach the document", "Suelta para adjuntar el documento") : t("Drag and drop a file here", "Arrastra y suelta un archivo aquí")}
                 </strong>
                 <span className="upload-dropzone__copy">
-                  O haz clic para buscar en tu equipo.
-                </span>
+                  {t("Or click to browse the local file system. ", "O haz clic para buscar en tu equipo. ")}</span>
               </span>
               {selectedFile ? (
                 <span className="upload-form__hint">
-                  Archivo seleccionado: {selectedFile.name}
+                  {t("Selected file: ", "Archivo seleccionado: ")}{selectedFile.name}
                 </span>
               ) : (
                 <span className="upload-form__hint">
-                  Se aceptan archivos de hasta {MAX_DOCUMENT_UPLOAD_LABEL} como evidencia confidencial de ingreso.
-                </span>
+                  {t("Accepted up to ", "Se aceptan archivos de hasta ")}{MAX_DOCUMENT_UPLOAD_LABEL} {t("as a confidential intake artifact. ", "como evidencia confidencial de ingreso. ")}</span>
               )}
               {fieldErrors.file ? (
                 <span className="login-field__error">{fieldErrors.file}</span>
@@ -244,7 +243,7 @@ export function DocumentUploadPage({
 
           <button className="login-submit" disabled={isSubmitting} type="submit">
             <AppIcon name="upload" />
-            {isSubmitting ? 'Cargando documento...' : 'Cargar documento'}
+            {isSubmitting ? t("Uploading document...", "Cargando documento...") : t("Upload document", "Cargar documento")}
           </button>
         </form>
 
@@ -262,28 +261,28 @@ export function DocumentUploadPage({
       </section>
 
       <section className="workspace-panel workspace-panel--accent">
-        <h2 className="workspace-panel__title">Política actual de recepción</h2>
+        <h2 className="workspace-panel__title">{t("Current intake policy", "Política actual de recepción")}</h2>
         <ul className="route-checklist">
-          <li>Todos los roles pueden cargar un documento.</li>
-          <li>Las cargas quedan disponibles de inmediato en el espacio de documentos.</li>
-          <li>La persona que carga el archivo queda como propietaria inicial.</li>
-          <li>Los archivos se guardan en el disco privado, fuera de la raíz pública.</li>
+          <li>{t("Every role can upload a document.", "Todos los roles pueden cargar un documento.")}</li>
+          <li>{t("Uploads are immediately available in the document workspace.", "Las cargas quedan disponibles de inmediato en el espacio de documentos.")}</li>
+          <li>{t("The uploader becomes the initial owner.", "La persona que carga el archivo queda como propietaria inicial.")}</li>
+          <li>{t("Files are stored outside the public web root on the private disk.", "Los archivos se guardan en el disco privado, fuera de la raíz pública.")}</li>
         </ul>
       </section>
 
       {feedback?.kind === 'success' ? (
         <section className="workspace-panel">
-          <h2 className="workspace-panel__title">Carga registrada</h2>
+          <h2 className="workspace-panel__title">{t("Upload registered", "Carga registrada")}</h2>
           <ul className="route-checklist">
-            <li>Documento: {feedback.document.title}</li>
-            <li>Estado: Disponible en VCS</li>
+            <li>{t("Document: ", "Documento: ")}{feedback.document.title}</li>
+            <li>{t("Status: Available in VCS", "Estado: Disponible en VCS")}</li>
             <li>
-              Revisión actual:{' '}
-              {feedback.document.currentRevision?.revisionNumber ?? 'No disponible'}
+              {t("Current revision:", "Versión actual:")}{' '}
+              {feedback.document.currentRevision?.revisionNumber ?? t("Not available", "No disponible")}
             </li>
             <li>
               SHA-256:{' '}
-              {feedback.document.currentRevision?.sha256 ?? 'No disponible'}
+              {feedback.document.currentRevision?.sha256 ?? t("Not available", "No disponible")}
             </li>
           </ul>
 
@@ -299,8 +298,7 @@ export function DocumentUploadPage({
                 type="button"
               >
                 <AppIcon name="document" />
-                Abrir espacio de documentos
-              </button>
+                {t("Open document workspace ", "Abrir espacio de documentos ")}</button>
             </div>
           ) : null}
         </section>

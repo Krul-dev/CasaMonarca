@@ -1,3 +1,4 @@
+import { translate as t } from './i18n'
 import { apiFetch } from './api'
 
 export type AuditEventActor = {
@@ -174,7 +175,7 @@ const normalizeAuditEventListResponse = (
 
   return {
     events: rawEvents.map(normalizeAuditEvent),
-    message: asString(response.message, 'Eventos de auditoría cargados correctamente.'),
+    message: asString(response.message, t("Audit events loaded successfully.", "Eventos de auditoría cargados correctamente.")),
     pagination: normalizePagination(response.pagination, response.meta, query),
   }
 }

@@ -107,6 +107,20 @@ class RequireSecurityEnrollmentTest extends TestCase
             ]);
     }
 
+    public function test_volunteer_without_totp_is_blocked_from_migrant_workspace_endpoints(): void
+    {
+        $volunteer = User::factory()->create([
+            'role' => UserRole::Volunteer->value,
+            'two_factor_enabled' => false,
+            'two_factor_secret' => null,
+        ]);
+
+        $this->actingAs($volunteer)
+            ->getJson('/registry/migrants/questionnaires/current')
+            ->assertForbidden()
+            ->assertJsonPath('error.code', 'security_enrollment_required');
+    }
+
     public function test_coordinator_with_totp_and_passkey_can_access_protected_modules(): void
     {
         $coordinator = User::factory()->create([

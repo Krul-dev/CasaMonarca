@@ -1,3 +1,4 @@
+import { translate as t } from './i18n'
 import { ApiRequestError, apiFetch, buildApiUrl } from './api'
 import type { WebauthnLoginAssertionPayload, WebauthnLoginOptions } from './auth'
 import { getCsrfToken } from './csrf'
@@ -79,7 +80,7 @@ export async function verifyMigrantDocumentDownload(
     const payload = await response.json().catch(() => null) as { message?: unknown } | null
     const message = typeof payload?.message === 'string'
       ? payload.message
-      : `La solicitud falló con el estado ${response.status}`
+      : t(`Request failed with status ${response.status}`, `La solicitud falló con el estado ${response.status}`)
 
     throw new ApiRequestError(message, response.status)
   }

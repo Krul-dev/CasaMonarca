@@ -25,7 +25,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
         $entry = $this->entry($volunteer);
         MigrantRegistryDocument::query()->create($this->documentAttributes($entry, $volunteer));
 
-        $this->actingAs($volunteer)
+        $this->actingAsEnrolled($volunteer)
             ->getJson("/registry/migrants/{$entry->id}")
             ->assertOk()
             ->assertJsonMissingPath('data.documents');
@@ -38,11 +38,11 @@ class MigrantRegistryDocumentApiTest extends TestCase
         $actor = User::factory()->create(['role' => UserRole::NonCoordinator->value]);
         $entry = $this->entry($actor);
 
-        $this->actingAs($actor)->post("/registry/migrants/{$entry->id}/documents", [
+        $this->actingAsEnrolled($actor)->post("/registry/migrants/{$entry->id}/documents", [
             'file' => UploadedFile::fake()->create('first.pdf', 32, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertCreated();
 
-        $this->actingAs($actor)->post("/registry/migrants/{$entry->id}/documents", [
+        $this->actingAsEnrolled($actor)->post("/registry/migrants/{$entry->id}/documents", [
             'file' => UploadedFile::fake()->create('second.pdf', 32, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertUnprocessable();
 
@@ -54,7 +54,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
         Storage::fake('local');
         $actor = User::factory()->create(['role' => UserRole::Volunteer->value]);
 
-        $this->actingAs($actor)->post('/registry/migrants', [
+        $this->actingAsEnrolled($actor)->post('/registry/migrants', [
             'payload_json' => json_encode($this->validPayload(), JSON_THROW_ON_ERROR),
             'documents' => [UploadedFile::fake()->create('identification.pdf', 32, 'application/pdf')],
             'document_labels' => ['Identification'],
@@ -82,7 +82,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
         ]);
         $updatedPayload = [...$this->validPayload(), 'notes' => 'Updated with supporting document'];
 
-        $this->actingAs($actor)->post("/registry/migrants/{$entry->id}", [
+        $this->actingAsEnrolled($actor)->post("/registry/migrants/{$entry->id}", [
             '_method' => 'PATCH',
             'payload_json' => json_encode($updatedPayload, JSON_THROW_ON_ERROR),
             'documents' => [UploadedFile::fake()->create('supporting-record.pdf', 32, 'application/pdf')],
@@ -106,7 +106,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
         $entry = $this->entry($actor);
         $document = MigrantRegistryDocument::query()->create($this->documentAttributes($entry, $actor));
 
-        $this->actingAs($actor)
+        $this->actingAsEnrolled($actor)
             ->postJson("/registry/migrants/{$entry->id}/documents/{$document->id}/download/options")
             ->assertForbidden();
     }
@@ -144,7 +144,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
             'completed_at' => now()->subMinute(),
         ]);
 
-        $this->actingAs($actor)
+        $this->actingAsEnrolled($actor)
             ->postJson("/registry/migrants/{$entry->id}/documents/{$document->id}/download/options")
             ->assertOk()
             ->assertJsonPath('challengeIntent.purpose', 'migrant.registry.document.download');
@@ -153,7 +153,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
             $mock->shouldReceive('verifyAssertionPayload')->once()->andReturn(4);
         });
 
-        $response = $this->actingAs($actor)->postJson(
+        $response = $this->actingAsEnrolled($actor)->postJson(
             "/registry/migrants/{$entry->id}/documents/{$document->id}/download/verify",
             $this->assertionPayload('credential-non-coordinator'),
         );
@@ -183,7 +183,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
             'storage_path' => 'uploaded-after-access.pdf',
         ]);
 
-        $response = $this->actingAs($actor)
+        $response = $this->actingAsEnrolled($actor)
             ->getJson("/registry/migrants/{$entry->id}/documents")
             ->assertOk();
 
@@ -198,7 +198,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
         $entry = $this->entry($actor);
         $document = MigrantRegistryDocument::query()->create($this->documentAttributes($entry, $actor));
 
-        $this->actingAs($actor)
+        $this->actingAsEnrolled($actor)
             ->get("/registry/migrants/{$entry->id}/documents/{$document->id}/download")
             ->assertNotFound();
     }
@@ -223,7 +223,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
         Storage::disk('local')->put($attributes['storage_path'], 'private document');
         $document = MigrantRegistryDocument::query()->create($attributes);
 
-        $this->actingAs($actor)
+        $this->actingAsEnrolled($actor)
             ->postJson("/registry/migrants/{$entry->id}/documents/{$document->id}/download/options")
             ->assertOk()
             ->assertJsonPath('challengeIntent.purpose', 'migrant.registry.document.download');
@@ -232,7 +232,7 @@ class MigrantRegistryDocumentApiTest extends TestCase
             $mock->shouldReceive('verifyAssertionPayload')->once()->andReturn(7);
         });
 
-        $response = $this->actingAs($actor)->postJson(
+        $response = $this->actingAsEnrolled($actor)->postJson(
             "/registry/migrants/{$entry->id}/documents/{$document->id}/download/verify",
             $this->assertionPayload('credential-coordinator'),
         );
@@ -244,6 +244,33 @@ class MigrantRegistryDocumentApiTest extends TestCase
             'purpose' => 'migrant.registry.document.download',
             'status' => 'succeeded',
         ]);
+    }
+
+    private function actingAsEnrolled(User $user): static
+    {
+        $user->forceFill([
+            'two_factor_enabled' => true,
+            'two_factor_secret' => 'JBSWY3DPEHPK3PXP',
+        ])->save();
+
+        if (
+            in_array($user->role, [UserRole::Admin, UserRole::Coordinator], true) &&
+            ! $user->webauthnCredentials()->exists()
+        ) {
+            WebauthnCredential::query()->create([
+                'user_id' => $user->id,
+                'credential_id' => "enrollment-credential-{$user->id}",
+                'public_key' => 'public-key',
+                'public_key_algorithm' => -7,
+                'name' => 'Enrollment key',
+                'sign_count' => 0,
+                'transports' => ['internal'],
+                'attestation_object' => 'attestation',
+                'client_data_json' => 'client-data',
+            ]);
+        }
+
+        return $this->actingAs($user);
     }
 
     private function entry(User $creator): MigrantRegistryEntry

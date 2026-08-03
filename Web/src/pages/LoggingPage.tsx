@@ -1,3 +1,4 @@
+import { translate as t } from '../lib/i18n'
 import { useEffect, useState } from 'react'
 
 import { AppIcon } from '../components/ui/AppIcon'
@@ -61,11 +62,11 @@ const DEFAULT_PAGINATION: AuditEventPagination = {
 }
 
 const AUDIT_CATEGORIES: Array<{ label: string; value: AuditEventCategory }> = [
-  { label: 'Invitaciones de cuenta', value: 'account' },
-  { label: 'Acciones administrativas', value: 'admin' },
-  { label: 'Autenticación', value: 'auth' },
-  { label: 'Documentos', value: 'document' },
-  { label: 'Retos de seguridad', value: 'security' },
+  { label: t("Account invites", "Invitaciones de cuenta"), value: 'account' },
+  { label: t("Admin actions", "Acciones administrativas"), value: 'admin' },
+  { label: t("Authentication", "Autenticación"), value: 'auth' },
+  { label: t("Documents", "Documentos"), value: 'document' },
+  { label: t("Security challenges", "Retos de seguridad"), value: 'security' },
   { label: 'VCS', value: 'vcs' },
 ]
 
@@ -544,10 +545,9 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
       <section className="workspace-panel">
         <div className="audit-toolbar">
           <div>
-            <h2 className="workspace-panel__title">Bitácora de auditoría administrativa</h2>
+            <h2 className="workspace-panel__title">{t("Admin audit feed", "Bitácora de auditoría administrativa")}</h2>
             <p className="workspace-panel__copy">
-              Actividad reciente de seguridad y documentos registrada por la API en modo solo anexar.
-            </p>
+              {t("Recent append-only security and document activity from the API. ", "Actividad reciente de seguridad y documentos registrada por la API en modo solo anexar. ")}</p>
           </div>
 
           <button
@@ -556,25 +556,24 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
             type="button"
           >
             <AppIcon name="refresh" />
-            Actualizar bitácora
-          </button>
+            {t("Refresh feed ", "Actualizar bitácora ")}</button>
         </div>
 
-        <div className="audit-controls" aria-label="Filtros de eventos de auditoría">
+        <div className="audit-controls" aria-label={t("Audit event filters", "Filtros de eventos de auditoría")}>
           <label className="audit-control audit-control--search">
-            <span>Buscar</span>
+            <span>{t("Search", "Buscar")}</span>
             <input
               onChange={(event) => {
                 setSearchInput(event.target.value)
               }}
-              placeholder="Evento, actor, recurso o IP"
+              placeholder={t("Event, actor, resource, or IP", "Evento, actor, recurso o IP")}
               type="search"
               value={searchInput}
             />
           </label>
 
           <label className="audit-control">
-            <span>Resultado</span>
+            <span>{t("Outcome", "Resultado")}</span>
             <select
               onChange={(event) => {
                 setIsLoading(true)
@@ -584,15 +583,15 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
               }}
               value={outcomeFilter}
             >
-              <option value="">Todos los resultados</option>
-              <option value="success">Exitoso</option>
-              <option value="failure">Fallido</option>
-              <option value="denied">Denegado</option>
+              <option value="">{t("All outcomes", "Todos los resultados")}</option>
+              <option value="success">{t("Success", "Exitoso")}</option>
+              <option value="failure">{t("Failure", "Fallido")}</option>
+              <option value="denied">{t("Denied", "Denegado")}</option>
             </select>
           </label>
 
           <label className="audit-control">
-            <span>Categoría</span>
+            <span>{t("Category", "Categoría")}</span>
             <select
               onChange={(event) => {
                 setIsLoading(true)
@@ -602,7 +601,7 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
               }}
               value={categoryFilter}
             >
-              <option value="">Todas las categorías</option>
+              <option value="">{t("All categories", "Todas las categorías")}</option>
               {AUDIT_CATEGORIES.map((category) => (
                 <option key={category.value} value={category.value}>
                   {category.label}
@@ -612,7 +611,7 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
           </label>
 
           <label className="audit-control audit-control--size">
-            <span>Filas</span>
+            <span>{t("Rows", "Filas")}</span>
             <select
               onChange={(event) => {
                 setIsLoading(true)
@@ -636,13 +635,12 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
             onClick={resetFilters}
             type="button"
           >
-            Limpiar filtros
-          </button>
+            {t("Clear filters ", "Limpiar filtros ")}</button>
         </div>
 
         <div className="audit-pagination">
           <p>
-            Mostrando <strong>{firstVisibleEvent}-{lastVisibleEvent}</strong> de{' '}
+            {t("Showing ", "Mostrando ")}<strong>{firstVisibleEvent}-{lastVisibleEvent}</strong> {t("of", "de")}{' '}
             <strong>{pagination.total}</strong>
           </p>
 
@@ -656,10 +654,9 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
               }}
               type="button"
             >
-              Anterior
-            </button>
+              {t("Previous ", "Anterior ")}</button>
             <span>
-              Página {pagination.page} de {pagination.totalPages}
+              {t("Page ", "Página ")}{pagination.page} {t("of ", "de ")}{pagination.totalPages}
             </span>
             <button
               disabled={isLoading || !pagination.hasNextPage}
@@ -670,22 +667,21 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
               }}
               type="button"
             >
-              Siguiente
-            </button>
+              {t("Next ", "Siguiente ")}</button>
           </div>
         </div>
 
         {error ? <div className="login-feedback login-feedback--error">{error}</div> : null}
 
         {isLoading ? (
-          <p className="workspace-panel__copy">Cargando eventos de auditoría...</p>
+          <p className="workspace-panel__copy">{t("Loading audit events...", "Cargando eventos de auditoría...")}</p>
         ) : null}
 
         {!isLoading && !error && events.length === 0 ? (
           <p className="workspace-panel__copy">
             {hasActiveFilters
-              ? 'Ningún evento de auditoría coincide con los filtros actuales.'
-              : 'Todavía no hay eventos de auditoría registrados en este entorno.'}
+              ? t("No audit events match the current filters.", "Ningún evento de auditoría coincide con los filtros actuales.")
+              : t("No audit events are recorded yet in this environment.", "Todavía no hay eventos de auditoría registrados en este entorno.")}
           </p>
         ) : null}
       </section>
@@ -719,15 +715,15 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
 
                 <div className="audit-card__context">
                   <span className="audit-context-item">
-                    <span>Ocurrió</span>
+                    <span>{t("Occurred", "Ocurrió")}</span>
                     <strong>{formatDateTime(event.occurredAt)}</strong>
                   </span>
                   <span className="audit-context-item">
-                    <span>Actor</span>
+                    <span>{t('Actor', 'Persona responsable')}</span>
                     <strong>{renderActor(event, onNavigate)}</strong>
                   </span>
                   <span className="audit-context-item">
-                    <span>Recurso</span>
+                    <span>{t("Resource", "Recurso")}</span>
                     <strong>
                       {documentUrl ? (
                         <a
@@ -751,7 +747,7 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
                   </span>
                   <span className="audit-context-item">
                     <span>IP</span>
-                    <strong>{event.request.ipAddress || 'No disponible'}</strong>
+                    <strong>{event.request.ipAddress || t("Not available", "No disponible")}</strong>
                   </span>
                 </div>
 
@@ -796,11 +792,11 @@ export function LoggingPage({ onNavigate, onSessionExpired }: LoggingPageProps) 
                       })}
                     </div>
                   ) : (
-                    <span className="audit-metadata-empty">Sin vista previa de metadatos</span>
+                    <span className="audit-metadata-empty">{t("No metadata preview", "Sin vista previa de metadatos")}</span>
                   )}
 
                   <details className="audit-card__details">
-                    <summary>Sin procesar</summary>
+                    <summary>{t("Raw", "Sin procesar")}</summary>
                     <pre className="audit-card__code">
                       {JSON.stringify(event.metadata, null, 2)}
                     </pre>

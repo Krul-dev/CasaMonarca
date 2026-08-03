@@ -1,3 +1,4 @@
+import { translate as t } from '../lib/i18n'
 import { useEffect, useState } from 'react'
 
 import { LoginForm } from '../components/auth/LoginForm'
@@ -27,7 +28,7 @@ export function LoginPage({
 }: LoginPageProps) {
   const [healthState, setHealthState] = useState<HealthState>({
     status: 'checking',
-    message: 'Verificando disponibilidad del backend...',
+    message: t("Checking backend availability...", "Verificando disponibilidad del backend..."),
   })
 
   useEffect(() => {
@@ -65,10 +66,9 @@ export function LoginPage({
       <section className="login-layout login-layout--single">
         <section className="login-panel" aria-labelledby="login-panel-title">
           <div className="login-panel__header">
-            <p className="login-panel__eyebrow">Inicio de sesión</p>
+            <p className="login-panel__eyebrow">{t("Sign in", "Inicio de sesión")}</p>
             <h2 className="login-panel__title" id="login-panel-title">
-              Inicia sesión en el sistema
-            </h2>
+              {t("Sign in to the system ", "Inicia sesión en el sistema ")}</h2>
           </div>
 
           <LoginForm

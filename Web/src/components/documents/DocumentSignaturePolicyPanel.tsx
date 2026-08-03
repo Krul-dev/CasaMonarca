@@ -8,6 +8,7 @@ import {
   type DocumentSignaturePolicyRequirementInput,
   type DocumentSignaturePolicySignerOptions,
 } from '../../lib/documents'
+import { translate as t } from '../../lib/i18n'
 import { AppIcon } from '../ui/AppIcon'
 
 type DocumentSignaturePolicyPanelProps = {
@@ -47,19 +48,19 @@ const isFulfilled = (requirement: DraftRequirement) =>
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
-    return 'No disponible'
+    return t('Not available', 'No disponible')
   }
 
   const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? 'No disponible' : parsed.toLocaleString()
+  return Number.isNaN(parsed.getTime()) ? t('Not available', 'No disponible') : parsed.toLocaleString()
 }
 
 const formatSignerRole = (role: string) => {
   switch (role) {
     case 'admin':
-      return 'Administrador'
+      return t('Administrator', 'Administrador')
     case 'coordinator':
-      return 'Coordinador'
+      return t('Coordinator', 'Coordinador')
     default:
       return role
   }
@@ -126,7 +127,7 @@ export function DocumentSignaturePolicyPanel({
           message:
             error instanceof Error
               ? error.message
-              : 'No se pudieron cargar las opciones de firmantes.',
+              : t('Signer options could not be loaded.', 'No se pudieron cargar las opciones de firmantes.'),
         })
         setIsLoadingOptions(false)
       })
@@ -197,7 +198,7 @@ export function DocumentSignaturePolicyPanel({
     if (hasIncompleteAssignment || isSaving) {
       setFeedback({
         kind: 'error',
-        message: 'Elige una cuenta para cada requisito de usuario específico.',
+        message: t('Choose an account for every specific-user requirement.', 'Elige una cuenta para cada requisito asignado a una persona.'),
       })
       return
     }
@@ -245,7 +246,7 @@ export function DocumentSignaturePolicyPanel({
         message:
           error instanceof Error
             ? error.message
-            : 'No se pudo guardar la política de firma.',
+            : t('The signature policy could not be saved.', 'No se pudo guardar la política de firma.'),
       })
     } finally {
       setIsSaving(false)
@@ -254,20 +255,20 @@ export function DocumentSignaturePolicyPanel({
 
   return (
     <section
-      aria-label={`Política de firma para la revisión ${revision.revisionNumber}`}
+      aria-label={t(`Signature policy for revision ${revision.revisionNumber}`, `Política de firma para la versión ${revision.revisionNumber}`)}
       className="signature-policy"
     >
       <div className="signature-policy__header">
         <div>
-          <h4>Política de firma</h4>
+          <h4>{t('Signature policy', 'Política de firma')}</h4>
           <p>
             {requirements.length === 0
-              ? 'La firma abierta está habilitada para administradores y coordinadores elegibles.'
-              : `${requirements.filter(isFulfilled).length} de ${requirements.length} firmas requeridas completadas.`}
+              ? t('Open signing is enabled for eligible administrators and coordinators.', 'La firma está abierta a las personas administradoras y coordinadoras que cumplan los requisitos.')
+              : t(`${requirements.filter(isFulfilled).length} of ${requirements.length} required signatures completed.`, `${requirements.filter(isFulfilled).length} de ${requirements.length} firmas requeridas completadas.`)}
           </p>
         </div>
         <span className="document-badge">
-          {signatureOrderEnforced ? 'Orden obligatorio' : 'Cualquier orden'}
+          {signatureOrderEnforced ? t('Ordered', 'Orden obligatorio') : t('Any order', 'Cualquier orden')}
         </span>
       </div>
 
@@ -281,7 +282,7 @@ export function DocumentSignaturePolicyPanel({
             }
             type="checkbox"
           />
-          Exigir orden de firma
+          {t('Enforce signing order', 'Exigir orden de firma')}
         </label>
       ) : null}
 
@@ -293,7 +294,7 @@ export function DocumentSignaturePolicyPanel({
           type="button"
         >
           <AppIcon name="plus" />
-          Agregar primer paso
+          {t('Add first step', 'Agregar primer paso')}
         </button>
       ) : null}
 
@@ -320,23 +321,23 @@ export function DocumentSignaturePolicyPanel({
                 <div className="signature-policy__summary">
                   <strong>
                     {fulfilled
-                      ? requirement.fulfilledByName ?? 'Firmante desconocido'
+                      ? requirement.fulfilledByName ?? t('Unknown signer', 'Firmante desconocido')
                       : requirement.type === 'user'
-                        ? requirement.fulfilledByName ?? 'Firmante asignado'
+                        ? requirement.fulfilledByName ?? t('Assigned signer', 'Firmante asignado')
                       : requirement.role === 'admin'
-                        ? 'Administrador'
-                        : 'Coordinador'}
+                        ? t('Administrator', 'Administrador')
+                        : t('Coordinator', 'Coordinador')}
                   </strong>
                   <span>
                     {fulfilled
-                      ? `Completado ${formatDateTime(requirement.fulfilledAt)}`
-                      : 'Pendiente'}
+                      ? t(`Completed ${formatDateTime(requirement.fulfilledAt)}`, `Completado el ${formatDateTime(requirement.fulfilledAt)}`)
+                      : t('Pending', 'Pendiente')}
                   </span>
                 </div>
               ) : (
                 <>
                   <select
-                    aria-label={`Tipo del requisito ${index + 1}`}
+                    aria-label={t(`Requirement ${index + 1} type`, `Tipo del requisito ${index + 1}`)}
                     disabled={isSaving}
                     onChange={(event) =>
                       updateRequirement(index, {
@@ -349,12 +350,12 @@ export function DocumentSignaturePolicyPanel({
                     }
                     value={requirement.type}
                   >
-                    <option value="role">Rol</option>
-                    <option value="user">Usuario específico</option>
+                    <option value="role">{t('Role', 'Rol')}</option>
+                    <option value="user">{t('Specific user', 'Persona específica')}</option>
                   </select>
                   {requirement.type === 'role' ? (
                     <select
-                      aria-label={`Rol del requisito ${index + 1}`}
+                      aria-label={t(`Requirement ${index + 1} role`, `Rol del requisito ${index + 1}`)}
                       disabled={isSaving}
                       onChange={(event) =>
                         updateRequirement(index, {
@@ -373,7 +374,7 @@ export function DocumentSignaturePolicyPanel({
                     </select>
                   ) : (
                     <select
-                      aria-label={`Usuario del requisito ${index + 1}`}
+                      aria-label={t(`Requirement ${index + 1} user`, `Persona del requisito ${index + 1}`)}
                       disabled={isSaving || isLoadingOptions}
                       onChange={(event) =>
                         updateRequirement(index, {
@@ -382,7 +383,7 @@ export function DocumentSignaturePolicyPanel({
                       }
                       value={requirement.userId ?? ''}
                     >
-                      <option value="">Elige firmante</option>
+                      <option value="">{t('Choose signer', 'Selecciona a la persona firmante')}</option>
                       {userOptions.map((option) => (
                         <option key={option.id} value={option.id}>
                           {option.name} ({formatSignerRole(option.role)})
@@ -392,27 +393,27 @@ export function DocumentSignaturePolicyPanel({
                   )}
                   <div className="signature-policy__row-actions">
                     <button
-                      aria-label={`Mover requisito ${index + 1} hacia arriba`}
+                      aria-label={t(`Move requirement ${index + 1} up`, `Mover el requisito ${index + 1} hacia arriba`)}
                       className="signature-policy__icon-button"
                       disabled={isSaving || previousLocked}
                       onClick={() => moveRequirement(index, -1)}
-                      title="Mover hacia arriba"
+                      title={t('Move up', 'Mover hacia arriba')}
                       type="button"
                     >
                       <AppIcon name="moveUp" />
                     </button>
                     <button
-                      aria-label={`Mover requisito ${index + 1} hacia abajo`}
+                      aria-label={t(`Move requirement ${index + 1} down`, `Mover el requisito ${index + 1} hacia abajo`)}
                       className="signature-policy__icon-button"
                       disabled={isSaving || nextLocked}
                       onClick={() => moveRequirement(index, 1)}
-                      title="Mover hacia abajo"
+                      title={t('Move down', 'Mover hacia abajo')}
                       type="button"
                     >
                       <AppIcon name="moveDown" />
                     </button>
                     <button
-                      aria-label={`Eliminar requisito ${index + 1}`}
+                      aria-label={t(`Remove requirement ${index + 1}`, `Eliminar el requisito ${index + 1}`)}
                       className="signature-policy__icon-button signature-policy__icon-button--danger"
                       disabled={isSaving}
                       onClick={() =>
@@ -420,7 +421,7 @@ export function DocumentSignaturePolicyPanel({
                           current.filter((_, itemIndex) => itemIndex !== index),
                         )
                       }
-                      title="Eliminar requisito"
+                      title={t('Remove requirement', 'Eliminar requisito')}
                       type="button"
                     >
                       <AppIcon name="delete" />
@@ -431,11 +432,11 @@ export function DocumentSignaturePolicyPanel({
 
               {canManage ? (
                 <button
-                  aria-label={`Insertar requisito después del paso ${index + 1}`}
+                  aria-label={t(`Insert requirement after step ${index + 1}`, `Insertar un requisito después del paso ${index + 1}`)}
                   className="signature-policy__insert"
                   disabled={isSaving || requirements.length >= 20}
                   onClick={() => insertRequirement(index + 1)}
-                  title="Insertar requisito después de este paso"
+                  title={t('Insert requirement after this step', 'Insertar un requisito después de este paso')}
                   type="button"
                 >
                   <AppIcon name="plus" size={15} />
@@ -454,7 +455,7 @@ export function DocumentSignaturePolicyPanel({
           type="button"
         >
           <AppIcon name="plus" />
-          Agregar requisito de firma
+          {t('Add signature requirement', 'Agregar requisito de firma')}
         </button>
       ) : null}
 
@@ -474,7 +475,7 @@ export function DocumentSignaturePolicyPanel({
               type="button"
             >
               <AppIcon name="refresh" />
-              Recargar política
+              {t('Reload policy', 'Volver a cargar la política')}
             </button>
           ) : null}
         </div>
@@ -489,7 +490,7 @@ export function DocumentSignaturePolicyPanel({
             type="button"
           >
             <AppIcon name="verify" />
-            {isSaving ? 'Guardando política...' : 'Guardar política'}
+            {isSaving ? t('Saving policy...', 'Guardando la política...') : t('Save policy', 'Guardar política')}
           </button>
         </div>
       ) : null}

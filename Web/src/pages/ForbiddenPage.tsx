@@ -1,3 +1,4 @@
+import { translate as t } from '../lib/i18n'
 import { RoleBadge } from '../components/ui/RoleBadge'
 import type { UserRole } from '../lib/auth'
 
@@ -10,12 +11,10 @@ export function ForbiddenPage({ onNavigate, role }: ForbiddenPageProps) {
   return (
     <main className="route-shell">
       <section className="route-card route-card--compact">
-        <p className="route-kicker">Casa Monarca</p>
-        <h1 className="route-title">Acceso denegado</h1>
+        <p className="route-kicker">{t("CasaMonarca", "Casa Monarca")}</p>
+        <h1 className="route-title">{t("Access forbidden", "Acceso denegado")}</h1>
         <p className="route-copy">
-          Tu rol actual (<RoleBadge role={role} />) no tiene permiso para
-          acceder a esta área.
-        </p>
+          {t("Your current role (", "Tu rol actual (")}<RoleBadge role={role} />{t(") does not have permission to access this area. ", ") no tiene permiso para acceder a esta área. ")}</p>
         <a
           className="route-link"
           href="/app"
@@ -24,8 +23,7 @@ export function ForbiddenPage({ onNavigate, role }: ForbiddenPageProps) {
             onNavigate('/app')
           }}
         >
-          Ir a /app
-        </a>
+          {t("Go to /app ", "Ir a /app ")}</a>
       </section>
     </main>
   )

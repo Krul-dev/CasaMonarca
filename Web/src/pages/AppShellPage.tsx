@@ -1,3 +1,4 @@
+import { translate as t } from '../lib/i18n'
 import { AppIcon, type AppIconName } from '../components/ui/AppIcon'
 import { RoleBadge } from '../components/ui/RoleBadge'
 import type { AuthenticatedUser } from '../lib/auth'
@@ -42,8 +43,8 @@ const ROUTE_ICONS: Record<string, AppIconName> = {
 }
 
 const WORKSPACE_LABELS: Record<AppWorkspace, string> = {
-  internal: 'Espacio interno',
-  migrant: 'Espacio de migrantes',
+  internal: t("Internal workspace", "Espacio interno"),
+  migrant: t("Migrant workspace", "Espacio de migrantes"),
 }
 
 type AppShellPageProps = {
@@ -164,18 +165,17 @@ export function AppShellPage({
       <aside className="workspace-sidebar">
         <div className="workspace-sidebar__brand">
           <p className="workspace-sidebar__eyebrow">Casa Monarca</p>
-          <h1 className="workspace-sidebar__title">Espacio de control de acceso</h1>
+          <h1 className="workspace-sidebar__title">{t("Access control workspace", "Espacio de trabajo interno")}</h1>
           <p className="workspace-sidebar__copy">
-            Entorno por rol para los módulos de documentos, historial, bitácora y administración.
-          </p>
+            {t("Role-aware shell for the first document, history, logging, and admin modules. ", "Entorno por rol para los módulos de documentos, historial, bitácora y administración. ")}</p>
         </div>
 
         <section className="workspace-sidebar__role">
-          <span className="workspace-sidebar__role-label">Rol actual</span>
+          <span className="workspace-sidebar__role-label">{t("Current role", "Rol actual")}</span>
           <RoleBadge className="workspace-sidebar__role-value" role={user.role} />
         </section>
 
-        <nav aria-label="Navegación de la aplicación" className="workspace-nav">
+        <nav aria-label={t("App navigation", "Navegación de la aplicación")} className="workspace-nav">
           {(['internal', 'migrant'] as AppWorkspace[]).map((workspace) => {
             const routes = groupedRoutes[workspace]
 

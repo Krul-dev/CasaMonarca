@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { getCurrentMigrantQuestionnaire } from '../../lib/registry'
 import { answersFromPayload, canonicalAnswerText, reachableQuestions } from '../../lib/migrantQuestionnaire'
+import { getAppLocale } from '../../lib/i18n'
 import type { MigrantQuestionnaireDefinition, MigrantRegistrationPayload } from '../../types/registry'
 
 export function MigrantQuestionnaireViewer({ payload }: { payload: Partial<MigrantRegistrationPayload> & Record<string, unknown> }) {
+  const locale = getAppLocale()
   const [definition, setDefinition] = useState<MigrantQuestionnaireDefinition | null>(null)
 
   useEffect(() => {
@@ -25,8 +27,8 @@ export function MigrantQuestionnaireViewer({ payload }: { payload: Partial<Migra
         if (answered.length === 0) return null
         return (
           <section key={section.id}>
-            <h4>{section.title.es}</h4>
-            <dl>{answered.map((question) => <div key={question.id}><dt>{question.title.es}</dt><dd>{canonicalAnswerText(question, answers[question.id])}</dd></div>)}</dl>
+            <h4>{section.title[locale] || section.title.es}</h4>
+            <dl>{answered.map((question) => <div key={question.id}><dt>{question.title[locale] || question.title.es}</dt><dd>{canonicalAnswerText(question, answers[question.id], locale)}</dd></div>)}</dl>
           </section>
         )
       })}

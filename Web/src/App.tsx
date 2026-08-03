@@ -1,3 +1,4 @@
+import { translate as t } from './lib/i18n'
 import { useCallback, useEffect, useState } from 'react'
 
 import './App.css'
@@ -155,12 +156,10 @@ function NotFoundPage({ onNavigate }: { onNavigate: (to: string) => void }) {
   return (
     <main className="route-shell">
       <section className="route-card route-card--compact">
-        <p className="route-kicker">Casa Monarca</p>
-        <h1 className="route-title">Ruta pendiente</h1>
+        <p className="route-kicker">{t("CasaMonarca", "Casa Monarca")}</p>
+        <h1 className="route-title">{t("Route pending", "Ruta pendiente")}</h1>
         <p className="route-copy">
-          Esta ruta todavía no existe en el cliente web. El punto de entrada
-          actual es la aplicación autenticada o la pantalla de inicio de sesión.
-        </p>
+          {t("This route does not exist in the web client yet. The current entry point is the authenticated app shell or the sign-in screen. ", "Esta ruta todavía no existe en el cliente web. El punto de entrada actual es la aplicación autenticada o la pantalla de inicio de sesión. ")}</p>
         <a
           className="route-link"
           href="/login"
@@ -169,8 +168,7 @@ function NotFoundPage({ onNavigate }: { onNavigate: (to: string) => void }) {
             onNavigate(LOGIN_PATH)
           }}
         >
-          Ir a /login
-        </a>
+          {t("Go to /login ", "Ir a /login ")}</a>
       </section>
     </main>
   )
@@ -180,11 +178,10 @@ function SessionBootstrapPage() {
   return (
     <main className="route-shell">
       <section className="route-card route-card--compact">
-        <p className="route-kicker">Casa Monarca</p>
-        <h1 className="route-title">Verificando sesión</h1>
+        <p className="route-kicker">{t("CasaMonarca", "Casa Monarca")}</p>
+        <h1 className="route-title">{t("Checking session", "Verificando sesión")}</h1>
         <p className="route-copy">
-          Restaurando la sesión actual del navegador antes de cargar el cliente web.
-        </p>
+          {t("Restoring the current browser session before rendering the web client. ", "Restaurando la sesión actual del navegador antes de cargar el cliente web. ")}</p>
       </section>
     </main>
   )
@@ -204,9 +201,9 @@ function RedirectPage({
   return (
     <main className="route-shell">
       <section className="route-card route-card--compact">
-        <p className="route-kicker">Casa Monarca</p>
-        <h1 className="route-title">Redirigiendo</h1>
-        <p className="route-copy">Aplicando reglas de protección de rutas...</p>
+        <p className="route-kicker">{t("CasaMonarca", "Casa Monarca")}</p>
+        <h1 className="route-title">{t("Redirecting", "Redirigiendo")}</h1>
+        <p className="route-copy">{t("Applying route guard rules...", "Aplicando reglas de protección de rutas...")}</p>
       </section>
     </main>
   )
@@ -359,12 +356,12 @@ function EnvironmentBadge() {
 
   return (
     <aside
-      aria-label={`Canal actual de la aplicación: ${appChannel}`}
+      aria-label={t(`Current app channel: ${appChannel}`, `Canal actual de la aplicación: ${appChannel}`)}
       className="environment-badge"
     >
       <span aria-hidden="true" className="environment-badge__dot" />
       <span className="environment-badge__label">
-        Rama {appChannel.toUpperCase()}
+        {t("branch ", "Rama ")}{appChannel.toUpperCase()}
       </span>
     </aside>
   )
@@ -382,8 +379,8 @@ function DevRoleViewSwitcher({
   const selectedValue = roleOverride ?? DEV_ROLE_REAL_VALUE
 
   return (
-    <aside className="dev-role-switcher" aria-label="Selector de rol simulado de desarrollo">
-      <p className="dev-role-switcher__label">Vista de rol dev</p>
+    <aside className="dev-role-switcher" aria-label={t("Development role mock switcher", "Selector de rol simulado de desarrollo")}>
+      <p className="dev-role-switcher__label">{t("Dev role view", "Vista de rol dev")}</p>
       <select
         className="dev-role-switcher__select"
         onChange={(event) => {
@@ -400,13 +397,13 @@ function DevRoleViewSwitcher({
         }}
         value={selectedValue}
       >
-        <option value={DEV_ROLE_REAL_VALUE}>Sesión real ({actualRole})</option>
-        <option value="admin">Simulado: admin</option>
-        <option value="coordinator">Simulado: coordinación</option>
-        <option value="non_coordinator">Simulado: no coordinación</option>
-        <option value="volunteer">Simulado: voluntariado</option>
+        <option value={DEV_ROLE_REAL_VALUE}>{t("Real session (", "Sesión real (")}{actualRole})</option>
+        <option value="admin">{t("Mock: admin", "Simulado: admin")}</option>
+        <option value="coordinator">{t("Mock: coordinator", "Simulado: coordinación")}</option>
+        <option value="non_coordinator">{t("Mock: non coordinator", "Simulado: no coordinación")}</option>
+        <option value="volunteer">{t("Mock: volunteer", "Simulado: voluntariado")}</option>
       </select>
-      <p className="dev-role-switcher__hint">Solo simula la interfaz. La autorización del backend no cambia.</p>
+      <p className="dev-role-switcher__hint">{t("UI mock only. Backend authorization is unchanged.", "Solo simula la interfaz. La autorización del backend no cambia.")}</p>
     </aside>
   )
 }
@@ -524,7 +521,7 @@ function App() {
           error:
             error instanceof Error
               ? error.message
-              : 'No se pudo restaurar la sesión actual.',
+              : t("The current session could not be restored.", "No se pudo restaurar la sesión actual."),
           status: 'unauthenticated',
           user: null,
         })
@@ -572,20 +569,20 @@ function App() {
     authState.error != null
       ? { message: authState.error, tone: 'offline' }
       : loginReason === LOGIN_REASON_SIGNED_OUT
-        ? { message: 'Sesión cerrada correctamente.', tone: 'online' }
+        ? { message: t("Session closed successfully.", "Sesión cerrada correctamente."), tone: 'online' }
         : loginReason === LOGIN_REASON_SESSION_EXPIRED
           ? {
-              message: 'La sesión expiró. Inicia sesión de nuevo para continuar.',
+              message: t("Session expired. Sign in again to continue.", "La sesión expiró. Inicia sesión de nuevo para continuar."),
               tone: 'offline',
             }
           : loginReason === LOGIN_REASON_REGISTERED
             ? {
-                message: 'Cuenta creada. Inicia sesión para completar el registro de seguridad requerido.',
+                message: t("Account created. Sign in to finish required security enrollment.", "Cuenta creada. Inicia sesión para completar el registro de seguridad requerido."),
                 tone: 'online',
               }
             : loginReason === LOGIN_REASON_PASSWORD_RESET
               ? {
-                  message: 'Restablecimiento de contraseña completado. Inicia sesión con tu nueva contraseña.',
+                  message: t("Password reset complete. Sign in with your new password.", "Restablecimiento de contraseña completado. Inicia sesión con tu nueva contraseña."),
                   tone: 'online',
                 }
           : null

@@ -1,3 +1,4 @@
+import { translate as t, type AppLocale } from './i18n'
 import type {
   MigrantQuestionnaireAnswer,
   MigrantQuestionnaireDefinition,
@@ -77,24 +78,31 @@ export function validateQuestionAnswer(
   question: QuestionnaireQuestion,
   answer?: MigrantQuestionnaireAnswer,
 ) {
-  if (question.required && !answerHasValue(answer)) return 'Esta respuesta es obligatoria.'
+  if (question.required && !answerHasValue(answer)) return t('This answer is required.', 'Esta respuesta es obligatoria.')
   if (!answerHasValue(answer)) return null
-  if (question.numeric && !Number.isFinite(Number(answer?.value))) return 'Ingresa un número válido.'
+  if (question.numeric && !Number.isFinite(Number(answer?.value))) return t('Enter a valid number.', 'Ingresa un número válido.')
 
   const selected = Array.isArray(answer?.value) ? answer.value : [answer?.value]
   const usesOther = question.choices.some((choice) => choice.custom && selected.includes(choice.value))
-  if (usesOther && !answer?.otherText?.trim()) return 'Especifica la respuesta.'
+  if (usesOther && !answer?.otherText?.trim()) return t('Specify the response in Spanish.', 'Especifica la respuesta en español.')
 
   return null
 }
 
 export const canonicalAnswerText = (
-  _question: QuestionnaireQuestion,
+  question: QuestionnaireQuestion,
   answer?: MigrantQuestionnaireAnswer,
+  locale: AppLocale = 'es',
 ) => {
-  if (!answerHasValue(answer)) return 'Sin respuesta'
+  if (!answerHasValue(answer)) return locale === 'en' ? 'Not answered' : 'Sin respuesta'
   const values = Array.isArray(answer?.value) ? answer.value : [answer?.value]
-  return values.map((value) => value === 'Otro' && answer?.otherText ? `Otro: ${answer.otherText}` : value).join(', ')
+  return values.map((value) => {
+    const choice = question.choices.find((option) => option.value === value)
+    const translatedValue = choice?.label[locale] || choice?.label.es || value
+    return choice?.custom && answer?.otherText
+      ? `${translatedValue}: ${answer.otherText}`
+      : translatedValue
+  }).join(', ')
 }
 
 function upgradeLegacyAnswers(

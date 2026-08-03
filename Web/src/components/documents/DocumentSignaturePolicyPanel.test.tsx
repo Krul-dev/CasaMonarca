@@ -165,7 +165,7 @@ describe('DocumentSignaturePolicyPanel', () => {
       await screen.findByText('The signature policy changed.'),
     ).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Rol del requisito 1' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Recargar política' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Volver a cargar la política' }))
     expect(onReload).toHaveBeenCalled()
   })
 })

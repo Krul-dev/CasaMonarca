@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { ApiRequestError, getCurrentMigrantQuestionnaire } from '../../lib/registry'
 import type { PendingMigrantDocument } from '../../lib/migrantDocuments'
+import { translate as t } from '../../lib/i18n'
 import {
   answerHasValue,
   answersFromPayload,
@@ -88,8 +89,8 @@ export function MigrantRegistryForm({
   onDraftSaved,
   onSaveDraft,
   onSubmit,
-  submitLabel = 'Enviar registro',
-  successMessage = 'Registro enviado a revisión.',
+  submitLabel = t('Submit registration', 'Enviar registro'),
+  successMessage = t('Registration submitted for review.', 'Registro enviado a revisión.'),
 }: Props) {
   const [definition, setDefinition] = useState<MigrantQuestionnaireDefinition | null>(null)
   const [answers, setAnswers] = useState<Record<string, MigrantQuestionnaireAnswer>>({})
@@ -120,7 +121,7 @@ export function MigrantRegistryForm({
         lastSavedPayload.current = JSON.stringify(buildQuestionnairePayload(data, initialAnswers))
       })
       .catch((error) => {
-        if (active) setLoadError(error instanceof Error ? error.message : 'No fue posible cargar el cuestionario.')
+        if (active) setLoadError(error instanceof Error ? error.message : t('The questionnaire could not be loaded.', 'No fue posible cargar el cuestionario.'))
       })
     return () => { active = false }
   }, [draftsEnabled, initialPayload])
@@ -224,12 +225,12 @@ export function MigrantRegistryForm({
     const selected = Array.from(files)
     if (pendingDocuments.length + selected.length > MAX_DOCUMENTS) {
       setMessageTone('error')
-      setMessage(`Se permiten hasta ${MAX_DOCUMENTS} documentos de respaldo.`)
+      setMessage(t(`Up to ${MAX_DOCUMENTS} supporting documents are allowed.`, `Se permiten hasta ${MAX_DOCUMENTS} documentos de respaldo.`))
       return
     }
     if (selected.some((file) => file.size > MAX_UPLOAD_BYTES || !ACCEPTED_DOCUMENT_TYPES.includes(file.type))) {
       setMessageTone('error')
-      setMessage('Los documentos deben ser PDF, JPEG, PNG, DOC o DOCX y no exceder 16 MB.')
+      setMessage(t('Documents must be PDF, JPEG, PNG, DOC, or DOCX and no larger than 16 MB.', 'Los documentos deben ser PDF, JPEG, PNG, DOC o DOCX y no exceder 16 MB.'))
       return
     }
     setPendingDocuments((current) => [...current, ...selected.map((file) => ({ file, label: '' }))])
@@ -273,14 +274,14 @@ export function MigrantRegistryForm({
         ? Object.values(error.errors).flat().filter(Boolean)
         : []
       setMessageTone('error')
-      setMessage(fieldErrors[0] ?? (error instanceof Error ? error.message : 'No fue posible enviar el registro.'))
+      setMessage(fieldErrors[0] ?? (error instanceof Error ? error.message : t('The registration could not be submitted.', 'No fue posible enviar el registro.')))
     } finally {
       setSubmitting(false)
     }
   }
 
   if (loadError) return <div className="login-feedback login-feedback--error">{loadError}</div>
-  if (!definition) return <p className="workspace-panel__copy">Cargando cuestionario...</p>
+  if (!definition) return <p className="workspace-panel__copy">{t('Loading questionnaire...', 'Cargando cuestionario...')}</p>
 
   const fullName = [definition.summaryMappings.firstName, definition.summaryMappings.firstLastName, definition.summaryMappings.secondLastName]
     .map((id) => answers[id]?.value)
@@ -291,18 +292,18 @@ export function MigrantRegistryForm({
     <form className="registry-form registry-questionnaire" onSubmit={handleSubmit}>
       <header className="registry-questionnaire__toolbar">
         <div>
-          <strong>{isReviewStep ? 'Revisión final' : currentSection?.title.es}</strong>
-          <span>Paso {Math.min(sectionIndex + 1, activeSections.length + 1)} de {activeSections.length + 1}</span>
+          <strong>{isReviewStep ? t('Final review', 'Revisión final') : currentSection?.title[locale] || currentSection?.title.es}</strong>
+          <span>{t(`Step ${Math.min(sectionIndex + 1, activeSections.length + 1)} of ${activeSections.length + 1}`, `Paso ${Math.min(sectionIndex + 1, activeSections.length + 1)} de ${activeSections.length + 1}`)}</span>
         </div>
         <label>
-          Idioma de apoyo
+          {t('Interview support language', 'Idioma de apoyo')}
           <select onChange={(event) => setLocale(event.target.value as QuestionnaireLocale)} value={locale}>
             {definition.locales.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
       </header>
 
-      <div aria-label="Progreso del cuestionario" className="registry-questionnaire__progress">
+      <div aria-label={t('Questionnaire progress', 'Progreso del cuestionario')} className="registry-questionnaire__progress">
         {activeSections.map((section, index) => (
           <span className={index < sectionIndex ? 'is-complete' : index === sectionIndex ? 'is-current' : ''} key={section.id} />
         ))}
@@ -326,10 +327,10 @@ export function MigrantRegistryForm({
         <section className="registry-questionnaire__review">
           {activeSections.map((section) => (
             <section key={section.id}>
-              <h3>{section.title.es}</h3>
+              <h3>{section.title[locale] || section.title.es}</h3>
               <dl>
                 {reachable.filter((question) => question.sectionId === section.id && answerHasValue(answers[question.id])).map((question) => (
-                  <div key={question.id}><dt>{question.title.es}</dt><dd>{canonicalAnswerText(question, answers[question.id])}</dd></div>
+                  <div key={question.id}><dt>{question.title[locale] || question.title.es}</dt><dd>{canonicalAnswerText(question, answers[question.id], locale === 'en' ? 'en' : 'es')}</dd></div>
                 ))}
               </dl>
             </section>
@@ -337,17 +338,17 @@ export function MigrantRegistryForm({
 
           {documentsEnabled && (!documentContext || documentContext.canUpload) ? (
             <fieldset className="registry-form__documents">
-              <legend>Documentos de respaldo</legend>
+              <legend>{t('Supporting documents', 'Documentos de respaldo')}</legend>
               <label className="registry-form__document-picker">
-                Agregar documentos al envío
+                {t('Add documents to submission', 'Agregar documentos al envío')}
                 <input accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" disabled={submitting} multiple onChange={(event) => { handleDocumentSelection(event.target.files); event.target.value = '' }} type="file" />
               </label>
               {pendingDocuments.length ? (
                 <ul className="migrant-documents__list">
                   {pendingDocuments.map((document, index) => (
                     <li className="migrant-documents__item" key={`${document.file.name}-${document.file.lastModified}-${index}`}>
-                      <div className="registry-form__document-details"><strong>{document.file.name}</strong><input aria-label={`Etiqueta para ${document.file.name}`} maxLength={255} onChange={(event) => setPendingDocuments((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, label: event.target.value } : item))} placeholder="Etiqueta opcional" value={document.label} /></div>
-                      <button aria-label={`Quitar ${document.file.name}`} className="session-action session-action--quiet session-action--inline" onClick={() => setPendingDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))} type="button"><AppIcon name="delete" /></button>
+                      <div className="registry-form__document-details"><strong>{document.file.name}</strong><input aria-label={t(`Label for ${document.file.name}`, `Etiqueta para ${document.file.name}`)} maxLength={255} onChange={(event) => setPendingDocuments((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, label: event.target.value } : item))} placeholder={t('Optional label', 'Etiqueta opcional')} value={document.label} /></div>
+                      <button aria-label={t(`Remove ${document.file.name}`, `Quitar ${document.file.name}`)} className="session-action session-action--quiet session-action--inline" onClick={() => setPendingDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))} type="button"><AppIcon name="delete" /></button>
                     </li>
                   ))}
                 </ul>
@@ -357,7 +358,7 @@ export function MigrantRegistryForm({
 
           {documentsEnabled && documentContext?.canView ? (
             <fieldset className="registry-form__documents">
-              <legend>Documentos existentes</legend>
+              <legend>{t('Existing documents', 'Documentos existentes')}</legend>
               <MigrantDocumentsPanel canDelete={documentContext.canDelete} canDownload={documentContext.canDownload} canDownloadArcoApproved={documentContext.canDownloadArcoApproved} canView embedded entryId={documentContext.entryId} onSessionExpired={documentContext.onSessionExpired} />
             </fieldset>
           ) : null}
@@ -366,15 +367,15 @@ export function MigrantRegistryForm({
 
       <footer className="registry-form__footer">
         <div className="registry-questionnaire__record">
-          <span>Registro: {fullName || 'Nombre pendiente'}</span>
-          {draftsEnabled ? <small className={`registry-questionnaire__save registry-questionnaire__save--${saveState}`}>{saveState === 'saving' ? 'Guardando...' : saveState === 'saved' ? 'Borrador guardado' : saveState === 'error' ? 'Error al guardar; se reintentará con el próximo cambio' : 'El borrador se guardará automáticamente'}</small> : null}
+          <span>{t('Registration:', 'Registro:')} {fullName || t('Name pending', 'Nombre pendiente')}</span>
+          {draftsEnabled ? <small className={`registry-questionnaire__save registry-questionnaire__save--${saveState}`}>{saveState === 'saving' ? t('Saving...', 'Guardando...') : saveState === 'saved' ? t('Draft saved', 'Borrador guardado') : saveState === 'error' ? t('Save failed; another attempt will be made after the next change', 'No se pudo guardar; se reintentará después del próximo cambio') : t('Draft saves automatically', 'El borrador se guarda automáticamente')}</small> : null}
         </div>
         <div className="registry-form__actions">
-          {onCancel ? <button className="session-action session-action--quiet" disabled={submitting} onClick={onCancel} type="button">Cancelar</button> : null}
-          {sectionIndex > 0 ? <button className="session-action session-action--quiet" disabled={submitting} onClick={() => setSectionIndex((current) => Math.max(0, current - 1))} type="button">Anterior</button> : null}
+          {onCancel ? <button className="session-action session-action--quiet" disabled={submitting} onClick={onCancel} type="button">{t('Cancel', 'Cancelar')}</button> : null}
+          {sectionIndex > 0 ? <button className="session-action session-action--quiet" disabled={submitting} onClick={() => setSectionIndex((current) => Math.max(0, current - 1))} type="button">{t('Previous', 'Anterior')}</button> : null}
           {!isReviewStep
-            ? <button className="session-action" key="next" onClick={goNext} type="button">Siguiente</button>
-            : <button className="session-action" disabled={submitting} key="submit" type="submit">{submitting ? 'Enviando...' : submitLabel}</button>}
+            ? <button className="session-action" key="next" onClick={goNext} type="button">{t('Next', 'Siguiente')}</button>
+            : <button className="session-action" disabled={submitting} key="submit" type="submit">{submitting ? t('Submitting...', 'Enviando...') : submitLabel}</button>}
         </div>
       </footer>
 
@@ -406,7 +407,7 @@ function QuestionField({
 
   return (
     <fieldset className={`registry-questionnaire__question${usesWideLayout ? ' registry-questionnaire__question--wide' : ''}${error ? ' registry-questionnaire__question--error' : ''}`}>
-      <legend>{question.number}. {title}{question.required ? <span aria-label="obligatoria"> *</span> : null}</legend>
+      <legend>{question.number}. {title}{question.required ? <span aria-label={t('required', 'obligatoria')}> *</span> : null}</legend>
       {help ? <p>{help}</p> : null}
 
       {question.type === 'text' && question.multiline ? (
@@ -419,7 +420,7 @@ function QuestionField({
 
       {question.type === 'choice' && usesCompactSelect ? (
         <select aria-label={title} onChange={(event) => onChange({ value: event.target.value })} value={selectedSingle}>
-          <option value="">Seleccione una opción</option>
+          <option value="">{t('Select an option', 'Seleccione una opción')}</option>
           {question.choices.map((choice) => <option key={choice.id} value={choice.value}>{choice.label[locale] || choice.label.es}</option>)}
         </select>
       ) : null}
@@ -446,8 +447,8 @@ function QuestionField({
         </div>
       ) : null}
 
-      {selectedUsesOther ? <label className="registry-questionnaire__other">Especifique la respuesta en español<input maxLength={5000} onChange={(event) => onChange({ value: answer?.value ?? 'Otro', otherText: event.target.value })} value={answer?.otherText ?? ''} /></label> : null}
-      {locale !== 'es' && (question.type === 'text' || selectedUsesOther) ? <small>Registre la respuesta en español.</small> : null}
+      {selectedUsesOther ? <label className="registry-questionnaire__other">{t('Enter the response in Spanish', 'Especifique la respuesta en español')}<input maxLength={5000} onChange={(event) => onChange({ value: answer?.value ?? 'Otro', otherText: event.target.value })} value={answer?.otherText ?? ''} /></label> : null}
+      {locale !== 'es' && (question.type === 'text' || selectedUsesOther) ? <small>{t('Store the response in Spanish.', 'Registre la respuesta en español.')}</small> : null}
       {error ? <span className="registry-questionnaire__error">{error}</span> : null}
     </fieldset>
   )

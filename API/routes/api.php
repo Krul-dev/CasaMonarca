@@ -148,7 +148,7 @@ Route::middleware('web')->group(function (): void {
         Route::post('/documents/{document}/delete/verify', DocumentDeleteVerifyController::class);
     });
 
-    Route::middleware(['auth', 'requireActiveAccount', 'requireRole:admin,coordinator,non_coordinator,volunteer'])->prefix('registry/migrants')->group(function (): void {
+    Route::middleware(['auth', 'requireActiveAccount', 'requireSecurityEnrollment', 'requireRole:admin,coordinator,non_coordinator,volunteer'])->prefix('registry/migrants')->group(function (): void {
         Route::get('/', [MigrantRegistryController::class, 'index']);
         Route::post('/', [MigrantRegistryController::class, 'store']);
         Route::get('/corrections', [MigrantRegistryController::class, 'corrections']);
