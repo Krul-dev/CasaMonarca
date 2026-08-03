@@ -106,7 +106,7 @@ jobs:
         run: php artisan test
 
   frontend:
-    name: Frontend — Node 22
+    name: Frontend — Node 24
     runs-on: ubuntu-24.04
 
     defaults:
@@ -117,10 +117,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 22
+      - name: Set up Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
           cache-dependency-path: Web/package-lock.json
 
