@@ -1,4 +1,5 @@
 import type { RegistrySignature } from '../../types/registry'
+import { translate as t } from '../../lib/i18n'
 
 type Props = {
   signatures: RegistrySignature[]
@@ -6,12 +7,12 @@ type Props = {
 
 export function SignatureEvidencePanel({ signatures }: Props) {
   if (signatures.length === 0) {
-    return <p>No hay firmas registradas todavía.</p>
+    return <p>{t('No signatures have been recorded yet.', 'Aún no hay firmas registradas.')}</p>
   }
 
   return (
     <div className="signature-panel">
-      <h3>Evidencia de firmas</h3>
+      <h3>{t('Signature evidence', 'Evidencia de firmas')}</h3>
       <ul>
         {signatures.map((signature) => (
           <li key={signature.id}>

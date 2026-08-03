@@ -1,3 +1,4 @@
+import { translate as t } from '../lib/i18n'
 import { useEffect, useState } from 'react'
 
 import { AppIcon } from '../components/ui/AppIcon'
@@ -128,27 +129,27 @@ export function RegisterPage({
 
   const validate = (): string | null => {
     if (!form.token.trim()) {
-      return 'El token de invitación es obligatorio.'
+      return t("Invite token is required.", "El token de invitación es obligatorio.")
     }
 
     if (!form.name.trim()) {
-      return 'El nombre es obligatorio.'
+      return t("Name is required.", "El nombre es obligatorio.")
     }
 
     if (!form.email.trim()) {
-      return 'El correo electrónico es obligatorio.'
+      return t("Email is required.", "El correo electrónico es obligatorio.")
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      return 'Usa un formato de correo electrónico válido.'
+      return t("Use a valid email format.", "Usa un formato de correo electrónico válido.")
     }
 
     if (form.password.length < 8) {
-      return 'La contraseña debe tener al menos 8 caracteres.'
+      return t("Password must contain at least 8 characters.", "La contraseña debe tener al menos 8 caracteres.")
     }
 
     if (form.password !== form.passwordConfirmation) {
-      return 'La confirmación de contraseña no coincide.'
+      return t("Password confirmation does not match.", "La confirmación de contraseña no coincide.")
     }
 
     return null
@@ -183,7 +184,7 @@ export function RegisterPage({
       setError(
         submitError instanceof ApiRequestError || submitError instanceof Error
           ? submitError.message
-          : 'No se pudo completar el registro.',
+          : t("Registration could not be completed.", "No se pudo completar el registro."),
       )
     } finally {
       setStatus('idle')
@@ -195,19 +196,16 @@ export function RegisterPage({
       <section className="login-layout login-layout--single">
         <section className="login-panel" aria-labelledby="register-panel-title">
           <div className="login-panel__header">
-            <p className="login-panel__eyebrow">Registro por invitación</p>
+            <p className="login-panel__eyebrow">{t("Invite registration", "Registro por invitación")}</p>
             <h2 className="login-panel__title" id="register-panel-title">
-              Crea tu cuenta
-            </h2>
+              {t("Create your account ", "Crea tu cuenta ")}</h2>
             <p className="workspace-panel__copy">
-              Completa el registro con el rol y el correo asignados en la invitación.
-            </p>
+              {t("Complete registration with the role and email assigned in the invite. ", "Completa el registro con el rol y el correo asignados en la invitación. ")}</p>
           </div>
 
           {previewStatus === 'checking' ? (
             <div className="login-feedback login-feedback--warning">
-              Verificando el enlace de invitación antes de mostrar el formulario de registro...
-            </div>
+              {t("Checking invite link before showing the registration form... ", "Verificando el enlace de invitación antes de mostrar el formulario de registro... ")}</div>
           ) : null}
 
           {previewWarning ? (
@@ -218,8 +216,8 @@ export function RegisterPage({
 
           {previewStatus === 'unavailable' ? (
             <div className="login-feedback login-feedback--error">
-              <p>{previewError ?? 'El enlace de invitación ya no está disponible.'}</p>
-              <p>Pide a una persona administradora o coordinadora que emita un nuevo enlace de registro.</p>
+              <p>{previewError ?? t("Invite link is no longer available.", "El enlace de invitación ya no está disponible.")}</p>
+              <p>{t("Ask an administrator or coordinator to issue a new registration link.", "Pide a una persona administradora o coordinadora que emita un nuevo enlace de registro.")}</p>
             </div>
           ) : null}
 
@@ -227,7 +225,7 @@ export function RegisterPage({
             <div className="login-feedback login-feedback--success">
               <p>{preview.message}</p>
               <p>
-                Cuenta asignada: {preview.invite.email} · <RoleBadge role={preview.invite.role} />
+                {t("Assigned account: ", "Cuenta asignada: ")}{preview.invite.email} · <RoleBadge role={preview.invite.role} />
               </p>
             </div>
           ) : null}
@@ -236,11 +234,11 @@ export function RegisterPage({
             <form className="login-form" noValidate onSubmit={handleSubmit}>
               <div className="login-form__fields">
                 <label className="login-field">
-                    <span className="login-field__label">Token de invitación</span>
+                    <span className="login-field__label">{t("Invite token", "Token de invitación")}</span>
                   <input
                     className="login-field__input"
                     onChange={(event) => setField('token', event.target.value)}
-                    placeholder="Pega el token de invitación"
+                    placeholder={t("Paste invite token", "Pega el token de invitación")}
                     readOnly={Boolean(inviteTokenFromQuery?.trim())}
                     type="text"
                     value={form.token}
@@ -248,22 +246,22 @@ export function RegisterPage({
                 </label>
 
                 <label className="login-field">
-                  <span className="login-field__label">Nombre</span>
+                  <span className="login-field__label">{t("Name", "Nombre")}</span>
                   <input
                     className="login-field__input"
                     onChange={(event) => setField('name', event.target.value)}
-                    placeholder="Tu nombre completo"
+                    placeholder={t("Your full name", "Tu nombre completo")}
                     type="text"
                     value={form.name}
                   />
                 </label>
 
                 <label className="login-field">
-                  <span className="login-field__label">Correo electrónico</span>
+                  <span className="login-field__label">{t("Email", "Correo electrónico")}</span>
                   <input
                     className="login-field__input"
                     onChange={(event) => setField('email', event.target.value)}
-                    placeholder="correo.asignado@casamonarca.local"
+                    placeholder={t("assigned.email@casamonarca.local", "correo.asignado@casamonarca.local")}
                     readOnly={previewStatus === 'valid'}
                     type="email"
                     value={form.email}
@@ -271,22 +269,22 @@ export function RegisterPage({
                 </label>
 
                 <label className="login-field">
-                  <span className="login-field__label">Contraseña</span>
+                  <span className="login-field__label">{t("Password", "Contraseña")}</span>
                   <input
                     className="login-field__input"
                     onChange={(event) => setField('password', event.target.value)}
-                    placeholder="Define una contraseña segura"
+                    placeholder={t("Set a strong password", "Define una contraseña segura")}
                     type="password"
                     value={form.password}
                   />
                 </label>
 
                 <label className="login-field">
-                  <span className="login-field__label">Confirma la contraseña</span>
+                  <span className="login-field__label">{t("Confirm password", "Confirma la contraseña")}</span>
                   <input
                     className="login-field__input"
                     onChange={(event) => setField('passwordConfirmation', event.target.value)}
-                    placeholder="Repite la contraseña"
+                    placeholder={t("Repeat password", "Repite la contraseña")}
                     type="password"
                     value={form.passwordConfirmation}
                   />
@@ -295,7 +293,7 @@ export function RegisterPage({
 
               <button className="login-submit" disabled={status === 'submitting'} type="submit">
                 <AppIcon name="invite" />
-                {status === 'submitting' ? 'Creando cuenta...' : 'Canjear invitación'}
+                {status === 'submitting' ? t("Creating account...", "Creando cuenta...") : t("Redeem invite", "Canjear invitación")}
               </button>
             </form>
           ) : null}
@@ -306,14 +304,13 @@ export function RegisterPage({
             <div className="login-feedback login-feedback--success">
               <p>{success.message}</p>
               <p>
-                Rol de la cuenta: <RoleBadge role={success.user.role} />
+                {t("Account role: ", "Rol de la cuenta: ")}<RoleBadge role={success.user.role} />
               </p>
               <p>
-                Inscripción requerida:
-                {' '}
-                TOTP {success.enrollment.requiresTotp ? 'obligatorio' : 'opcional'}
+                {t("Required enrollment: ", "Inscripción requerida: ")}{' '}
+                TOTP {success.enrollment.requiresTotp ? t("required", "obligatorio") : t("optional", "opcional")}
                 {' · '}
-                Llave de acceso {success.enrollment.requiresPasskey ? 'obligatoria' : 'opcional'}
+                {t("Passkey ", "Llave de acceso ")}{success.enrollment.requiresPasskey ? t("required", "obligatoria") : t("optional", "opcional")}
               </p>
             </div>
           ) : null}
@@ -324,7 +321,7 @@ export function RegisterPage({
             type="button"
           >
             <AppIcon name="login" />
-            {success ? 'Continuar al inicio de sesión' : 'Ir al inicio de sesión'}
+            {success ? t("Continue to sign in", "Continuar al inicio de sesión") : t("Go to sign in", "Ir al inicio de sesión")}
           </button>
         </section>
       </section>

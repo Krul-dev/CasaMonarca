@@ -1,3 +1,4 @@
+import { translate as t } from './i18n'
 export type SignatureValidityState = {
   countdownLabel: string
   expired: boolean
@@ -47,7 +48,7 @@ export const getSignatureValidityState = (
 
   if (expiresAtDate == null) {
     return {
-      countdownLabel: 'No disponible',
+      countdownLabel: t("Not available", "No disponible"),
       expired: false,
       expiresAt: null,
       remainingMs: null,
@@ -59,7 +60,7 @@ export const getSignatureValidityState = (
 
   return {
     countdownLabel: expired
-      ? `Venció hace ${formatDuration(remainingMs)}`
+      ? t(`Expired ${formatDuration(remainingMs)} ago`, `Venció hace ${formatDuration(remainingMs)}`)
       : formatDuration(remainingMs),
     expired,
     expiresAt: expiresAtDate.toISOString(),

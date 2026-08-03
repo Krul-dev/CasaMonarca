@@ -1,3 +1,4 @@
+import { translate as t } from './i18n'
 import { getCsrfToken } from './csrf'
 import { apiFetch, ApiRequestError, buildApiUrl } from './api'
 import type {
@@ -509,7 +510,7 @@ const downloadBinary = async (path: string): Promise<ArrayBuffer> => {
       'message' in payload &&
       typeof payload.message === 'string'
         ? payload.message
-        : `La solicitud falló con el estado ${response.status}`
+        : t(`Request failed with status ${response.status}`, `La solicitud falló con el estado ${response.status}`)
 
     throw new ApiRequestError(message, response.status)
   }

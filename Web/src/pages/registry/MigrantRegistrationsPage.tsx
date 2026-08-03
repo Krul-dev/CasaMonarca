@@ -1,3 +1,4 @@
+import { translate as t } from '../../lib/i18n'
 import { useEffect, useMemo, useState } from 'react'
 
 import { MigrantDocumentsPanel } from '../../components/registry/MigrantDocumentsPanel'
@@ -290,31 +291,30 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
       <section className="workspace-panel">
         <div className="audit-toolbar">
           <div>
-            <h2 className="workspace-panel__title">Registros actuales de migrantes</h2>
+            <h2 className="workspace-panel__title">{t("Current migrant registrations", "Registros actuales de migrantes")}</h2>
             <p className="workspace-panel__copy">
-              Consulta el registro compartido y revisa los detalles actuales de cada expediente.
-            </p>
+              {t("Browse the shared registry and review the current details attached to each registration. ", "Consulta el registro compartido y revisa los detalles actuales de cada expediente. ")}</p>
           </div>
 
           <button className="audit-toolbar__button" disabled={isLoading} onClick={refresh} type="button">
             <AppIcon name="refresh" />
-            {isLoading ? 'Actualizando...' : 'Actualizar'}
+            {isLoading ? t("Refreshing...", "Actualizando...") : t("Refresh", "Actualizar")}
           </button>
         </div>
 
-        <div aria-label="Filtros de registros de migrantes" className="audit-controls">
+        <div aria-label={t("Migrant registration filters", "Filtros de registros de migrantes")} className="audit-controls">
           <label className="audit-control audit-control--search">
-            <span>Buscar</span>
+            <span>{t("Search", "Buscar")}</span>
             <input
               onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Nombre, país, contacto, remitente o ID"
+              placeholder={t("Name, country, contact, submitter, or ID", "Nombre, país, contacto, remitente o ID")}
               type="search"
               value={searchInput}
             />
           </label>
 
           <label className="audit-control">
-            <span>Estado</span>
+            <span>{t("Status", "Estado")}</span>
             <select
               onChange={(event) => {
                 setStatusFilter(event.target.value)
@@ -322,7 +322,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
               }}
               value={statusFilter}
             >
-              <option value="">Todos los estados</option>
+              <option value="">{t("All statuses", "Todos los estados")}</option>
               {statuses.map((status) => (
                 <option key={status} value={status}>{formatStatus(status)}</option>
               ))}
@@ -330,7 +330,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
           </label>
 
           <label className="audit-control">
-            <span>País</span>
+            <span>{t("Country", "País")}</span>
             <select
               onChange={(event) => {
                 setCountryFilter(event.target.value)
@@ -338,13 +338,13 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
               }}
               value={countryFilter}
             >
-              <option value="">Todos los países</option>
+              <option value="">{t("All countries", "Todos los países")}</option>
               {countries.map((country) => <option key={country} value={country}>{country}</option>)}
             </select>
           </label>
 
           <label className="audit-control audit-control--size">
-            <span>Filas</span>
+            <span>{t("Rows", "Filas")}</span>
             <select
               onChange={(event) => {
                 setPageSize(Number(event.target.value))
@@ -362,12 +362,11 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
             onClick={resetFilters}
             type="button"
           >
-            Limpiar filtros
-          </button>
+            {t("Clear filters ", "Limpiar filtros ")}</button>
         </div>
 
         <label className="registry-browser__population-filter audit-control">
-          <span>Grupo poblacional</span>
+          <span>{t("Population group", "Grupo poblacional")}</span>
           <select
             onChange={(event) => {
               setPopulationGroupFilter(event.target.value)
@@ -375,34 +374,32 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
             }}
             value={populationGroupFilter}
           >
-            <option value="">Todos los grupos poblacionales</option>
+            <option value="">{t("All population groups", "Todos los grupos poblacionales")}</option>
             {populationGroups.map((group) => <option key={group} value={group}>{group}</option>)}
           </select>
         </label>
 
         <div className="audit-pagination">
           <p>
-            Mostrando <strong>{firstVisibleRegistration}-{lastVisibleRegistration}</strong> de{' '}
+            {t("Showing ", "Mostrando ")}<strong>{firstVisibleRegistration}-{lastVisibleRegistration}</strong> {t("of", "de")}{' '}
             <strong>{filteredEntries.length}</strong>
-            {filteredEntries.length !== entries.length ? ` filtrados de ${entries.length}` : ''}
+            {filteredEntries.length !== entries.length ? t(` filtered from ${entries.length}`, ` filtrados de ${entries.length}`) : ''}
           </p>
 
           <div className="audit-pagination__actions">
             <button disabled={isLoading || currentPage === 1} onClick={() => setPage(currentPage - 1)} type="button">
-              Anterior
-            </button>
-            <span>Página {currentPage} de {totalPages}</span>
+              {t("Previous ", "Anterior ")}</button>
+            <span>{t("Page ", "Página ")}{currentPage} {t("of ", "de ")}{totalPages}</span>
             <button disabled={isLoading || currentPage === totalPages} onClick={() => setPage(currentPage + 1)} type="button">
-              Siguiente
-            </button>
+              {t("Next ", "Siguiente ")}</button>
           </div>
         </div>
 
         {error ? <div className="login-feedback login-feedback--error">{error}</div> : null}
-        {isLoading ? <p className="workspace-panel__copy">Cargando registros actuales...</p> : null}
+        {isLoading ? <p className="workspace-panel__copy">{t("Loading current registrations...", "Cargando registros actuales...")}</p> : null}
         {!isLoading && !error && visibleEntries.length === 0 ? (
           <p className="workspace-panel__copy">
-            {hasActiveFilters ? 'Ningún registro coincide con los filtros actuales.' : 'No hay registros actuales de migrantes disponibles.'}
+            {hasActiveFilters ? t("No registrations match the current filters.", "Ningún registro coincide con los filtros actuales.") : t("No current migrant registrations are available.", "No hay registros actuales de migrantes disponibles.")}
           </p>
         ) : null}
       </section>
@@ -414,7 +411,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
               <div className="registry-browser__header">
                 <div>
                   <h3 className="workspace-panel__title">{getEntryName(entry)}</h3>
-                  <p>Registro #{entry.id} · recibido {formatDateTime(entry.created_at)}</p>
+                  <p>{t("Registration #", "Registro #")}{entry.id} {t("· received ", "· recibido ")}{formatDateTime(entry.created_at)}</p>
                 </div>
                 <div className="audit-card__badges">
                   <span className="registry-browser__badge">{getEntryPopulationGroup(entry)}</span>
@@ -430,16 +427,15 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
                     type="button"
                   >
                     <AppIcon name="document" />
-                    Solicitar edición
-                  </button>
+                    {t("Request edit ", "Solicitar edición ")}</button>
                 </div>
               ) : null}
 
               <div className="registry-browser__context">
-                <span><small>Origen</small><strong>{getEntryCountry(entry)}</strong></span>
-                <span><small>Estado</small><strong>{formatValue(entry.payload_json.departmentState)}</strong></span>
-                <span><small>Fecha de atención</small><strong>{formatDate(entry.payload_json.attentionDate)}</strong></span>
-                <span><small>Enviado por</small><strong>{entry.creator?.email ?? formatValue(entry.created_by_role)}</strong></span>
+                <span><small>{t("Origin", "Origen")}</small><strong>{getEntryCountry(entry)}</strong></span>
+                <span><small>{t("State", "Estado")}</small><strong>{formatValue(entry.payload_json.departmentState)}</strong></span>
+                <span><small>{t("Attention date", "Fecha de atención")}</small><strong>{formatDate(entry.payload_json.attentionDate)}</strong></span>
+                <span><small>{t("Submitted by", "Enviado por")}</small><strong>{entry.creator?.email ?? formatValue(entry.created_by_role)}</strong></span>
               </div>
 
               <details
@@ -450,24 +446,24 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
                   }
                 }}
               >
-                <summary>Ver detalles del registro</summary>
+                <summary>{t("View registration details", "Ver detalles del registro")}</summary>
                 <MigrantQuestionnaireViewer payload={entry.payload_json} />
                 <dl>
-                  <div><dt>Nombre</dt><dd>{formatValue(entry.payload_json.firstName)}</dd></div>
-                  <div><dt>Primer apellido</dt><dd>{formatValue(entry.payload_json.firstLastName)}</dd></div>
-                  <div><dt>Segundo apellido</dt><dd>{formatValue(entry.payload_json.secondLastName)}</dd></div>
-                  <div><dt>Fecha de nacimiento</dt><dd>{formatDate(entry.payload_json.birthDate)}</dd></div>
-                  <div><dt>Género</dt><dd>{formatValue(entry.payload_json.gender)}</dd></div>
-                  <div><dt>Estado civil</dt><dd>{formatValue(entry.payload_json.civilStatus)}</dd></div>
-                  <div><dt>Teléfono</dt><dd>{formatValue(entry.payload_json.phone)}</dd></div>
-                  <div><dt>Última actualización</dt><dd>{formatDateTime(entry.updated_at)}</dd></div>
+                  <div><dt>{t("First name", "Nombre")}</dt><dd>{formatValue(entry.payload_json.firstName)}</dd></div>
+                  <div><dt>{t("First last name", "Primer apellido")}</dt><dd>{formatValue(entry.payload_json.firstLastName)}</dd></div>
+                  <div><dt>{t("Second last name", "Segundo apellido")}</dt><dd>{formatValue(entry.payload_json.secondLastName)}</dd></div>
+                  <div><dt>{t("Birth date", "Fecha de nacimiento")}</dt><dd>{formatDate(entry.payload_json.birthDate)}</dd></div>
+                  <div><dt>{t("Gender", "Género")}</dt><dd>{formatValue(entry.payload_json.gender)}</dd></div>
+                  <div><dt>{t("Civil status", "Estado civil")}</dt><dd>{formatValue(entry.payload_json.civilStatus)}</dd></div>
+                  <div><dt>{t("Phone", "Teléfono")}</dt><dd>{formatValue(entry.payload_json.phone)}</dd></div>
+                  <div><dt>{t("Last updated", "Última actualización")}</dt><dd>{formatDateTime(entry.updated_at)}</dd></div>
                 </dl>
                 {typeof entry.payload_json.notes === 'string' && entry.payload_json.notes.trim() ? (
-                  <p className="registry-browser__notes"><small>Notas</small>{entry.payload_json.notes}</p>
+                  <p className="registry-browser__notes"><small>{t("Notes", "Notas")}</small>{entry.payload_json.notes}</p>
                 ) : null}
                 {migrantDocumentsEnabled && user.role !== 'volunteer' && documentEntryIds.has(entry.id) ? (
                   <section className="registry-browser__documents">
-                    <h4>Documentos de soporte</h4>
+                    <h4>{t("Supporting documents", "Documentos de soporte")}</h4>
                     <MigrantDocumentsPanel
                       canDelete={false}
                       canDownload={user.role === 'admin' || user.role === 'coordinator'}

@@ -1,3 +1,4 @@
+import { translate as t } from '../lib/i18n'
 import type {
   AuthenticatedUser,
   SessionModuleCapabilities,
@@ -37,84 +38,84 @@ export type AppRouteConfig = {
 export const APP_ROUTE_CONFIG: AppRouteConfig[] = [
   {
     path: APP_HOME_PATH,
-    label: 'Panel',
-    kicker: 'Resumen de acceso',
-    copy: 'Sesión actual, estado de credenciales y acceso a módulos según el rol.',
+    label: t("Dashboard", "Panel"),
+    kicker: t("Access overview", "Resumen de acceso"),
+    copy: t("Current session, credential state, and role-aware module access.", "Sesión actual, estado de credenciales y acceso a módulos según el rol."),
     requiredModule: 'dashboard',
     workspace: 'internal',
   },
   {
     path: APP_UPLOAD_PATH,
-    label: 'Carga de documentos',
-    kicker: 'Recepción de envíos',
-    copy: 'Recepción privada de documentos con manejo confidencial desde la primera carga.',
+    label: t("Document Upload", "Carga de documentos"),
+    kicker: t("Submission intake", "Recepción de envíos"),
+    copy: t("Private document intake with confidential handling from the first upload.", "Recepción privada de documentos con manejo confidencial desde la primera carga."),
     requiredModule: 'upload',
     workspace: 'internal',
   },
   {
     path: APP_DOCUMENTS_PATH,
-    label: 'Documentos / VCS',
-    kicker: 'Ver, firmar, versionar',
-    copy: 'Revisión de documentos, firma de revisiones, verificación e historial de versiones según el rol.',
+    label: t("Documents / VCS", "Documentos / VCS"),
+    kicker: t("View, sign, version", "Ver, firmar, versionar"),
+    copy: t("Role-aware document review, revision signing, verification, and version history.", "Consulta de documentos, firma de versiones, verificación e historial según el rol."),
     requiredModule: 'documents',
     workspace: 'internal',
   },
   {
     path: APP_INVITES_PATH,
-    label: 'Invitaciones',
-    kicker: 'Alta de cuentas',
-    copy: 'Ciclo de vida de invitaciones por rol para crear cuentas de coordinación, no coordinación y voluntariado.',
+    label: t("Invites", "Invitaciones"),
+    kicker: t("Account onboarding", "Alta de cuentas"),
+    copy: t("Role-bound invite lifecycle for coordinator, non coordinator, and volunteer account provisioning.", "Ciclo de vida de invitaciones por rol para crear cuentas de coordinación, no coordinación y voluntariado."),
     requiredModule: 'invites',
     workspace: 'internal',
   },
   {
     path: APP_LOGGING_PATH,
-    label: 'Registros',
-    kicker: 'Auditoría administrativa',
-    copy: 'Registros operativos restringidos y futuras vistas de auditoría privilegiada.',
+    label: t("Audit Log", "Bitácora"),
+    kicker: t("Admin audit", "Auditoría administrativa"),
+    copy: t("Restricted operational logs and future privileged audit views.", "Eventos operativos y de auditoría con acceso restringido."),
     requiredModule: 'logging',
     workspace: 'internal',
   },
   {
     path: APP_ADMIN_PATH,
-    label: 'Panel de administración',
-    kicker: 'Solo administración',
-    copy: 'Administración del sistema y flujos de configuración restringidos.',
+    label: t("Admin Panel", "Panel de administración"),
+    kicker: t("Admin only", "Solo administración"),
+    copy: t("System administration and restricted configuration workflows.", "Administración del sistema y flujos de configuración restringidos."),
     requiredModule: 'admin',
     workspace: 'internal',
   },
   {
     path: APP_MIGRANT_REGISTRY_PATH,
-    label: 'Registro de migrantes',
-    kicker: 'Recepción de migrantes',
-    copy: 'Recepción estructurada de registros de migrantes enviados para revisión de coordinación y administración.',
+    label: t("Migrant Registration", "Registro de migrantes"),
+    kicker: t("Migrant intake", "Recepción de migrantes"),
+    copy: t("Structured migrant registration intake submitted for review and approval.", "Captura estructurada de registros de migrantes para su revisión y aprobación."),
     requiredModule: 'dashboard',
     allowedRoles: ['admin', 'coordinator', 'non_coordinator', 'volunteer'],
     workspace: 'migrant',
   },
   {
     path: APP_MIGRANT_REGISTRATIONS_PATH,
-    label: 'Registros actuales',
-    kicker: 'Directorio de migrantes',
-    copy: 'Busca, filtra y revisa los registros actuales de migrantes en el registro compartido.',
+    label: t("Current Registrations", "Registros actuales"),
+    kicker: t("Migrant directory", "Directorio de migrantes"),
+    copy: t("Search, filter, and review current migrant registrations across the shared registry.", "Busca, filtra y revisa los registros actuales de migrantes en el registro compartido."),
     requiredModule: 'dashboard',
     allowedRoles: ['admin', 'coordinator', 'non_coordinator'],
     workspace: 'migrant',
   },
   {
     path: APP_MIGRANT_APPROVALS_PATH,
-    label: 'Revisión y aprobación',
-    kicker: 'Validación de migrantes',
-    copy: 'Revisión de no coordinación seguida por aprobación de coordinación respaldada con llave de acceso para registros de migrantes.',
+    label: t("Review & Approval", "Revisión y aprobación"),
+    kicker: t("Migrant validation", "Validación de migrantes"),
+    copy: t("Non-coordinator review followed by passkey-backed coordinator approval for migrant registrations.", "Revisión por personal no coordinador y aprobación final por coordinación mediante llave de acceso."),
     requiredModule: 'dashboard',
     allowedRoles: ['admin', 'coordinator', 'non_coordinator'],
     workspace: 'migrant',
   },
   {
     path: APP_MIGRANT_ARCO_PATH,
-    label: 'Solicitudes ARCO',
-    kicker: 'Derechos de privacidad',
-    copy: 'Solicitudes firmadas de derechos de privacidad, revisión, resolución y evidencia para expedientes de migrantes.',
+    label: t("ARCO Requests", "Solicitudes ARCO"),
+    kicker: t("Privacy rights", "Derechos de privacidad"),
+    copy: t("Signed privacy-rights requests, review, resolution, and evidence for migrant records.", "Solicitudes firmadas de derechos de privacidad, revisión, resolución y evidencia para expedientes de migrantes."),
     requiredModule: 'dashboard',
     allowedRoles: ['admin', 'coordinator', 'non_coordinator'],
     enabled: arcoEnabled,
@@ -139,9 +140,9 @@ export const getRouteConfigForUser = (
 
   return {
     ...route,
-    label: 'Revisión de documentos',
-    kicker: 'Ver, verificar',
-    copy: 'Acceso según el rol para revisar y verificar documentos disponibles.',
+    label: t("Document Review", "Revisión de documentos"),
+    kicker: t("View, verify", "Ver, verificar"),
+    copy: t("Role-aware access to review and verify available documents.", "Acceso según el rol para revisar y verificar documentos disponibles."),
   }
 }
 
@@ -155,6 +156,10 @@ export const canAccessRoute = (user: AuthenticatedUser, pathname: string) => {
   const requiredModule = route?.requiredModule ?? null
 
   if (!route || !requiredModule || route.enabled === false) {
+    return false
+  }
+
+  if (route.workspace === 'migrant' && !user.capabilities.security.isFullyEnrolled) {
     return false
   }
 
@@ -172,12 +177,12 @@ export const getVisibleRoutesForUser = (user: AuthenticatedUser) =>
 export const getRoleLabel = (role: UserRole) => {
   switch (role) {
     case 'admin':
-      return 'Administrador'
+      return t("Admin", "Administrador")
     case 'coordinator':
-      return 'Coordinador'
+      return t("Coordinator", "Coordinador")
     case 'non_coordinator':
-      return 'No coordinador'
+      return t("Non Coordinator", "No coordinador")
     case 'volunteer':
-      return 'Voluntario'
+      return t("Volunteer", "Voluntario")
   }
 }

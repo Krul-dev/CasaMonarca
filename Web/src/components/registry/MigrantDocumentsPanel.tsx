@@ -1,3 +1,4 @@
+import { translate as t } from '../../lib/i18n'
 import { useEffect, useState } from 'react'
 
 import { ApiRequestError } from '../../lib/api'
@@ -91,7 +92,7 @@ export function MigrantDocumentsPanel({
           return
         }
 
-        setError(caught instanceof Error ? caught.message : 'No se pudieron cargar los documentos.')
+        setError(caught instanceof Error ? caught.message : t("Unable to load documents.", "No se pudieron cargar los documentos."))
       })
       .finally(() => {
         if (isMounted) {
@@ -113,13 +114,13 @@ export function MigrantDocumentsPanel({
     try {
       await deleteMigrantDocument(entryId, documentId)
       setDocuments((current) => current.filter((document) => document.id !== documentId))
-      setFeedback('Documento eliminado del registro.')
+      setFeedback(t("Document removed from the registration.", "Documento eliminado del registro."))
     } catch (caught: unknown) {
       if (handleSessionError(caught)) {
         return
       }
 
-      setError(caught instanceof Error ? caught.message : 'No se pudo eliminar el documento.')
+      setError(caught instanceof Error ? caught.message : t("Unable to remove the document.", "No se pudo eliminar el documento."))
     } finally {
       setPendingDeleteId(null)
     }
@@ -142,7 +143,7 @@ export function MigrantDocumentsPanel({
       link.download = document.original_file_name
       link.click()
       URL.revokeObjectURL(url)
-      setFeedback(`"${document.original_file_name}" se descargó.`)
+      setFeedback(t(`"${document.original_file_name}" was downloaded.`, `"${document.original_file_name}" se descargó.`))
     } catch (caught: unknown) {
       if (challengeIntentId && caught instanceof DOMException && caught.name === 'NotAllowedError') {
         await cancelSecurityChallenge(challengeIntentId).catch(() => undefined)
@@ -154,10 +155,10 @@ export function MigrantDocumentsPanel({
 
       setError(
         caught instanceof Error && caught.name === 'NotAllowedError'
-          ? 'Se canceló la descarga con llave de acceso.'
+          ? t("Passkey download was cancelled.", "Se canceló la descarga con llave de acceso.")
           : caught instanceof Error
             ? caught.message
-            : 'No se pudo descargar el documento.',
+            : t("Unable to download the document.", "No se pudo descargar el documento."),
       )
     } finally {
       setPendingDownloadId(null)
@@ -175,12 +176,10 @@ export function MigrantDocumentsPanel({
 
   return (
     <section className={embedded ? 'migrant-documents migrant-documents--embedded' : 'workspace-panel'}>
-      {!embedded ? <h2 className="workspace-panel__title">Documentos de soporte</h2> : null}
+      {!embedded ? <h2 className="workspace-panel__title">{t("Supporting documents", "Documentos de soporte")}</h2> : null}
       {!embedded ? (
         <p className="workspace-panel__copy">
-          Los archivos permanecen vinculados a este registro y se purgan si el expediente se cancela mediante
-          una solicitud ARCO.
-        </p>
+          {t("Files stay linked to this registration and are purged if the record is cancelled through an ARCO request. ", "Los archivos permanecen vinculados a este registro y se purgan si el expediente se cancela mediante una solicitud ARCO. ")}</p>
       ) : null}
 
       {error ? <div className="login-feedback login-feedback--error">{error}</div> : null}
@@ -188,9 +187,9 @@ export function MigrantDocumentsPanel({
 
       {canView ? (
         isLoading ? (
-          <p className="workspace-panel__copy">Cargando documentos...</p>
+          <p className="workspace-panel__copy">{t("Loading documents...", "Cargando documentos...")}</p>
         ) : documents.length === 0 ? (
-          <p className="workspace-panel__copy">Todavía no hay documentos adjuntos.</p>
+          <p className="workspace-panel__copy">{t("No documents attached yet.", "Todavía no hay documentos adjuntos.")}</p>
         ) : (
           <ul className="migrant-documents__list">
             {documents.map((doc) => (
@@ -198,7 +197,7 @@ export function MigrantDocumentsPanel({
                 <div>
                   <strong>{doc.label ? `${doc.label} — ` : ''}{doc.original_file_name}</strong>
                   <div className="migrant-documents__meta">
-                    {formatBytes(doc.size_bytes)} · {doc.mime_type ?? 'tipo desconocido'} ·{' '}
+                    {formatBytes(doc.size_bytes)} · {doc.mime_type ?? t("unknown type", "tipo desconocido")} ·{' '}
                     {doc.uploaded_by_role}
                   </div>
                 </div>
@@ -211,7 +210,7 @@ export function MigrantDocumentsPanel({
                       type="button"
                     >
                       <AppIcon name="download" />
-                      {pendingDownloadId === doc.id ? 'Autenticando...' : 'Descargar'}
+                      {pendingDownloadId === doc.id ? t("Authenticating...", "Autenticando...") : t("Download", "Descargar")}
                     </button>
                   ) : null}
                   {canDelete ? (
@@ -221,7 +220,7 @@ export function MigrantDocumentsPanel({
                       onClick={() => handleDelete(doc.id)}
                       type="button"
                     >
-                      {pendingDeleteId === doc.id ? 'Eliminando...' : 'Eliminar'}
+                      {pendingDeleteId === doc.id ? t("Removing...", "Eliminando...") : t("Remove", "Eliminar")}
                     </button>
                   ) : null}
                 </div>
@@ -250,12 +249,9 @@ export function MigrantDocumentsPanel({
         >
           <div className="confirmation-modal__surface">
             <div>
-              <h3 id={`migrant-document-download-confirmation-title-${entryId}`}>Documento fuera de Acceso ARCO completado</h3>
+              <h3 id={`migrant-document-download-confirmation-title-${entryId}`}>{t("Document outside completed ARCO Access", "Documento fuera de Acceso ARCO completado")}</h3>
               <p>
-                <strong>{downloadConfirmation.original_file_name}</strong> no está cubierto por una
-                solicitud de Acceso ARCO completada. Continúa solo cuando su descarga esté autorizada para
-                el caso actual. La descarga requerirá tu llave de acceso y quedará auditada.
-              </p>
+                <strong>{downloadConfirmation.original_file_name}</strong> {t("has not been covered by a completed ARCO Access request. Continue only when downloading it is authorized for the current case. The download will require your passkey and will be audited. ", "no está cubierto por una solicitud de Acceso ARCO completada. Continúa solo cuando su descarga esté autorizada para el caso actual. La descarga requerirá tu llave de acceso y quedará auditada. ")}</p>
             </div>
             <div className="confirmation-modal__actions">
               <button
@@ -264,8 +260,7 @@ export function MigrantDocumentsPanel({
                 onClick={() => setDownloadConfirmation(null)}
                 type="button"
               >
-                Cancelar
-              </button>
+                {t("Cancel ", "Cancelar ")}</button>
               <button
                 className="session-action"
                 onClick={() => {
@@ -276,8 +271,7 @@ export function MigrantDocumentsPanel({
                 type="button"
               >
                 <AppIcon name="download" />
-                Continuar con llave de acceso
-              </button>
+                {t("Continue to passkey ", "Continuar con llave de acceso ")}</button>
             </div>
           </div>
         </div>

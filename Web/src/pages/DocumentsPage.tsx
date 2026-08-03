@@ -1,3 +1,4 @@
+import { translate as t } from '../lib/i18n'
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppIcon } from '../components/ui/AppIcon'
@@ -478,7 +479,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
       setActionFeedback({
         kind: 'error',
         message:
-          'Las actualizaciones de revisión requieren localhost o un nombre de dominio. Abre esta app desde localhost o tu dominio de staging.',
+          t("Document revision updates require localhost or a domain name. Open this app from localhost or your staging domain.", "Las nuevas versiones de documentos requieren localhost o un nombre de dominio. Abre esta aplicación desde localhost o tu dominio de pruebas."),
       })
       return
     }
@@ -524,9 +525,9 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
         message:
           error instanceof Error
             ? error.name === 'NotAllowedError'
-              ? 'Se canceló la verificación con llave de seguridad.'
+              ? t("Security key verification was cancelled.", "Se canceló la verificación con llave de seguridad.")
               : error.message
-            : 'No se pudo cargar la revisión del documento.',
+            : t("The document revision could not be uploaded.", "No se pudo cargar la nueva versión del documento."),
       })
     } finally {
       setPendingAction('idle')
@@ -577,7 +578,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
       setActionFeedback({
         kind: 'error',
         message:
-          'La firma de revisiones requiere localhost o un nombre de dominio. Abre esta app desde localhost o tu dominio de staging.',
+          t("Revision signing requires localhost or a domain name. Open this app from localhost or your staging domain.", "La firma de versiones requiere localhost o un nombre de dominio. Abre esta aplicación desde localhost o tu dominio de pruebas."),
       })
       return
     }
@@ -627,9 +628,9 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
         message:
           error instanceof Error
             ? error.name === 'NotAllowedError'
-              ? 'Se canceló la verificación con llave de seguridad.'
+              ? t("Security key verification was cancelled.", "Se canceló la verificación con llave de seguridad.")
               : error.message
-            : 'No se pudo firmar la revisión.',
+            : t("The revision could not be signed.", "No se pudo firmar la versión."),
       })
     } finally {
       setPendingSigningRevisionId(null)
@@ -643,7 +644,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
 
     if (
       !window.confirm(
-        `¿Eliminar "${detail.title}" permanentemente? Esto quitará el contenido del documento y conservará solo el registro de auditoría de eliminación.`,
+        t(`Delete "${detail.title}" permanently? This will remove the document payload and keep only the tombstone audit record.`, `¿Eliminar "${detail.title}" permanentemente? Esto quitará el contenido del documento y conservará solo el registro de auditoría de eliminación.`),
       )
     ) {
       return
@@ -653,7 +654,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
       setActionFeedback({
         kind: 'error',
         message:
-          'La eliminación de documentos requiere localhost o un nombre de dominio. Abre esta app desde localhost o tu dominio de staging.',
+          t("Document deletion requires localhost or a domain name. Open this app from localhost or your staging domain.", "La eliminación de documentos requiere localhost o un nombre de dominio. Abre esta app desde localhost o tu dominio de staging."),
       })
       return
     }
@@ -695,9 +696,9 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
         message:
           error instanceof Error
             ? error.name === 'NotAllowedError'
-              ? 'Se canceló la verificación con llave de seguridad.'
+              ? t("Security key verification was cancelled.", "Se canceló la verificación con llave de seguridad.")
               : error.message
-            : 'No se pudo eliminar el documento.',
+            : t("The document could not be deleted.", "No se pudo eliminar el documento."),
       })
     } finally {
       setPendingAction('idle')
@@ -738,7 +739,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
       setLocalVerificationError(
         error instanceof Error
           ? error.message
-          : 'No se pudo completar la verificación local.',
+          : t("Local verification could not be completed.", "No se pudo completar la verificación local."),
       )
     } finally {
       setIsVerifyingLocally(false)
@@ -765,7 +766,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
       downloadJsonFile(filename, bundleResponse.bundle)
       setActionFeedback({
         kind: 'success',
-        message: 'Paquete de verificación descargado.',
+        message: t("Verification bundle downloaded.", "Paquete de verificación descargado."),
       })
     } catch (error) {
       if (error instanceof ApiRequestError && error.status === 401) {
@@ -778,7 +779,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
         message:
           error instanceof Error
             ? error.message
-            : 'No se pudo descargar el paquete de verificación.',
+            : t("The verification bundle could not be downloaded.", "No se pudo descargar el paquete de verificación."),
       })
     } finally {
       setIsDownloadingVerificationBundle(false)
@@ -807,7 +808,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
       downloadJsonFile(filename, bundleResponse.bundle)
       setActionFeedback({
         kind: 'success',
-        message: `Paquete de verificación descargado para la revisión ${revision.revisionNumber}.`,
+        message: t(`Verification bundle downloaded for revision ${revision.revisionNumber}.`, `Paquete de verificación descargado para la versión ${revision.revisionNumber}.`),
       })
     } catch (error) {
       if (error instanceof ApiRequestError && error.status === 401) {
@@ -820,7 +821,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
         message:
           error instanceof Error
             ? error.message
-            : 'No se pudo descargar el paquete de verificación de la revisión.',
+            : t("The revision verification bundle could not be downloaded.", "No se pudo descargar el paquete de verificación de la versión."),
       })
     } finally {
       setDownloadingBundleRevisionId(null)
@@ -870,7 +871,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
         [revision.id]:
           error instanceof Error
             ? error.message
-            : 'No se pudo completar la verificación local para esta revisión.',
+            : t("Local verification could not be completed for this revision.", "No se pudo completar la verificación local de esta versión."),
       }))
     } finally {
       setVerifyingRevisionId(null)
@@ -890,12 +891,9 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
   return (
     <section className="workspace-stack">
       <section className="workspace-panel workspace-panel--accent">
-        <h2 className="workspace-panel__title">Espacio de documentos</h2>
+        <h2 className="workspace-panel__title">{t("Document workspace", "Espacio de documentos")}</h2>
         <p className="workspace-panel__copy">
-          Revisa documentos, carga nuevas revisiones y firma revisiones específicas
-          desde un solo lugar. La firma y la eliminación permanente requieren un reto
-          nuevo con llave de acceso, no solo la sesión actual.
-        </p>
+          {t("Review documents, upload new revisions, and sign specific revisions from one place. Signing and permanent deletion require a fresh passkey challenge instead of relying only on the current session. ", "Consulta documentos, carga nuevas versiones y firma versiones específicas desde un solo lugar. La firma y la eliminación permanente requieren una nueva autenticación con llave de acceso. ")}</p>
 
         <div className="workspace-actions">
           <button
@@ -904,8 +902,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
             type="button"
           >
             <AppIcon name="refresh" />
-            Actualizar documentos
-          </button>
+            {t("Refresh documents ", "Actualizar documentos ")}</button>
         </div>
 
         {actionFeedback ? (
@@ -923,19 +920,16 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
 
       <section className="document-layout">
         <section className="workspace-panel workspace-panel--document-list">
-          <h2 className="workspace-panel__title">Documentos disponibles</h2>
+          <h2 className="workspace-panel__title">{t("Available documents", "Documentos disponibles")}</h2>
 
           {isLoadingList ? (
             <div className="route-status route-status--checking">
-              Cargando lista de documentos...
-            </div>
+              {t("Loading document list... ", "Cargando lista de documentos... ")}</div>
           ) : listError ? (
             <div className="login-feedback login-feedback--error">{listError}</div>
           ) : documents.length === 0 ? (
             <div className="document-empty">
-              Todavía no hay documentos registrados. Usa el módulo de carga para crear el
-              primer registro confidencial.
-            </div>
+              {t("No documents are registered yet. Use the upload module to create the first confidential record. ", "Todavía no hay documentos registrados. Usa el módulo de carga para crear el primer registro confidencial. ")}</div>
           ) : (
             <div className="document-list" role="list">
               {documents.map((document) => {
@@ -952,14 +946,14 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                   >
                     <span className="document-list__title">{document.title}</span>
                     <span className="document-list__meta">
-                      Revisión{' '}
-                      {document.currentRevision?.revisionNumber ?? 'No disponible'}
+                      {t("Revision", "Versión")}{' '}
+                      {document.currentRevision?.revisionNumber ?? t("Not available", "No disponible")}
                     </span>
                     <span className="document-list__meta">
-                      Cargado por: {document.uploadedBy.name ?? 'No disponible'}
+                      {t("Uploaded by: ", "Cargado por: ")}{document.uploadedBy.name ?? t("Not available", "No disponible")}
                     </span>
                     <span className="document-list__meta">
-                      Actualizado: {formatDateTime(document.updatedAt)}
+                      {t("Updated: ", "Actualizado: ")}{formatDateTime(document.updatedAt)}
                     </span>
                   </button>
                 )
@@ -973,19 +967,19 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
             <div className="document-detail-header">
               <div>
                 <h2 className="workspace-panel__title">
-                  {detail?.title ?? 'Documento seleccionado'}
+                  {detail?.title ?? t("Selected document", "Documento seleccionado")}
                 </h2>
                 {selectedRevision ? (
                   <p className="workspace-panel__copy">
-                    Viendo revisión {selectedRevision.revisionNumber}
-                    {isSelectedRevisionCurrent ? ' · actual' : ''}
+                    {t("Viewing revision ", "Viendo la versión ")}{selectedRevision.revisionNumber}
+                    {isSelectedRevisionCurrent ? t(" · current", " · actual") : ''}
                   </p>
                 ) : null}
               </div>
 
               {detail && canUseVersioning && sortedRevisions.length > 0 ? (
                 <label className="revision-picker">
-                  <span>Versión</span>
+                  <span>{t("Version", "Versión")}</span>
                   <select
                     onChange={(event) => {
                       const nextRevisionId = Number(event.currentTarget.value)
@@ -996,8 +990,8 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                   >
                     {sortedRevisions.map((revision) => (
                       <option key={revision.id} value={revision.id}>
-                        Revisión {revision.revisionNumber}
-                        {revision.id === detail.currentRevision?.id ? ' (actual)' : ''}
+                        {t("Revision ", "Versión ")}{revision.revisionNumber}
+                        {revision.id === detail.currentRevision?.id ? t(" (current)", " (actual)") : ''}
                       </option>
                     ))}
                   </select>
@@ -1007,13 +1001,10 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
 
             {selectedDocumentId == null ? (
               <div className="document-empty">
-                Selecciona un documento de la lista para revisar sus metadatos y
-                estado de verificación.
-              </div>
+                {t("Select a document from the list to inspect its metadata and verification state. ", "Selecciona un documento de la lista para revisar sus metadatos y estado de verificación. ")}</div>
             ) : isLoadingDetail ? (
               <div className="route-status route-status--checking">
-                Cargando detalles del documento...
-              </div>
+                {t("Loading document details... ", "Cargando detalles del documento... ")}</div>
             ) : detailError ? (
               <div className="login-feedback login-feedback--error">
                 {detailError}
@@ -1022,23 +1013,23 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
               <>
                 <dl className="document-detail-grid">
                   <div className="document-detail-grid__item">
-                    <dt>Estado</dt>
+                    <dt>{t("Status", "Estado")}</dt>
                     <dd>
                       <span className="document-badge">{detail.status}</span>
                     </dd>
                   </div>
                   <div className="document-detail-grid__item">
-                    <dt>Cargado por</dt>
-                    <dd>{detail.uploadedBy.name ?? 'No disponible'}</dd>
+                    <dt>{t("Uploaded by", "Cargado por")}</dt>
+                    <dd>{detail.uploadedBy.name ?? t("Not available", "No disponible")}</dd>
                   </div>
                   <div className="document-detail-grid__item">
-                    <dt>Última actualización</dt>
+                    <dt>{t("Last updated", "Última actualización")}</dt>
                     <dd>{formatDateTime(detail.updatedAt)}</dd>
                   </div>
                   <div className="document-detail-grid__item">
-                    <dt>{selectedRevision ? 'Hash de revisión' : 'Hash actual'}</dt>
+                    <dt>{selectedRevision ? t("Revision hash", "Hash de la versión") : t("Current hash", "Hash actual")}</dt>
                     <dd className="document-detail-grid__value--mono">
-                      {selectedRevision?.sha256 ?? detail.currentRevision?.sha256 ?? 'No disponible'}
+                      {selectedRevision?.sha256 ?? detail.currentRevision?.sha256 ?? t("Not available", "No disponible")}
                     </dd>
                   </div>
                 </dl>
@@ -1052,8 +1043,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                       target="_blank"
                     >
                       <AppIcon name="download" />
-                      Descargar archivo actual
-                    </a>
+                      {t("Download current file ", "Descargar archivo actual ")}</a>
                   ) : null}
 
                   {canUploadSelectedRevision ? (
@@ -1076,8 +1066,8 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                       >
                         <AppIcon name="upload" />
                         {pendingAction === 'updating'
-                          ? 'Actualizando con llave de acceso...'
-                          : 'Cargar nueva revisión'}
+                          ? t("Updating with passkey...", "Actualizando con llave de acceso...")
+                          : t("Upload new revision", "Cargar nueva versión")}
                       </button>
                     </>
                   ) : null}
@@ -1093,8 +1083,8 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                     >
                       <AppIcon name="delete" />
                       {pendingAction === 'deleting'
-                        ? 'Eliminando permanentemente...'
-                        : 'Eliminar permanentemente'}
+                        ? t("Deleting permanently...", "Eliminando permanentemente...")
+                        : t("Permanently delete", "Eliminar permanentemente")}
                     </button>
                   ) : null}
                 </div>
@@ -1104,7 +1094,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                     <div className="revision-timeline__header">
                       <div>
                         <span className="document-badge">
-                          Revisión {selectedRevision.revisionNumber}
+                          {t("Revision ", "Versión ")}{selectedRevision.revisionNumber}
                         </span>
                         <h3>{selectedRevision.originalFileName}</h3>
                       </div>
@@ -1117,23 +1107,23 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
 
                     <dl className="revision-facts">
                       <div className="revision-facts__item">
-                        <dt>Padre</dt>
+                        <dt>{t("Parent", "Padre")}</dt>
                         <dd>{formatParentRevision(selectedRevision)}</dd>
                       </div>
                       <div className="revision-facts__item">
-                        <dt>Tipo de cambio</dt>
+                        <dt>{t("Change kind", "Tipo de cambio")}</dt>
                         <dd>{formatDiffKind(selectedRevision)}</dd>
                       </div>
                       <div className="revision-facts__item">
-                        <dt>Autoría</dt>
-                        <dd>{selectedRevision.createdBy.name ?? 'No disponible'}</dd>
+                        <dt>{t("Author", "Autoría")}</dt>
+                        <dd>{selectedRevision.createdBy.name ?? t("Not available", "No disponible")}</dd>
                       </div>
                       <div className="revision-facts__item">
-                        <dt>Creada</dt>
+                        <dt>{t("Created", "Creada")}</dt>
                         <dd>{formatDateTime(selectedRevision.createdAt)}</dd>
                       </div>
                       <div className="revision-facts__item">
-                        <dt>Tamaño</dt>
+                        <dt>{t("Size", "Tamaño")}</dt>
                         <dd>{formatBytes(selectedRevision.sizeBytes)}</dd>
                       </div>
                       <div className="revision-facts__item revision-facts__item--hash">
@@ -1144,11 +1134,11 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
 
                     {selectedRevision.signatures?.length ? (
                       <p className="workspace-panel__copy">
-                        Firmado por:{' '}
+                        {t("Signed by:", "Firmado por:")}{' '}
                         {selectedRevision.signatures
                           .map(
                             (signature) =>
-                              signature.signedBy.name ?? 'Firmante desconocido',
+                              signature.signedBy.name ?? t("Unknown signer", "Firmante desconocido"),
                           )
                           .join(', ')}
                       </p>
@@ -1176,7 +1166,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                           target="_blank"
                         >
                           <AppIcon name="download" />
-                          Descargar revisión {selectedRevision.revisionNumber}
+                          {t("Download revision ", "Descargar versión ")}{selectedRevision.revisionNumber}
                         </a>
                       ) : null}
 
@@ -1190,8 +1180,8 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                         >
                           <AppIcon name="verify" />
                           {isVerifyingSelectedRevision
-                            ? 'Verificando localmente...'
-                            : `Verificar revisión ${selectedRevision.revisionNumber} localmente`}
+                            ? t("Verifying locally...", "Verificando localmente...")
+                            : t(`Verify revision ${selectedRevision.revisionNumber} locally`, `Verificar localmente la versión ${selectedRevision.revisionNumber}`)}
                         </button>
                       ) : null}
 
@@ -1210,9 +1200,9 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                         >
                           <AppIcon name="sign" />
                           {isSigningSelectedRevision
-                              ? 'Firmando con llave de acceso...'
+                              ? t("Signing with passkey...", "Firmando con llave de acceso...")
                               : selectedRevisionSignedByCurrentUser
-                                ? 'Firmada por esta cuenta'
+                                ? t("Signed by this account", "Firmada por esta cuenta")
                               : selectedRevisionSigningBlock ?? `Sign revision ${selectedRevision.revisionNumber}`}
                         </button>
                       ) : null}
@@ -1223,13 +1213,9 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                       <details className="verification-export verification-export--compact">
                         <summary>
                           <AppIcon name="bundle" />
-                          Evidencia de auditoría/exportación
-                        </summary>
+                          {t("Audit/export evidence ", "Evidencia de auditoría/exportación ")}</summary>
                         <p>
-                          Descarga evidencia de verificación para auditoría o
-                          validación externa. La revisión normal debe usar la
-                          verificación local en esta app.
-                        </p>
+                          {t("Download verification evidence for audit review or external validation. Normal review should use local verification in this app. ", "Descarga evidencia de verificación para auditoría o validación externa. La revisión normal debe usar la verificación local en esta app. ")}</p>
                         <div className="workspace-actions">
                           <a
                             className="workspace-action"
@@ -1241,8 +1227,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                             target="_blank"
                           >
                             <AppIcon name="download" />
-                          Descargar paquete de verificación
-                          </a>
+                          {t("Download verification package ", "Descargar paquete de verificación ")}</a>
                           <button
                             className="workspace-action workspace-action--secondary"
                             disabled={downloadingBundleRevisionId !== null}
@@ -1255,8 +1240,8 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                           >
                             <AppIcon name="bundle" />
                             {isDownloadingSelectedRevisionBundle
-                              ? 'Descargando paquete...'
-                              : `Descargar paquete de verificación de la revisión ${selectedRevision.revisionNumber}`}
+                              ? t("Downloading bundle...", "Descargando paquete...")
+                              : t(`Download revision ${selectedRevision.revisionNumber} verification bundle`, `Descargar el paquete de verificación de la versión ${selectedRevision.revisionNumber}`)}
                           </button>
                         </div>
                       </details>
@@ -1277,33 +1262,31 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                         }`}
                       >
                         {selectedRevisionLocalVerificationReport.verified
-                          ? `La verificación local fue exitosa para la revisión ${selectedRevision.revisionNumber}.`
-                          : `La verificación local terminó con una o más comprobaciones fallidas para la revisión ${selectedRevision.revisionNumber}.`}
+                          ? t(`Local verification succeeded for revision ${selectedRevision.revisionNumber}.`, `La versión ${selectedRevision.revisionNumber} superó la verificación local.`)
+                          : t(`Local verification completed with one or more failed checks for revision ${selectedRevision.revisionNumber}.`, `Una o más comprobaciones de la versión ${selectedRevision.revisionNumber} fallaron durante la verificación local.`)}
                       </div>
                     ) : null}
                   </article>
                 ) : canUseVersioning ? (
                   <p className="workspace-panel__copy">
-                    La selección de revisiones queda disponible cuando este rol puede
-                    revisar el historial del documento.
-                  </p>
+                    {t("Revision selection becomes available when this role can inspect document history. ", "La selección de versiones está disponible para los roles con acceso al historial del documento. ")}</p>
                 ) : null}
               </>
             ) : null}
           </section>
 
           <section className="workspace-panel workspace-panel--accent">
-            <h2 className="workspace-panel__title">Estado actual de verificación</h2>
+            <h2 className="workspace-panel__title">{t("Current verification state", "Estado actual de verificación")}</h2>
 
             {verification ? (
               <>
                 <dl className="document-detail-grid">
                   <div className="document-detail-grid__item">
-                    <dt>Revisión</dt>
-                    <dd>{verification.currentRevisionNumber ?? 'No disponible'}</dd>
+                    <dt>{t("Revision", "Versión")}</dt>
+                    <dd>{verification.currentRevisionNumber ?? t("Not available", "No disponible")}</dd>
                   </div>
                   <div className="document-detail-grid__item">
-                    <dt>Estado de firma</dt>
+                    <dt>{t("Signature status", "Estado de firma")}</dt>
                     <dd>
                       <span className="document-badge">
                         {verification.signatureStatus}
@@ -1311,19 +1294,18 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                     </dd>
                   </div>
                   <div className="document-detail-grid__item">
-                    <dt>Tiene firmas</dt>
-                    <dd>{verification.hasSignatures ? 'Sí' : 'No'}</dd>
+                    <dt>{t("Has signatures", "Tiene firmas")}</dt>
+                    <dd>{verification.hasSignatures ? t("Yes", "Sí") : 'No'}</dd>
                   </div>
                   <div className="document-detail-grid__item">
-                    <dt>Verificado</dt>
-                    <dd>{verification.verified ? 'Sí' : 'No'}</dd>
+                    <dt>{t("Verified", "Verificado")}</dt>
+                    <dd>{verification.verified ? t("Yes", "Sí") : 'No'}</dd>
                   </div>
                 </dl>
 
                 {currentUserAlreadySigned ? (
                   <p className="workspace-panel__copy">
-                    La sesión actual ya firmó esta revisión.
-                  </p>
+                    {t("The current session has already signed this revision. ", "La sesión actual ya firmó esta versión. ")}</p>
                 ) : null}
 
                 {verification.signatures.length > 0 ? (
@@ -1339,21 +1321,17 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                           >
                             <AppIcon name="verify" />
                             {isVerifyingLocally
-                                ? 'Verificando localmente...'
-                                : 'Verificar revisión actual localmente'}
+                                ? t("Verifying locally...", "Verificando localmente...")
+                                : t("Verify current revision locally", "Verificar localmente la versión actual")}
                           </button>
                         </div>
 
                         <details className="verification-export">
                           <summary>
                             <AppIcon name="bundle" />
-                            Evidencia de auditoría/exportación
-                          </summary>
+                            {t("Audit/export evidence ", "Evidencia de auditoría/exportación ")}</summary>
                           <p>
-                            Descarga el paquete de verificación sin procesar para auditoría
-                            o herramientas externas futuras. La revisión normal debe usar
-                            la verificación local en la app.
-                          </p>
+                            {t("Download the raw verification bundle for audit review or future external tooling. Normal review should use local verification in the app. ", "Descarga el paquete de verificación sin procesar para auditoría o herramientas externas futuras. La revisión normal debe usar la verificación local en la app. ")}</p>
                           <div className="workspace-actions">
                             <a
                               className="workspace-action"
@@ -1364,8 +1342,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                               target="_blank"
                             >
                               <AppIcon name="download" />
-                              Descargar paquete de verificación
-                            </a>
+                              {t("Download verification package ", "Descargar paquete de verificación ")}</a>
                             <button
                               className="workspace-action workspace-action--secondary"
                               disabled={isDownloadingVerificationBundle}
@@ -1374,8 +1351,8 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                             >
                               <AppIcon name="bundle" />
                               {isDownloadingVerificationBundle
-                                  ? 'Descargando paquete...'
-                                  : 'Descargar paquete de verificación'}
+                                  ? t("Downloading bundle...", "Descargando paquete...")
+                                  : t("Download verification bundle", "Descargar paquete de verificación")}
                             </button>
                           </div>
                         </details>
@@ -1397,8 +1374,8 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                       >
                         <p>
                           {localVerificationReport.verified
-                            ? `La verificación local fue exitosa para ${localVerificationReport.signatures.length} firma(s).`
-                            : 'La verificación local terminó con una o más comprobaciones fallidas.'}
+                            ? t(`Local verification succeeded for ${localVerificationReport.signatures.length} signature(s).`, `La verificación local fue exitosa para ${localVerificationReport.signatures.length} firma(s).`)
+                            : t("Local verification completed with one or more failed checks.", "La verificación local terminó con una o más comprobaciones fallidas.")}
                         </p>
                       </div>
                     ) : null}
@@ -1446,28 +1423,28 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
 
                         return (
                           <li key={signature.id} className="revision-list__item">
-                            <strong>{signature.signedBy.name ?? 'Firmante desconocido'}</strong>
+                            <strong>{signature.signedBy.name ?? t("Unknown signer", "Firmante desconocido")}</strong>
                             <span>{signature.signatureType}</span>
                             <span>{signature.verificationStatus}</span>
                             <span>{formatDateTime(signature.signedAt)}</span>
                             <dl className="signature-receipt">
                               <div className="signature-receipt__item">
-                                <dt>Hash del documento</dt>
-                                <dd>{signature.documentHash ?? 'No disponible'}</dd>
+                                <dt>{t("Document hash", "Hash del documento")}</dt>
+                                <dd>{signature.documentHash ?? t("Not available", "No disponible")}</dd>
                               </div>
                               <div className="signature-receipt__item">
-                                <dt>Huella de llave</dt>
+                                <dt>{t("Key fingerprint", "Huella de llave")}</dt>
                                 <dd>
                                   {signature.credential.publicKeyFingerprintSha256 ??
-                                    'No disponible'}
+                                    t("Not available", "No disponible")}
                                 </dd>
                               </div>
                               <div className="signature-receipt__item">
-                                <dt>ID de credencial</dt>
-                                <dd>{signature.credential.id ?? 'No disponible'}</dd>
+                                <dt>{t("Credential ID", "ID de credencial")}</dt>
+                                <dd>{signature.credential.id ?? t("Not available", "No disponible")}</dd>
                               </div>
                               <div className="signature-receipt__item">
-                                <dt>Algoritmo</dt>
+                                <dt>{t("Algorithm", "Algoritmo")}</dt>
                                 <dd>
                                   {formatAlgorithm(
                                     signature.credential.publicKeyAlgorithm,
@@ -1475,21 +1452,21 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                                 </dd>
                               </div>
                               <div className="signature-receipt__item">
-                                <dt>Conteo de firmas</dt>
+                                <dt>{t("Sign count", "Conteo de firmas")}</dt>
                                 <dd>
-                                  {signature.credential.signCount ?? 'No disponible'}
+                                  {signature.credential.signCount ?? t("Not available", "No disponible")}
                                 </dd>
                               </div>
                               <div className="signature-receipt__item">
-                                <dt>Vencimiento de política</dt>
+                                <dt>{t("Policy expiry", "Vencimiento de política")}</dt>
                                 <dd>
                                   {signatureValidity.expiresAt
                                     ? formatDateTime(signatureValidity.expiresAt)
-                                    : 'No disponible'}
+                                    : t("Not available", "No disponible")}
                                 </dd>
                               </div>
                               <div className="signature-receipt__item">
-                                <dt>Vence en</dt>
+                                <dt>{t("Expires in", "Vence en")}</dt>
                                 <dd
                                   className={
                                     signatureValidity.expired
@@ -1503,7 +1480,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                             </dl>
                             {signature.credential.publicKey ? (
                               <details className="signature-receipt__details">
-                                <summary>Mostrar llave pública codificada</summary>
+                                <summary>{t("Show encoded public key", "Mostrar llave pública codificada")}</summary>
                                 <code className="signature-receipt__code">
                                   {signature.credential.publicKey}
                                 </code>
@@ -1519,8 +1496,8 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                               >
                                 <strong>
                                   {localVerificationResult.verified
-                                    ? 'Verificación local aprobada'
-                                    : 'Verificación local fallida'}
+                                    ? t("Local verification passed", "Verificación local aprobada")
+                                    : t("Local verification failed", "Verificación local fallida")}
                                 </strong>
                                 <span>{localVerificationResult.message}</span>
                                 <ul className="local-verification-checks">
@@ -1533,7 +1510,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                                           : 'local-verification-checks__item--fail'
                                       }
                                     >
-                                      {label}: {passed ? 'correcto' : 'falló'}
+                                      {label}: {passed ? t("ok", "correcto") : t("failed", "falló")}
                                     </li>
                                   ))}
                                 </ul>
@@ -1546,19 +1523,14 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                   </>
                 ) : (
                   <p className="workspace-panel__copy">
-                    Todavía no hay firmas registradas para la revisión actual.
-                  </p>
+                    {t("No signatures are registered for the current revision yet. ", "Aún no hay firmas registradas para la versión actual. ")}</p>
                 )}
                 <p className="workspace-panel__copy">
-                  El recibo anterior muestra la huella de la llave de quien firma y el
-                  hash del documento firmado. Usa la verificación local para validar
-                  la revisión descargada contra la evidencia WebAuthn guardada en este navegador.
-                </p>
+                  {t("The receipt above exposes the signer key fingerprint and the signed document hash. Use the local verification action to validate the downloaded revision against the stored WebAuthn evidence in this browser. ", "El recibo muestra la huella de la llave de la persona firmante y el hash del documento. Usa la verificación local para validar la versión descargada con la evidencia WebAuthn almacenada en este navegador. ")}</p>
               </>
             ) : (
               <p className="workspace-panel__copy">
-                Los datos de verificación estarán disponibles al seleccionar un documento.
-              </p>
+                {t("Verification data becomes available when a document is selected. ", "Los datos de verificación estarán disponibles al seleccionar un documento. ")}</p>
             )}
           </section>
 

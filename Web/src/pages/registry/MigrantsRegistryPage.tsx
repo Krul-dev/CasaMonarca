@@ -1,3 +1,4 @@
+import { translate as t } from '../../lib/i18n'
 import { useCallback, useEffect, useState } from 'react'
 
 import { MigrantRegistryForm } from '../../components/registry/MigrantRegistryForm'
@@ -223,26 +224,26 @@ export function MigrantsRegistryPage({
     <section className="workspace-stack">
       <section className="workspace-panel">
         <h2 className="workspace-panel__title">
-          {isCorrection ? 'Corregir registro' : isEditRequest ? 'Solicitar edición de registro' : 'Ingreso de registro'}
+          {isCorrection ? t("Correct registration", "Corregir registro") : isEditRequest ? t("Request registration edit", "Solicitar edición de registro") : t("Registration intake", "Ingreso de registro")}
         </h2>
         <p className="workspace-panel__copy">
           {isCorrection
-            ? 'Atiende los comentarios de revisión y vuelve a enviar el registro para revisión.'
+            ? t("Address the reviewer feedback, then resubmit the registration for review.", "Atiende los comentarios de revisión y vuelve a enviar el registro para revisión.")
             : isEditRequest
-              ? 'Propón cambios al registro aprobado. Los datos actuales permanecen activos hasta que la solicitud complete revisión y aprobación final.'
-            : 'Los nuevos envíos pasan por revisión de no coordinador antes de la aprobación de coordinación.'}
+              ? t("Propose changes to the approved record. The current data remains active until the request completes review and final approval.", "Propón cambios al registro aprobado. Los datos actuales permanecen activos hasta que la solicitud complete revisión y aprobación final.")
+            : t("New submissions enter non-coordinator review before coordinator approval.", "Los nuevos envíos pasan por revisión de no coordinador antes de la aprobación de coordinación.")}
         </p>
 
         {!isCorrection && !isEditRequest && !isDraft ? (
-          <section className="registry-drafts" aria-label="Mis borradores">
-            <div className="registry-drafts__header"><div><h3>Mis borradores</h3><p>Los borradores se eliminan después de siete días sin actividad.</p></div><button className="session-action session-action--quiet" disabled={draftsLoading} onClick={() => void loadDrafts()} type="button"><AppIcon name="refresh" />Actualizar</button></div>
+          <section className="registry-drafts" aria-label={t('My drafts', 'Mis borradores')}>
+            <div className="registry-drafts__header"><div><h3>{t('My drafts', 'Mis borradores')}</h3><p>{t('Drafts are deleted after seven days without activity.', 'Los borradores se eliminan después de siete días sin actividad.')}</p></div><button className="session-action session-action--quiet" disabled={draftsLoading} onClick={() => void loadDrafts()} type="button"><AppIcon name="refresh" />{t('Refresh', 'Actualizar')}</button></div>
             {draftError ? <div className="login-feedback login-feedback--error">{draftError}</div> : null}
-            {!draftsLoading && drafts.length === 0 ? <p>No hay borradores pendientes.</p> : null}
-            {drafts.length > 0 ? <div className="registry-drafts__list">{drafts.map((draft) => <article key={draft.id}><div><strong>{String(draft.payload_json.fullName || `Borrador #${draft.id}`)}</strong><span>Actualizado {new Date(draft.updated_at).toLocaleString()}</span><small>Expira {draft.expires_at ? new Date(draft.expires_at).toLocaleString() : 'en siete días'}</small></div><div className="registry-form__actions"><button className="session-action session-action--quiet" onClick={() => void handleDiscardDraft(draft)} type="button"><AppIcon name="delete" />Eliminar</button><button className="session-action" onClick={() => onNavigate?.(`${APP_MIGRANT_REGISTRY_PATH}?mode=draft&entryId=${draft.id}`)} type="button"><AppIcon name="document" />Continuar</button></div></article>)}</div> : null}
+            {!draftsLoading && drafts.length === 0 ? <p>{t('No pending drafts.', 'No hay borradores pendientes.')}</p> : null}
+            {drafts.length > 0 ? <div className="registry-drafts__list">{drafts.map((draft) => <article key={draft.id}><div><strong>{String(draft.payload_json.fullName || t(`Draft #${draft.id}`, `Borrador #${draft.id}`))}</strong><span>{t(`Updated ${new Date(draft.updated_at).toLocaleString()}`, `Actualizado ${new Date(draft.updated_at).toLocaleString()}`)}</span><small>{t('Expires', 'Expira')} {draft.expires_at ? new Date(draft.expires_at).toLocaleString() : t('in seven days', 'en siete días')}</small></div><div className="registry-form__actions"><button className="session-action session-action--quiet" onClick={() => void handleDiscardDraft(draft)} type="button"><AppIcon name="delete" />{t('Delete', 'Eliminar')}</button><button className="session-action" onClick={() => onNavigate?.(`${APP_MIGRANT_REGISTRY_PATH}?mode=draft&entryId=${draft.id}`)} type="button"><AppIcon name="document" />{t('Continue', 'Continuar')}</button></div></article>)}</div> : null}
           </section>
         ) : null}
 
-        {isLoadingEntry ? <p className="workspace-panel__copy">Cargando registro...</p> : null}
+        {isLoadingEntry ? <p className="workspace-panel__copy">{t("Loading registration...", "Cargando registro...")}</p> : null}
         {error ? <div className="login-feedback login-feedback--error">{error}</div> : null}
 
         {!isLoadingEntry && (!requestedEntryId || isRequestedEntryReady) ? (
@@ -268,12 +269,12 @@ export function MigrantsRegistryPage({
             onSubmit={isRequestedEntryReady && !isDraft ? handleUpdateRequest : handleCreate}
             onDraftSaved={() => void loadDrafts()}
             onSaveDraft={!isCorrection && !isEditRequest ? handleSaveDraft : undefined}
-            submitLabel={isCorrection ? 'Reenviar registro' : isEditRequest ? 'Enviar solicitud de edición' : 'Enviar registro'}
+            submitLabel={isCorrection ? t("Resubmit registration", "Reenviar registro") : isEditRequest ? t("Submit edit request", "Enviar solicitud de edición") : t("Submit registration", "Enviar registro")}
             successMessage={isCorrection
-              ? 'Registro reenviado para revisión.'
+              ? t("Registration resubmitted for review.", "Registro reenviado para revisión.")
               : isEditRequest
-                ? 'Solicitud de edición enviada para revisión.'
-                : 'Registro enviado para revisión.'}
+                ? t("Edit request submitted for review.", "Solicitud de edición enviada para revisión.")
+                : t("Registration submitted for review.", "Registro enviado para revisión.")}
           />
         ) : null}
       </section>

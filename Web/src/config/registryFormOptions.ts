@@ -8,35 +8,39 @@ RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF
 TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW
 `.trim().split(/\s+/)
 
-const regionNames = new Intl.DisplayNames(['es-MX'], { type: 'region' })
+const regionNames = new Intl.DisplayNames(
+  [getAppLocale() === 'en' ? 'en' : 'es-MX'],
+  { type: 'region' },
+)
 
 export const COUNTRY_OPTIONS = ISO_COUNTRY_CODES
   .map((code) => regionNames.of(code))
   .filter((name): name is string => Boolean(name))
-  .sort((left, right) => left.localeCompare(right, 'es-MX'))
+  .sort((left, right) => left.localeCompare(right, getAppLocale() === 'en' ? 'en' : 'es-MX'))
 
 export const CIVIL_STATUS_OPTIONS = [
-  { label: 'Soltera / Soltero', value: 'single' },
-  { label: 'Casada / Casado', value: 'married' },
-  { label: 'Unión libre', value: 'common_law_union' },
-  { label: 'Separada / Separado', value: 'separated' },
-  { label: 'Divorciada / Divorciado', value: 'divorced' },
-  { label: 'Viuda / Viudo', value: 'widowed' },
+  { label: t('Single', 'Soltera / Soltero'), value: 'single' },
+  { label: t('Married', 'Casada / Casado'), value: 'married' },
+  { label: t('Common-law union', 'Unión libre'), value: 'common_law_union' },
+  { label: t('Separated', 'Separada / Separado'), value: 'separated' },
+  { label: t('Divorced', 'Divorciada / Divorciado'), value: 'divorced' },
+  { label: t('Widowed', 'Viuda / Viudo'), value: 'widowed' },
 ] as const
 
 export const GENDER_OPTIONS = [
-  { label: 'Femenino', value: 'female' },
-  { label: 'Masculino', value: 'male' },
-  { label: 'No binario', value: 'non_binary' },
+  { label: t('Female', 'Femenino'), value: 'female' },
+  { label: t('Male', 'Masculino'), value: 'male' },
+  { label: t('Non-binary', 'No binario'), value: 'non_binary' },
   { label: 'LGBTQ+', value: 'lgbtq_plus' },
 ] as const
 
 export const POPULATION_GROUP_OPTIONS = [
-  { label: 'Adulto (18-59 años)', value: 'adult' },
-  { label: 'Adulto mayor (+60 años)', value: 'older_adult' },
-  { label: 'Niña acompañada', value: 'accompanied_girl' },
-  { label: 'Niño acompañado', value: 'accompanied_boy' },
-  { label: 'Adolescente hombre acompañado', value: 'accompanied_adolescent_boy' },
-  { label: 'Adolescente mujer acompañada', value: 'accompanied_adolescent_girl' },
-  { label: 'NNA no acompañado', value: 'unaccompanied_minor' },
+  { label: t('Adult (18-59 years)', 'Persona adulta (18-59 años)'), value: 'adult' },
+  { label: t('Older adult (60+ years)', 'Persona adulta mayor (60 años o más)'), value: 'older_adult' },
+  { label: t('Accompanied girl', 'Niña acompañada'), value: 'accompanied_girl' },
+  { label: t('Accompanied boy', 'Niño acompañado'), value: 'accompanied_boy' },
+  { label: t('Accompanied adolescent boy', 'Adolescente hombre acompañado'), value: 'accompanied_adolescent_boy' },
+  { label: t('Accompanied adolescent girl', 'Adolescente mujer acompañada'), value: 'accompanied_adolescent_girl' },
+  { label: t('Unaccompanied child or adolescent', 'Niña, niño o adolescente no acompañado'), value: 'unaccompanied_minor' },
 ] as const
+import { getAppLocale, translate as t } from '../lib/i18n'
