@@ -62,6 +62,9 @@ class DocumentSignatureViewService
             'name' => $signature->signedBy?->name,
             'email' => $signature->signedBy?->email,
             'role' => $signature->signedBy?->role?->value,
+            'curp' => data_get($signature->metadata, 'intent.version') === 2
+                ? data_get($signature->metadata, 'intent.signerCurp')
+                : null,
         ];
     }
 }

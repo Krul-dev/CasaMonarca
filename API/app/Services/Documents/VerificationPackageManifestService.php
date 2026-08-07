@@ -72,6 +72,10 @@ class VerificationPackageManifestService
 
     public function canonicalJson(mixed $value): string
     {
+        if ($value instanceof \JsonSerializable) {
+            return $this->canonicalJson($value->jsonSerialize());
+        }
+
         if (is_array($value)) {
             if (array_is_list($value)) {
                 return '['.implode(',', array_map($this->canonicalJson(...), $value)).']';

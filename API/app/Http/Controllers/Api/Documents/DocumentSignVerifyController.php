@@ -20,6 +20,7 @@ use App\Services\Documents\DocumentSignatureRequirementService;
 use App\Services\Documents\DocumentSignatureViewService;
 use App\Services\Documents\DocumentSigningIntentService;
 use App\Services\Security\SecurityChallengeIntentService;
+use App\Support\Curp;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -60,6 +61,8 @@ class DocumentSignVerifyController extends Controller
             ! is_numeric($pendingIntent['revisionId'] ?? null) ||
             ! is_numeric($pendingIntent['revisionNumber'] ?? null) ||
             ! is_numeric($pendingIntent['signaturePolicyVersion'] ?? null) ||
+            ! array_key_exists('signerCurp', $pendingIntent) ||
+            (! is_null($pendingIntent['signerCurp']) && ! is_string($pendingIntent['signerCurp'])) ||
             ! is_string($pendingIntent['revisionSha256'] ?? null) ||
             ! is_numeric($pendingIntent['userId'] ?? null) ||
             ! is_string($pendingIntent['origin'] ?? null) ||
@@ -84,8 +87,13 @@ class DocumentSignVerifyController extends Controller
         $pendingOrigin = (string) $pendingIntent['origin'];
         $pendingRpId = (string) $pendingIntent['rpId'];
         $pendingExpiresAt = (string) $pendingIntent['expiresAt'];
+        $pendingSignerCurp = is_string($pendingIntent['signerCurp']) ? $pendingIntent['signerCurp'] : null;
 
-        if ($pendingVersion !== 1 || $pendingPurpose !== 'document-sign') {
+        if (
+            $pendingVersion !== 2 ||
+            $pendingPurpose !== 'document-sign' ||
+            ($pendingSignerCurp !== null && ! Curp::isValid($pendingSignerCurp))
+        ) {
             return response()->json([
                 'message' => 'Document signature challenge is invalid.',
             ], 401);
@@ -381,6 +389,7 @@ class DocumentSignVerifyController extends Controller
             [
                 'credentialIdPreview' => substr((string) $credential->credential_id, 0, 16),
                 'challengeIntentId' => $challengeIntent?->getKey(),
+                'signerCurpPresent' => $pendingSignerCurp !== null,
                 'expiresAt' => data_get($signature->metadata, 'validity.expiresAt'),
                 'revisionNumber' => $revision->revision_number,
                 'signatureId' => $signature->getKey(),

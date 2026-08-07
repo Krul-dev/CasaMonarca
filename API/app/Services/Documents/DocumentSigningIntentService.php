@@ -16,7 +16,7 @@ class DocumentSigningIntentService
     /**
      * @return array{
      *     challenge: string,
-     *     intent: array<string, int|string>,
+     *     intent: array<string, int|string|null>,
      *     canonicalIntent: string,
      *     revision: DocumentRevision,
      * }
@@ -41,7 +41,7 @@ class DocumentSigningIntentService
     /**
      * @return array{
      *     challenge: string,
-     *     intent: array<string, int|string>,
+     *     intent: array<string, int|string|null>,
      *     canonicalIntent: string,
      *     revision: DocumentRevision,
      * }
@@ -72,8 +72,9 @@ class DocumentSigningIntentService
             'signaturePolicyVersion' => (int) $revision->signature_policy_version,
             'revisionSha256' => (string) $revision->sha256,
             'rpId' => $rpId,
+            'signerCurp' => $user->curp,
             'userId' => (int) $user->getKey(),
-            'version' => 1,
+            'version' => 2,
         ];
 
         $canonicalIntent = $this->toCanonicalJson($intent);

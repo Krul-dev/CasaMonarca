@@ -24,6 +24,7 @@ class UserDirectoryViewService
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'curp' => $user->curp,
             'role' => $user->role?->value,
             'status' => $user->status?->value ?? 'active',
             'emailVerifiedAt' => $user->email_verified_at?->toISOString(),

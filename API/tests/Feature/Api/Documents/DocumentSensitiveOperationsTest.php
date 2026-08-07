@@ -24,6 +24,7 @@ class DocumentSensitiveOperationsTest extends TestCase
     public function test_coordinator_can_request_document_sign_challenge(): void
     {
         $user = $this->createUserWithCredential(UserRole::Coordinator);
+        $user->forceFill(['curp' => 'SABC560626MDFLRN01'])->save();
         $document = $this->createDocumentWithRevision($user);
 
         $response = $this->actingAs($user)
@@ -31,6 +32,9 @@ class DocumentSensitiveOperationsTest extends TestCase
             ->assertOk()
             ->assertJson([
                 'message' => 'Document signature challenge created.',
+                'signingTarget' => [
+                    'signerCurp' => 'SABC560626MDFLRN01',
+                ],
             ])
             ->assertJsonStructure([
                 'options' => [
@@ -256,6 +260,7 @@ class DocumentSensitiveOperationsTest extends TestCase
     public function test_coordinator_can_sign_current_revision_after_passkey_step_up(): void
     {
         $user = $this->createUserWithCredential(UserRole::Coordinator);
+        $user->forceFill(['curp' => 'SABC560626MDFLRN01'])->save();
         $document = $this->createDocumentWithRevision($user);
         $signSession = $this->signSession($user, $document);
 
@@ -290,6 +295,11 @@ class DocumentSensitiveOperationsTest extends TestCase
             ])
             ->assertJson([
                 'message' => 'Document signed successfully.',
+                'signature' => [
+                    'signedBy' => [
+                        'curp' => 'SABC560626MDFLRN01',
+                    ],
+                ],
                 'verification' => [
                     'documentId' => $document->id,
                     'currentRevisionNumber' => 1,
@@ -315,9 +325,14 @@ class DocumentSensitiveOperationsTest extends TestCase
 
         $this->assertEquals($signSession['documents.sign.webauthn.intent'], $signature->metadata['intent']);
         $this->assertSame(
-            '{"documentId":'.$document->id.',"expiresAt":"'.$signSession['documents.sign.webauthn.intent']['expiresAt'].'","issuedAt":"'.$signSession['documents.sign.webauthn.intent']['issuedAt'].'","nonce":"nonce-sign","origin":"http://localhost","purpose":"document-sign","revisionId":'.$revision->id.',"revisionNumber":1,"revisionSha256":"'.$revision->sha256.'","rpId":"localhost","signaturePolicyVersion":1,"userId":'.$user->id.',"version":1}',
+            '{"documentId":'.$document->id.',"expiresAt":"'.$signSession['documents.sign.webauthn.intent']['expiresAt'].'","issuedAt":"'.$signSession['documents.sign.webauthn.intent']['issuedAt'].'","nonce":"nonce-sign","origin":"http://localhost","purpose":"document-sign","revisionId":'.$revision->id.',"revisionNumber":1,"revisionSha256":"'.$revision->sha256.'","rpId":"localhost","signaturePolicyVersion":1,"signerCurp":"SABC560626MDFLRN01","userId":'.$user->id.',"version":2}',
             $signature->metadata['canonicalIntent'],
         );
+        $user->forceFill(['curp' => 'PELJ900101HDFRNS01'])->save();
+        $this->actingAs($user)
+            ->getJson(sprintf('/documents/%d/verification', $document->id))
+            ->assertOk()
+            ->assertJsonPath('verification.signatures.0.signedBy.curp', 'SABC560626MDFLRN01');
         $this->assertSame('server-policy', data_get($signature->metadata, 'validity.source'));
         $this->assertSame(config('documents.signature_validity_days'), data_get($signature->metadata, 'validity.days'));
         $this->assertTrue(is_string(data_get($signature->metadata, 'validity.expiresAt')));
@@ -891,6 +906,50 @@ class DocumentSensitiveOperationsTest extends TestCase
             );
     }
 
+    public function test_non_coordinator_can_download_signature_presentation_for_signed_pdf(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->put('documents/1/revisions/1/example.pdf', 'payload');
+
+        $signer = $this->createUserWithCredential(UserRole::Coordinator);
+        $signer->forceFill(['curp' => 'SABC560626MDFLRN01'])->save();
+        $viewer = User::factory()->create([
+            'role' => UserRole::NonCoordinator->value,
+            'two_factor_enabled' => true,
+            'two_factor_secret' => 'totp-secret',
+        ]);
+        $document = $this->createDocumentWithRevision($signer);
+
+        $this->mock(WebauthnAssertionService::class, function ($mock): void {
+            $mock->shouldReceive('verifyAssertionPayload')->once()->andReturn(12);
+        });
+
+        $this->actingAs($signer)
+            ->withSession($this->signSession($signer, $document))
+            ->postJson(
+                sprintf('/documents/%d/sign/verify', $document->id),
+                $this->assertionPayload('credential-coordinator'),
+            )
+            ->assertOk();
+
+        $response = $this->actingAs($viewer)
+            ->get(sprintf('/documents/%d/signed-pdf?locale=en', $document->id))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertHeader('x-casamonarca-presentation-mode', 'summary-only');
+
+        $contents = $response->getContent();
+        $this->assertIsString($contents);
+        $this->assertStringStartsWith('%PDF-', $contents);
+        $this->assertDatabaseHas('audit_events', [
+            'actor_user_id' => $viewer->id,
+            'document_id' => $document->id,
+            'event_type' => AuditEventType::DocumentSignaturePresentationDownloaded->value,
+            'outcome' => AuditEventOutcome::Success->value,
+            'revision_id' => $document->currentRevision->id,
+        ]);
+    }
+
     public function test_non_coordinator_can_download_verification_package_for_signed_revision(): void
     {
         Storage::fake('local');
@@ -898,6 +957,7 @@ class DocumentSensitiveOperationsTest extends TestCase
         $this->configureVerificationPackageSigning();
 
         $signer = $this->createUserWithCredential(UserRole::Coordinator);
+        $signer->forceFill(['curp' => 'SABC560626MDFLRN01'])->save();
         $viewer = User::factory()->create([
             'role' => UserRole::NonCoordinator->value,
             'two_factor_enabled' => true,
@@ -934,13 +994,20 @@ class DocumentSensitiveOperationsTest extends TestCase
         $this->assertStringContainsString('verification.json', $zipContents);
         $this->assertStringContainsString('"title": "Protected document"', $zipContents);
         $this->assertStringContainsString('"signatureStatus": "signed"', $zipContents);
+        $this->assertStringContainsString('"signerCurp": "SABC560626MDFLRN01"', $zipContents);
+        $this->assertStringContainsString('"curp": "SABC560626MDFLRN01"', $zipContents);
+        $this->assertStringContainsString('CURP signed binding', $zipContents);
         $this->assertStringContainsString('README.md', $zipContents);
+        $this->assertStringContainsString('example-revision-1-signature-summary.pdf', $zipContents);
+        $this->assertStringContainsString('"role": "signature-summary"', $zipContents);
+        $this->assertStringContainsString('"presentationMode": "summary-only"', $zipContents);
         $this->assertStringContainsString('manifest.json', $zipContents);
         $this->assertStringContainsString('manifest.signature.json', $zipContents);
         $this->assertStringContainsString('verify.html.signature.json', $zipContents);
         $this->assertStringContainsString('verify.html.public.pem', $zipContents);
         $this->assertStringContainsString('verify.html.signature.bin', $zipContents);
         $this->assertStringContainsString('"packageType": "casa-monarca.document-verification"', $zipContents);
+        $this->assertStringContainsString('"canonicalSha256":', $zipContents);
         $this->assertStringContainsString('"status": "signed"', $zipContents);
         $this->assertStringContainsString('"keyId": "test-package-key"', $zipContents);
         $this->assertStringContainsString('"purpose": "verify.html"', $zipContents);
@@ -951,7 +1018,7 @@ class DocumentSensitiveOperationsTest extends TestCase
         $this->assertStringContainsString('openssl dgst -sha256 -verify verify.html.public.pem -signature verify.html.signature.bin verify.html', $zipContents);
         $this->assertStringContainsString('embeddedVerificationBundle', $zipContents);
         $this->assertStringContainsString('embeddedSignedManifest', $zipContents);
-        $this->assertStringContainsString('Drop the confidential revision file here', $zipContents);
+        $this->assertStringContainsString('Drop the original revision or PDF with signature header here', $zipContents);
         $this->assertStringContainsString('Package fingerprints', $zipContents);
         $this->assertStringContainsString('Evidence hash', $zipContents);
         $this->assertStringContainsString('Verifier HTML hash', $zipContents);
@@ -1066,13 +1133,14 @@ class DocumentSensitiveOperationsTest extends TestCase
         DocumentRevision $revision,
     ): array {
         $intent = [
-            'version' => 1,
+            'version' => 2,
             'purpose' => 'document-sign',
             'documentId' => $document->id,
             'revisionId' => $revision->id,
             'revisionNumber' => $revision->revision_number,
             'revisionSha256' => $revision->sha256,
             'signaturePolicyVersion' => $revision->signature_policy_version,
+            'signerCurp' => $user->curp,
             'userId' => $user->id,
             'origin' => 'http://localhost',
             'rpId' => 'localhost',
