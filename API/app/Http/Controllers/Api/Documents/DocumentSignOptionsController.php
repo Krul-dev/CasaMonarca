@@ -12,6 +12,7 @@ use App\Services\Auth\WebauthnAssertionService;
 use App\Services\Documents\DocumentAuthorizationService;
 use App\Services\Documents\DocumentSigningIntentService;
 use App\Services\Security\SecurityChallengeIntentService;
+use App\Support\Curp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -50,6 +51,12 @@ class DocumentSignOptionsController extends Controller
             return response()->json([
                 'message' => 'Unauthenticated.',
             ], 401);
+        }
+
+        if ($user->curp !== null && ! Curp::isValid($user->curp)) {
+            return response()->json([
+                'message' => 'The CURP assigned to this account is invalid. Ask an administrator to correct it before signing.',
+            ], 422);
         }
 
         if (! $this->documentAuthorizationService->canSignRevision($user, $document, $revision)) {
@@ -118,6 +125,7 @@ class DocumentSignOptionsController extends Controller
                 'revisionNumber' => $revision->revision_number,
                 'rpId' => $originHost,
                 'challengeIntentId' => $challengeIntent->getKey(),
+                'signerCurpPresent' => $user->curp !== null,
             ],
         );
 
@@ -141,6 +149,7 @@ class DocumentSignOptionsController extends Controller
                 'revisionId' => $signIntent['intent']['revisionId'],
                 'revisionNumber' => $signIntent['intent']['revisionNumber'],
                 'signaturePolicyVersion' => $signIntent['intent']['signaturePolicyVersion'],
+                'signerCurp' => $signIntent['intent']['signerCurp'],
                 'documentHash' => $signIntent['intent']['revisionSha256'],
                 'expiresAt' => $signIntent['intent']['expiresAt'],
             ],

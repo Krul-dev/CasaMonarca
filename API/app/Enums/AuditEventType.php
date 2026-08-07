@@ -29,6 +29,7 @@ enum AuditEventType: string
     case DocumentRevisionChallengeStarted = 'document.revision.challenge.started';
     case DocumentRevisionCreated = 'document.revision.created';
     case DocumentRevisionDownloaded = 'document.revision.downloaded';
+    case DocumentSignaturePresentationDownloaded = 'document.signature_presentation.downloaded';
     case DocumentDeleteChallengeStarted = 'document.delete.challenge.started';
     case DocumentSignatureChallengeStarted = 'document.signature.challenge.started';
     case DocumentSigned = 'document.signed';
@@ -48,6 +49,8 @@ enum AuditEventType: string
     case AccountInviteRevocationDenied = 'account.invite.revocation.denied';
     case AdminUserRoleChangeChallengeStarted = 'admin.user.role_change.challenge.started';
     case AdminUserRoleChanged = 'admin.user.role_changed';
+    case AdminUserCurpChangeChallengeStarted = 'admin.user.curp_change.challenge.started';
+    case AdminUserCurpChanged = 'admin.user.curp_changed';
     case AdminUserRecoveryChallengeStarted = 'admin.user.recovery.challenge.started';
     case AdminUserTotpReset = 'admin.user.totp_reset';
     case AdminUserPasskeysRevoked = 'admin.user.passkeys_revoked';
@@ -76,6 +79,8 @@ enum AuditEventType: string
     case MigrantRegistryApproved = 'migrant.registry.approved';
     case MigrantRegistryRejected = 'migrant.registry.rejected';
     case MigrantRegistryDeleted = 'migrant.registry.deleted';
+    case MigrantRegistryPdfDownloadChallengeStarted = 'migrant.registry.pdf.download.challenge.started';
+    case MigrantRegistryPdfDownloaded = 'migrant.registry.pdf.downloaded';
     case MigrantArcoRequested = 'migrant.arco.requested';
     case MigrantArcoChallengeStarted = 'migrant.arco.challenge.started';
     case MigrantArcoResolved = 'migrant.arco.resolved';

@@ -14,11 +14,13 @@ import { AppIcon } from '../ui/AppIcon'
 
 type Props = { entries: RegistryEntry[]; onCreated: () => Promise<void>; onSessionExpired?: () => void; user: AuthenticatedUser }
 
-const allTypes: Array<{ label: string; value: ArcoRequestType }> = [
-  { label: t("Access", "Acceso"), value: 'access' }, { label: t("Rectification", "Rectificación"), value: 'rectification' },
-  { label: t("Cancellation", "Cancelación"), value: 'cancellation' }, { label: t("Opposition", "Oposición"), value: 'opposition' },
-]
-const types = allTypes.filter((type) => arcoEnabledTypes.includes(type.value))
+const allTypes: ArcoRequestType[] = ['access', 'rectification', 'cancellation', 'opposition']
+const typeLabel = (type: ArcoRequestType) => ({
+  access: t('Access', 'Acceso'),
+  cancellation: t('Cancellation', 'Cancelación'),
+  opposition: t('Opposition', 'Oposición'),
+  rectification: t('Rectification', 'Rectificación'),
+}[type])
 
 export function ArcoRequestForm({ entries, onCreated, onSessionExpired, user }: Props) {
   const eligible = useMemo(() => entries.filter((entry) => entry.current_status === 'approved' && !entry.pending_action), [entries])
@@ -48,8 +50,8 @@ export function ArcoRequestForm({ entries, onCreated, onSessionExpired, user }: 
       const options = await startArcoRequest({ registryEntryId: Number(registryEntryId), requestType, reason: reason.trim(), ...(proposal ? { proposedPayload: proposal } : {}) })
       challengeId = options.challengeIntent.id
       const assertion = await getWebauthnAssertion(options.options)
-      const response = await verifyArcoRequest(assertion)
-      setMessage(response.message); setReason(''); setRegistryEntryId(''); await onCreated()
+      await verifyArcoRequest(assertion)
+      setMessage(t('ARCO request signed and submitted for coordinator review.', 'Solicitud ARCO firmada y enviada a revisión de coordinación.')); setReason(''); setRegistryEntryId(''); await onCreated()
     } catch (error) {
       if (challengeId && error instanceof DOMException && error.name === 'NotAllowedError') await cancelSecurityChallenge(challengeId)
       const fields = error instanceof ApiRequestError && error.errors ? Object.values(error.errors).flat() : []
@@ -67,7 +69,7 @@ export function ArcoRequestForm({ entries, onCreated, onSessionExpired, user }: 
       <div className="arco-create__header"><div><h2>{t("Start an ARCO request", "Iniciar una solicitud ARCO")}</h2><p>{t("Requests are submitted to coordinator review after passkey confirmation.", "Las solicitudes se envían a revisión de coordinación después de confirmar con llave de acceso.")}</p></div><AppIcon name="sign" /></div>
       <div className="arco-create__fields">
         <label>{t("Registration", "Registro")}<select disabled={busy} onChange={(event) => setRegistryEntryId(event.target.value)} value={registryEntryId}><option value="">{t("Select an approved registration", "Selecciona un registro aprobado")}</option>{eligible.map((entry) => <option key={entry.id} value={entry.id}>{String(entry.payload_json.fullName || t(`Registration #${entry.id}`, `Registro #${entry.id}`))}</option>)}</select></label>
-        <label>{t("Right", "Derecho")}<select disabled={busy} onChange={(event) => setRequestType(event.target.value as ArcoRequestType)} value={requestType}>{types.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
+        <label>{t("Right", "Derecho")}<select disabled={busy} onChange={(event) => setRequestType(event.target.value as ArcoRequestType)} value={requestType}>{allTypes.filter((type) => arcoEnabledTypes.includes(type)).map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</select></label>
         <label className="arco-create__reason">{t("Reason", "Motivo")}<textarea disabled={busy} maxLength={2000} onChange={(event) => setReason(event.target.value)} required value={reason} /></label>
       </div>
       {selected ? (

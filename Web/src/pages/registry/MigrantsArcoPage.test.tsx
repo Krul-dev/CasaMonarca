@@ -47,6 +47,10 @@ const request: ArcoRequest = {
   request_type: 'rectification',
   requested_by: 3,
   requested_by_role: 'non_coordinator',
+  signatures: [{
+    action_type: 'request_created', actor: null, actor_role: 'coordinator', actor_user_id: 2,
+    id: 12, verified_at: '2026-07-21T12:00:00Z',
+  }],
   status: 'pending_coordinator',
   updated_at: '2026-07-21T12:00:00Z',
 }
@@ -90,5 +94,13 @@ describe('MigrantsArcoPage', () => {
     }))
     expect(webauthn.getWebauthnAssertion).toHaveBeenCalledTimes(1)
     expect(arco.verifyArcoDecision).toHaveBeenCalledWith(17, 'coordinator', assertion)
+    expect(await screen.findByText('Solicitud ARCO rechazada.')).toBeInTheDocument()
+  })
+
+  it('translates signature actions and fallback actor roles', async () => {
+    render(<MigrantsArcoPage user={user} />)
+
+    expect(await screen.findByText(/Solicitud creada · Coordinación/)).toBeInTheDocument()
+    expect(screen.queryByText(/Request created|coordinator/)).not.toBeInTheDocument()
   })
 })

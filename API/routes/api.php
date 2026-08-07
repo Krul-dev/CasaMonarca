@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\Admin\AccountInviteStoreController;
 use App\Http\Controllers\Api\Admin\AccountInviteVerifyOutOfBandController;
 use App\Http\Controllers\Api\Admin\MigrantSigningLedgerController;
 use App\Http\Controllers\Api\Admin\SigningLedgerController;
+use App\Http\Controllers\Api\Admin\UserCurpUpdateOptionsController;
+use App\Http\Controllers\Api\Admin\UserCurpUpdateVerifyController;
 use App\Http\Controllers\Api\Admin\UserIndexController;
 use App\Http\Controllers\Api\Admin\UserRecoveryOptionsController;
 use App\Http\Controllers\Api\Admin\UserRecoveryVerifyController;
@@ -44,6 +46,7 @@ use App\Http\Controllers\Api\Documents\DocumentRevisionUpdateVerifyController;
 use App\Http\Controllers\Api\Documents\DocumentShowController;
 use App\Http\Controllers\Api\Documents\DocumentSignaturePolicySignerOptionsController;
 use App\Http\Controllers\Api\Documents\DocumentSignaturePolicyUpdateController;
+use App\Http\Controllers\Api\Documents\DocumentSignaturePresentationController;
 use App\Http\Controllers\Api\Documents\DocumentSignOptionsController;
 use App\Http\Controllers\Api\Documents\DocumentSignVerifyController;
 use App\Http\Controllers\Api\Documents\DocumentStoreController;
@@ -65,6 +68,8 @@ use App\Http\Controllers\Api\Registry\MigrantRegistryController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryDocumentController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryDocumentDownloadOptionsController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryDocumentDownloadVerifyController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryPdfDownloadOptionsController;
+use App\Http\Controllers\Api\Registry\MigrantRegistryPdfDownloadVerifyController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryReviewOptionsController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryReviewReturnController;
 use App\Http\Controllers\Api\Registry\MigrantRegistryReviewVerifyController;
@@ -95,6 +100,8 @@ Route::middleware('web')->group(function (): void {
     Route::middleware(['auth', 'requireActiveAccount', 'requireRole:admin'])->group(function (): void {
         Route::get('/admin/authorization-check', AdminAuthorizationCheckController::class);
         Route::get('/admin/users', UserIndexController::class);
+        Route::post('/admin/users/{user}/curp/options', UserCurpUpdateOptionsController::class)->middleware('throttle:30,1');
+        Route::post('/admin/users/{user}/curp/verify', UserCurpUpdateVerifyController::class)->middleware('throttle:30,1');
         Route::get('/admin/signing-ledger', SigningLedgerController::class);
         Route::get('/admin/migrant-signing-ledger', MigrantSigningLedgerController::class);
         Route::post('/admin/users/{user}/recovery/options', UserRecoveryOptionsController::class)->middleware('throttle:30,1');
@@ -122,6 +129,8 @@ Route::middleware('web')->group(function (): void {
         Route::get('/documents/{document}', DocumentShowController::class);
         Route::get('/documents/{document}/download', DocumentDownloadController::class);
         Route::get('/documents/{document}/revisions/{revision}/download', DocumentDownloadController::class);
+        Route::get('/documents/{document}/signed-pdf', DocumentSignaturePresentationController::class);
+        Route::get('/documents/{document}/revisions/{revision}/signed-pdf', DocumentSignaturePresentationController::class);
         Route::get('/documents/{document}/verification', DocumentVerificationController::class);
         Route::get('/documents/{document}/verification-bundle', DocumentVerificationBundleController::class);
         Route::get('/documents/{document}/revisions/{revision}/verification-bundle', DocumentVerificationBundleController::class);
@@ -198,6 +207,11 @@ Route::middleware('web')->group(function (): void {
             Route::post('/bulk-approval/verify', MigrantRegistryBulkApprovalVerifyController::class);
             Route::post('/{migrantRegistryEntry}/approval/options', MigrantRegistryApprovalOptionsController::class);
             Route::post('/{migrantRegistryEntry}/approval/verify', MigrantRegistryApprovalVerifyController::class);
+        });
+
+        Route::middleware('requireRole:admin')->group(function (): void {
+            Route::post('/{migrantRegistryEntry}/pdf/options', MigrantRegistryPdfDownloadOptionsController::class);
+            Route::post('/{migrantRegistryEntry}/pdf/verify', MigrantRegistryPdfDownloadVerifyController::class);
         });
 
         Route::delete('/{migrantRegistryEntry}', [MigrantRegistryController::class, 'destroy'])

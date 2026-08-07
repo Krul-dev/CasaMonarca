@@ -29,4 +29,9 @@ class MigrantRegistryStatusHistory extends Model
     {
         return $this->belongsTo(MigrantRegistrySignature::class, 'signature_id');
     }
+
+    public function changer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'changed_by');
+    }
 }

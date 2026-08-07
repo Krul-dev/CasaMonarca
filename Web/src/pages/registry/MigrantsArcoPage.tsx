@@ -36,7 +36,7 @@ export function MigrantsArcoPage({ onSessionExpired, user }: Props) {
     const reason = decisionReason.trim() || undefined
     if (needsReason && !reason) return
     setBusyId(request.id); setError(null); setMessage(null); let challengeId: string | null = null
-    try { const options = await startArcoDecision(request.id, stage, { decision, reason }); challengeId = options.challengeIntent.id; const assertion = await getWebauthnAssertion(options.options); const response = await verifyArcoDecision(request.id, stage, assertion); setMessage(response.message); setPendingDecision(null); setDecisionReason(''); await load() }
+    try { const options = await startArcoDecision(request.id, stage, { decision, reason }); challengeId = options.challengeIntent.id; const assertion = await getWebauthnAssertion(options.options); await verifyArcoDecision(request.id, stage, assertion); setMessage(decision === 'approve' ? t('ARCO decision signed and completed.', 'Decisión ARCO firmada y completada.') : t('ARCO request rejected.', 'Solicitud ARCO rechazada.')); setPendingDecision(null); setDecisionReason(''); await load() }
     catch (caught) { if (challengeId && caught instanceof DOMException && caught.name === 'NotAllowedError') await cancelSecurityChallenge(challengeId); if (caught instanceof ApiRequestError && caught.status === 401) { onSessionExpired?.(); return } setError(caught instanceof Error ? caught.message : 'Unable to complete the ARCO decision.') }
     finally { setBusyId(null) }
   }

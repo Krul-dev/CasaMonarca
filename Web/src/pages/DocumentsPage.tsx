@@ -9,6 +9,7 @@ import { cancelSecurityChallenge } from '../lib/securityChallenges'
 import {
   downloadDocumentBinary,
   downloadDocumentRevisionBinary,
+  downloadDocumentRevisionSignaturePresentation,
   getDocument,
   getDocumentDownloadUrl,
   getDocumentRevisionDownloadUrl,
@@ -27,6 +28,7 @@ import {
   type DocumentDetail,
   type DocumentDetailRevision,
   type DocumentSummary,
+  type DocumentSensitiveActionOptionsResponse,
   type DocumentVerification,
 } from '../lib/documents'
 import {
@@ -53,6 +55,11 @@ type ActionFeedback =
       kind: 'error'
       message: string
     }
+
+type PendingSignatureConfirmation = {
+  optionsResponse: DocumentSensitiveActionOptionsResponse
+  revision: DocumentDetailRevision
+}
 
 const bytesToHex = (value: Uint8Array) =>
   Array.from(value)
@@ -154,6 +161,15 @@ const downloadJsonFile = (filename: string, payload: unknown) => {
   URL.revokeObjectURL(url)
 }
 
+const downloadBlobFile = (filename: string, blob: Blob) => {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 const omitRevisionEntry = <T,>(entries: Record<number, T>, revisionId: number) => {
   const nextEntries = { ...entries }
 
@@ -200,6 +216,8 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
   const [downloadingBundleRevisionId, setDownloadingBundleRevisionId] = useState<
     number | null
   >(null)
+  const [downloadingSignaturePresentationRevisionId, setDownloadingSignaturePresentationRevisionId] =
+    useState<number | null>(null)
   const [isVerifyingLocally, setIsVerifyingLocally] = useState(false)
   const [verifyingRevisionId, setVerifyingRevisionId] = useState<number | null>(
     null,
@@ -218,6 +236,9 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
   const [pendingSigningRevisionId, setPendingSigningRevisionId] = useState<
     number | null
   >(null)
+  const [pendingSignatureConfirmation, setPendingSignatureConfirmation] =
+    useState<PendingSignatureConfirmation | null>(null)
+  const [isConfirmingSignature, setIsConfirmingSignature] = useState(false)
   const [signatureClockMs, setSignatureClockMs] = useState(() => Date.now())
 
   const resetSelectedDocumentState = () => {
@@ -585,42 +606,16 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
 
     setPendingSigningRevisionId(revision.id)
     setActionFeedback(null)
-    let challengeIntentId: string | null = null
-
     try {
       const optionsResponse = await startDocumentRevisionSign(detail.id, revision.id)
-      challengeIntentId = optionsResponse.challengeIntent?.id ?? null
-      const assertion = await getWebauthnAssertion(optionsResponse.options)
-      const signResponse = await verifyDocumentRevisionSign(
-        detail.id,
-        revision.id,
-        assertion,
-      )
-      const [documentResponse, verificationResponse] = await Promise.all([
-        getDocument(detail.id),
-        getDocumentVerification(detail.id),
-      ])
-
-      setDetail(documentResponse.document)
-      setVerification(verificationResponse.verification)
-      setLocalVerificationError(null)
-      setLocalVerificationReport(null)
-      setActionFeedback({
-        kind: 'success',
-        message: signResponse.message,
-      })
+      if (!optionsResponse.signingTarget) {
+        throw new Error(t('The signing target is incomplete.', 'El objetivo de firma está incompleto.'))
+      }
+      setPendingSignatureConfirmation({ optionsResponse, revision })
     } catch (error) {
       if (error instanceof ApiRequestError && error.status === 401) {
         onSessionExpired?.()
         return
-      }
-
-      if (
-        error instanceof Error &&
-        error.name === 'NotAllowedError' &&
-        challengeIntentId
-      ) {
-        await cancelSecurityChallenge(challengeIntentId).catch(() => undefined)
       }
 
       setActionFeedback({
@@ -632,7 +627,69 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
               : error.message
             : t("The revision could not be signed.", "No se pudo firmar la versión."),
       })
+      setPendingSigningRevisionId(null)
+    }
+  }
+
+  const cancelPendingSignature = async () => {
+    if (isConfirmingSignature) {
+      return
+    }
+
+    const challengeIntentId = pendingSignatureConfirmation?.optionsResponse.challengeIntent?.id
+    setPendingSignatureConfirmation(null)
+    setPendingSigningRevisionId(null)
+
+    if (challengeIntentId) {
+      await cancelSecurityChallenge(challengeIntentId).catch(() => undefined)
+    }
+  }
+
+  const confirmPendingSignature = async () => {
+    if (!detail || !pendingSignatureConfirmation) {
+      return
+    }
+
+    const { optionsResponse, revision } = pendingSignatureConfirmation
+    const challengeIntentId = optionsResponse.challengeIntent?.id ?? null
+    setIsConfirmingSignature(true)
+
+    try {
+      const assertion = await getWebauthnAssertion(optionsResponse.options)
+      const signResponse = await verifyDocumentRevisionSign(detail.id, revision.id, assertion)
+      const [documentResponse, verificationResponse] = await Promise.all([
+        getDocument(detail.id),
+        getDocumentVerification(detail.id),
+      ])
+
+      setDetail(documentResponse.document)
+      setVerification(verificationResponse.verification)
+      setLocalVerificationError(null)
+      setLocalVerificationReport(null)
+      setActionFeedback({ kind: 'success', message: signResponse.message })
+      setPendingSignatureConfirmation(null)
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      if (error instanceof Error && error.name === 'NotAllowedError' && challengeIntentId) {
+        await cancelSecurityChallenge(challengeIntentId).catch(() => undefined)
+        setPendingSignatureConfirmation(null)
+      }
+
+      setActionFeedback({
+        kind: 'error',
+        message:
+          error instanceof Error
+            ? error.name === 'NotAllowedError'
+              ? t('Security key verification was cancelled.', 'Se canceló la verificación con llave de seguridad.')
+              : error.message
+            : t('The revision could not be signed.', 'No se pudo firmar la versión.'),
+      })
     } finally {
+      setIsConfirmingSignature(false)
       setPendingSigningRevisionId(null)
     }
   }
@@ -828,6 +885,61 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
     }
   }
 
+  const handleDownloadSignaturePresentation = async (
+    revision: DocumentDetailRevision,
+  ) => {
+    if (
+      !detail ||
+      !revision.capabilities.canDownload ||
+      revision.mimeType?.toLowerCase() !== 'application/pdf' ||
+      !revision.signatures?.length
+    ) {
+      return
+    }
+
+    setDownloadingSignaturePresentationRevisionId(revision.id)
+    setActionFeedback(null)
+
+    try {
+      const presentation = await downloadDocumentRevisionSignaturePresentation(
+        detail.id,
+        revision.id,
+      )
+      downloadBlobFile(presentation.fileName, presentation.blob)
+      setActionFeedback({
+        kind: 'success',
+        message:
+          presentation.mode === 'merged'
+            ? t(
+                `PDF with the signature record downloaded for revision ${revision.revisionNumber}.`,
+                `Se descargó el PDF con el registro de firmas de la versión ${revision.revisionNumber}.`,
+              )
+            : t(
+                'The original PDF could not be combined safely. A separate signature summary was downloaded instead.',
+                'No fue posible combinar el PDF original de forma segura. Se descargó un resumen de firmas por separado.',
+              ),
+      })
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      setActionFeedback({
+        kind: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : t(
+                'The PDF with signatures could not be downloaded.',
+                'No se pudo descargar el PDF con firmas.',
+              ),
+      })
+    } finally {
+      setDownloadingSignaturePresentationRevisionId(null)
+    }
+  }
+
   const handleVerifyRevisionLocally = async (revision: DocumentDetailRevision) => {
     if (
       !detail ||
@@ -889,7 +1001,59 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
   }, [selectedDocumentId, verification?.currentRevisionId, verification?.signatures.length])
 
   return (
-    <section className="workspace-stack">
+    <>
+      {pendingSignatureConfirmation ? (
+        <div
+          aria-labelledby="document-signature-confirmation-title"
+          aria-modal="true"
+          className="confirmation-modal"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !isConfirmingSignature) void cancelPendingSignature()
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && !isConfirmingSignature) void cancelPendingSignature()
+          }}
+          role="dialog"
+        >
+          <div className="confirmation-modal__surface">
+            <div>
+              <h3 id="document-signature-confirmation-title">{t('Confirm document signature', 'Confirmar firma del documento')}</h3>
+              <p>
+                {t(
+                  `Revision ${pendingSignatureConfirmation.revision.revisionNumber} will be signed with the identity below.`,
+                  `La versión ${pendingSignatureConfirmation.revision.revisionNumber} se firmará con la identidad siguiente.`,
+                )}
+              </p>
+            </div>
+            <dl className="signature-receipt">
+              <div className="signature-receipt__item">
+                <dt>CURP</dt>
+                <dd>{pendingSignatureConfirmation.optionsResponse.signingTarget?.signerCurp ?? t('Not provided', 'No proporcionada')}</dd>
+              </div>
+              <div className="signature-receipt__item">
+                <dt>{t('Document hash', 'Hash del documento')}</dt>
+                <dd>{pendingSignatureConfirmation.optionsResponse.signingTarget?.documentHash}</dd>
+              </div>
+            </dl>
+            <p>
+              {pendingSignatureConfirmation.optionsResponse.signingTarget?.signerCurp
+                ? t('This CURP will be cryptographically bound to the passkey signature.', 'Esta CURP quedará vinculada criptográficamente a la firma con llave de acceso.')
+                : t('No CURP is assigned. The signature will record that no CURP was provided.', 'No hay una CURP asignada. La firma registrará que no se proporcionó una CURP.')}
+            </p>
+            <div className="confirmation-modal__actions">
+              <button className="session-action session-action--quiet" disabled={isConfirmingSignature} onClick={() => void cancelPendingSignature()} type="button">
+                {t('Cancel', 'Cancelar')}
+              </button>
+              <button className="session-action" disabled={isConfirmingSignature} onClick={() => void confirmPendingSignature()} type="button">
+                {isConfirmingSignature
+                  ? t('Waiting for passkey...', 'Esperando llave de acceso...')
+                  : t('Sign with passkey', 'Firmar con llave de acceso')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <section className="workspace-stack">
       <section className="workspace-panel workspace-panel--accent">
         <h2 className="workspace-panel__title">{t("Document workspace", "Espacio de documentos")}</h2>
         <p className="workspace-panel__copy">
@@ -1138,7 +1302,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                         {selectedRevision.signatures
                           .map(
                             (signature) =>
-                              signature.signedBy.name ?? t("Unknown signer", "Firmante desconocido"),
+                              `${signature.signedBy.name ?? t("Unknown signer", "Firmante desconocido")} · CURP ${signature.signedBy.curp ?? t("not recorded", "no registrada")}`,
                           )
                           .join(', ')}
                       </p>
@@ -1168,6 +1332,28 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                           <AppIcon name="download" />
                           {t("Download revision ", "Descargar versión ")}{selectedRevision.revisionNumber}
                         </a>
+                      ) : null}
+
+                      {selectedRevision.capabilities.canDownload &&
+                      selectedRevision.mimeType?.toLowerCase() === 'application/pdf' &&
+                      selectedRevisionHasStoredSignatures ? (
+                        <button
+                          className="workspace-action workspace-action--secondary"
+                          disabled={downloadingSignaturePresentationRevisionId !== null}
+                          onClick={() => handleDownloadSignaturePresentation(selectedRevision)}
+                          type="button"
+                        >
+                          <AppIcon name="download" />
+                          {downloadingSignaturePresentationRevisionId === selectedRevision.id
+                            ? t(
+                                'Preparing PDF with signatures...',
+                                'Preparando PDF con firmas...',
+                              )
+                            : t(
+                                'Download PDF with signatures',
+                                'Descargar PDF con firmas',
+                              )}
+                        </button>
                       ) : null}
 
                       {selectedRevisionHasStoredSignatures &&
@@ -1418,6 +1604,18 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                                   'Signature',
                                   localVerificationResult.checks.cryptographicSignature,
                                 ],
+                                ...(localVerificationResult.checks.curpFormat === null
+                                  ? []
+                                  : [[
+                                      'CURP format',
+                                      localVerificationResult.checks.curpFormat,
+                                    ] as [string, boolean]]),
+                                ...(localVerificationResult.checks.curpBinding === null
+                                  ? []
+                                  : [[
+                                      'CURP binding',
+                                      localVerificationResult.checks.curpBinding,
+                                    ] as [string, boolean]]),
                               ]
                             : []
 
@@ -1428,6 +1626,10 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                             <span>{signature.verificationStatus}</span>
                             <span>{formatDateTime(signature.signedAt)}</span>
                             <dl className="signature-receipt">
+                              <div className="signature-receipt__item">
+                                <dt>CURP</dt>
+                                <dd>{signature.signedBy.curp ?? t('Not recorded', 'No registrada')}</dd>
+                              </div>
                               <div className="signature-receipt__item">
                                 <dt>{t("Document hash", "Hash del documento")}</dt>
                                 <dd>{signature.documentHash ?? t("Not available", "No disponible")}</dd>
@@ -1500,6 +1702,13 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
                                     : t("Local verification failed", "Verificación local fallida")}
                                 </strong>
                                 <span>{localVerificationResult.message}</span>
+                                <span>
+                                  {localVerificationResult.curpStatus === 'bound'
+                                    ? t('The signer CURP is included in the signed intent.', 'La CURP de la persona firmante está incluida en la intención firmada.')
+                                    : localVerificationResult.curpStatus === 'not_provided'
+                                      ? t('No CURP was provided for this signature.', 'No se proporcionó una CURP para esta firma.')
+                                      : t('This legacy signature predates CURP binding.', 'Esta firma anterior no incluye vinculación de CURP.')}
+                                </span>
                                 <ul className="local-verification-checks">
                                   {localChecks.map(([label, passed]) => (
                                     <li
@@ -1536,6 +1745,7 @@ export function DocumentsPage({ locationSearch, onSessionExpired, user }: Docume
 
         </section>
       </section>
-    </section>
+      </section>
+    </>
   )
 }
