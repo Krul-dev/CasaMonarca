@@ -3,6 +3,7 @@ import type {
   DocumentVerificationBundle,
   DocumentVerificationBundleSignature,
 } from './documents'
+import { isValidCurp } from './curp'
 
 type LocalVerificationChecks = {
   challengeMatches: boolean
@@ -10,6 +11,8 @@ type LocalVerificationChecks = {
   clientDataOrigin: boolean
   clientDataType: boolean
   cryptographicSignature: boolean
+  curpBinding: boolean | null
+  curpFormat: boolean | null
   documentHashMatches: boolean
   intentCanonical: boolean
   revisionMatches: boolean
@@ -19,6 +22,7 @@ type LocalVerificationChecks = {
 
 export type LocalSignatureVerificationResult = {
   checks: LocalVerificationChecks
+  curpStatus: 'bound' | 'legacy' | 'not_provided'
   message: string
   signatureId: number
   verified: boolean
@@ -219,6 +223,8 @@ const buildEmptyChecks = (): LocalVerificationChecks => ({
   clientDataOrigin: false,
   clientDataType: false,
   cryptographicSignature: false,
+  curpBinding: null,
+  curpFormat: null,
   documentHashMatches: false,
   intentCanonical: false,
   revisionMatches: false,
@@ -301,10 +307,12 @@ const verifySignatureLocally = async (
   const checks = buildEmptyChecks()
   const intent = signature.intent
   const assertion = signature.assertion
+  let curpStatus: LocalSignatureVerificationResult['curpStatus'] = 'legacy'
 
   if (!intent || !assertion?.response) {
     return {
       checks,
+      curpStatus: 'legacy',
       message:
         t("This signature does not expose a complete verification bundle yet.", "Esta firma todavía no expone un paquete de verificación completo."),
       signatureId: signature.id,
@@ -327,6 +335,18 @@ const verifySignatureLocally = async (
       signature.documentHash === fileHash &&
       bundle.revision.sha256 === fileHash &&
       intent.revisionSha256 === fileHash
+
+    if (intent.version === 2) {
+      if (intent.signerCurp == null && signature.signedBy.curp == null) {
+        curpStatus = 'not_provided'
+      } else {
+        curpStatus = 'bound'
+        checks.curpFormat = typeof intent.signerCurp === 'string' && isValidCurp(intent.signerCurp)
+        checks.curpBinding =
+          typeof intent.signerCurp === 'string' &&
+          signature.signedBy.curp === intent.signerCurp
+      }
+    }
 
     const clientDataRaw = base64UrlToBytes(
       assertion.response.clientDataJSON ?? '',
@@ -369,10 +389,11 @@ const verifySignatureLocally = async (
       new Uint8Array(verificationData),
     )
 
-    const verified = Object.values(checks).every(Boolean)
+    const verified = Object.values(checks).every((value) => value === null || value)
 
     return {
       checks,
+      curpStatus,
       message: verified
         ? t("Signature verified locally against the downloaded revision.", "Firma verificada localmente contra la revisión descargada.")
         : t("One or more local verification checks failed.", "Falló una o más verificaciones locales."),
@@ -382,6 +403,7 @@ const verifySignatureLocally = async (
   } catch (error) {
     return {
       checks,
+      curpStatus,
       message:
         error instanceof Error
           ? error.message

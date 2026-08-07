@@ -71,6 +71,23 @@ const registrations = [
   },
 ]
 
+const questionnaireDefinition = {
+  canonicalAnswerLocale: 'es', defaultLocale: 'es', id: 'visual-edit',
+  locales: [{ id: 'es', name: 'Español' }, { id: 'en', name: 'English' }],
+  questions: [
+    { choices: [], defaultNext: { kind: 'question', questionId: 'department' }, help: null, id: 'first_name', multiline: false, multipleSelection: false, number: 1, numeric: false, required: true, sectionId: 'identity', title: { en: 'First name (without surnames)', es: 'Nombre(s) sin apellidos' }, type: 'text' },
+    { choices: [], defaultNext: { kind: 'end' }, help: null, id: 'department', multiline: false, multipleSelection: false, number: 2, numeric: false, required: true, sectionId: 'identity', title: { en: 'Department / state', es: 'Departamento / estado' }, type: 'text' },
+  ],
+  schemaVersion: 2,
+  sections: [{ id: 'identity', title: { en: 'Identity', es: 'Identidad' } }],
+  summaryMappings: { departmentState: 'department', firstName: 'first_name', firstLastName: 'missing_last', secondLastName: 'missing_second' },
+  title: { en: 'Migrant interview', es: 'Entrevista a persona migrante' },
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem('casamonarca.locale', 'en'))
+})
+
 async function openRegistrations(page: Page) {
   await page.route('**/api/me', async (route) => {
     await route.fulfill({
@@ -159,6 +176,9 @@ test('non-coordinator starts an edit request from an approved registration', asy
 
     await route.fulfill({ contentType: 'application/json', json: { data: registrations[0] } })
   })
+  await page.route('**/api/registry/migrants/questionnaires/current', async (route) => {
+    await route.fulfill({ contentType: 'application/json', json: { data: questionnaireDefinition } })
+  })
   await page.route('**/api/registry/migrants', async (route) => {
     await route.fulfill({ contentType: 'application/json', json: { data: registrations } })
   })
@@ -168,15 +188,23 @@ test('non-coordinator starts an edit request from an approved registration', asy
   await page.getByRole('button', { name: 'Request edit' }).click()
 
   await expect(page.getByRole('heading', { name: 'Request registration edit' })).toBeVisible()
+  await page.getByLabel('Interview support language').selectOption('en')
   await expect(page.getByLabel('First name (without surnames)')).toHaveValue('Ana')
   await page.getByLabel('Department / state').fill('Atlantida')
+  await page.getByRole('button', { name: 'Next' }).click()
   await page.getByRole('button', { name: 'Submit edit request' }).click()
 
   await expect(page).toHaveURL(/\/app\/migrants\/registrations$/)
   expect(submittedPayload).toMatchObject({
     payload_json: {
-      departmentState: 'Atlantida',
-      fullName: 'Ana Lopez X',
+      questionnaire: {
+        answers: {
+          department: { value: 'Atlantida' },
+          first_name: { value: 'Ana' },
+        },
+        definitionId: 'visual-edit',
+      },
+      schemaVersion: 2,
     },
   })
 })

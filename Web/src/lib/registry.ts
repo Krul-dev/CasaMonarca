@@ -1,4 +1,4 @@
-import { apiFetch, ApiRequestError } from './api'
+import { apiFetch, ApiRequestError, buildApiUrl } from './api'
 import type { WebauthnLoginAssertionPayload, WebauthnLoginOptions } from './auth'
 import { getCsrfToken } from './csrf'
 import type { PendingMigrantDocument } from './migrantDocuments'
@@ -110,8 +110,54 @@ export type DeleteRegistryEntryResponse = {
   message: string
 }
 
+export type RegistryPdfDownloadOptionsResponse = {
+  challengeIntent: SecurityChallengeSummary
+  message: string
+  options: WebauthnLoginOptions
+}
+
 export async function getRegistryEntries() {
   return apiFetch<RegistryListResponse>('/registry/migrants')
+}
+
+export async function startRegistryPdfDownload(id: number) {
+  const { csrfToken } = await getCsrfToken()
+
+  return apiFetch<RegistryPdfDownloadOptionsResponse>(
+    `/registry/migrants/${id}/pdf/options`,
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-TOKEN': csrfToken },
+    },
+  )
+}
+
+export async function verifyRegistryPdfDownload(
+  id: number,
+  assertion: WebauthnLoginAssertionPayload,
+) {
+  const { csrfToken } = await getCsrfToken()
+  const response = await fetch(buildApiUrl(`/registry/migrants/${id}/pdf/verify`), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/pdf',
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+    },
+    body: JSON.stringify(assertion),
+  })
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { message?: unknown } | null
+    const message = typeof payload?.message === 'string'
+      ? payload.message
+      : `Request failed with status ${response.status}`
+
+    throw new ApiRequestError(message, response.status)
+  }
+
+  return response.blob()
 }
 
 let questionnaireDefinitionRequest: Promise<QuestionnaireDefinitionResponse> | null = null

@@ -21,6 +21,10 @@ const entry = {
   updated_at: '2026-07-10T12:00:00Z',
 }
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem('casamonarca.locale', 'en'))
+})
+
 test('ARCO request form only shows currently enabled rights', async ({ page }) => {
   await page.route('**/me', (route) => route.fulfill({
     contentType: 'application/json',
@@ -39,9 +43,9 @@ test('ARCO request form only shows currently enabled rights', async ({ page }) =
 
   await expect(page.getByRole('heading', { name: 'ARCO rights workspace' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'ARCO Requests' })).toBeVisible()
-  await expect(page.getByLabel('Right').locator('option')).toHaveCount(1)
+  await expect(page.getByLabel('Right').locator('option')).toHaveCount(3)
   await expect(page.getByLabel('Right')).toHaveValue('access')
-  await expect(page.getByRole('option', { name: 'Rectification' })).toHaveCount(0)
-  await expect(page.getByRole('option', { name: 'Cancellation' })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Rectification' })).toHaveCount(1)
+  await expect(page.getByRole('option', { name: 'Cancellation' })).toHaveCount(1)
   await expect(page.getByRole('option', { name: 'Opposition' })).toHaveCount(0)
 })

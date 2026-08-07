@@ -118,7 +118,7 @@ const sha256Bytes = async (value: BufferSource | string) => {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', input))
 }
 
-async function createBundleFixture() {
+async function createBundleFixture(signerCurp: string | null | 'legacy' = 'SABC560626MDFLRN01') {
   const fileBytes = encoder.encode('Carga útil de la revisión del documento Casa Monarca.')
   const fileHash = bytesToHex(await sha256Bytes(fileBytes))
 
@@ -133,8 +133,9 @@ async function createBundleFixture() {
     revisionNumber: 4,
     revisionSha256: fileHash,
     rpId: 'casamonarca.muchosnumeros.online',
+    ...(signerCurp === 'legacy' ? {} : { signerCurp }),
     userId: 3,
-    version: 1,
+    version: signerCurp === 'legacy' ? 1 : 2,
   }
 
   const canonicalIntent = toCanonicalJson(intent)
@@ -220,6 +221,7 @@ async function createBundleFixture() {
           id: intent.userId,
           name: 'Coordinación local',
           email: 'coordinator@casamonarca.local',
+          curp: signerCurp === 'legacy' ? null : signerCurp,
         },
         verificationStatus: 'verified',
       },
@@ -251,6 +253,8 @@ describe('verifyDocumentBundleLocally', () => {
         clientDataOrigin: true,
         clientDataType: true,
         cryptographicSignature: true,
+        curpBinding: true,
+        curpFormat: true,
         documentHashMatches: true,
         intentCanonical: true,
         revisionMatches: true,
@@ -258,6 +262,37 @@ describe('verifyDocumentBundleLocally', () => {
         userPresent: true,
       },
     })
+  })
+
+  it('falla cuando la CURP mostrada no coincide con la intención firmada', async () => {
+    const { bundle, fileBytes } = await createBundleFixture()
+    bundle.signatures[0].signedBy.curp = 'PELJ900101HDFRNS01'
+
+    const report = await verifyDocumentBundleLocally(bundle, fileBytes.buffer)
+
+    expect(report.verified).toBe(false)
+    expect(report.signatures[0].checks.curpFormat).toBe(true)
+    expect(report.signatures[0].checks.curpBinding).toBe(false)
+  })
+
+  it('mantiene la CURP ausente como estado informativo', async () => {
+    const { bundle, fileBytes } = await createBundleFixture(null)
+
+    const report = await verifyDocumentBundleLocally(bundle, fileBytes.buffer)
+
+    expect(report.verified).toBe(true)
+    expect(report.signatures[0].curpStatus).toBe('not_provided')
+    expect(report.signatures[0].checks.curpBinding).toBeNull()
+    expect(report.signatures[0].checks.curpFormat).toBeNull()
+  })
+
+  it('mantiene verificables las firmas heredadas sin vinculación CURP', async () => {
+    const { bundle, fileBytes } = await createBundleFixture('legacy')
+
+    const report = await verifyDocumentBundleLocally(bundle, fileBytes.buffer)
+
+    expect(report.verified).toBe(true)
+    expect(report.signatures[0].curpStatus).toBe('legacy')
   })
 
   it('falla la verificación local cuando el archivo descargado ya no coincide con la revisión firmada', async () => {

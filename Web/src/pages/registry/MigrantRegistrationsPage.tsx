@@ -7,10 +7,15 @@ import { AppIcon } from '../../components/ui/AppIcon'
 import { APP_MIGRANT_REGISTRY_PATH } from '../../config/appRoutes'
 import { migrantDocumentsEnabled } from '../../config/env'
 import type { AuthenticatedUser } from '../../lib/auth'
+import { formatRegistryDate, formatRegistryValue } from '../../lib/registryDisplay'
+import { cancelSecurityChallenge } from '../../lib/securityChallenges'
+import { getWebauthnAssertion } from '../../lib/webauthn'
 import {
   ApiRequestError,
   getRegistryEntries,
+  startRegistryPdfDownload,
   type RegistryEntry,
+  verifyRegistryPdfDownload,
 } from '../../lib/registry'
 
 type MigrantRegistrationsPageProps = {
@@ -40,58 +45,22 @@ const DEFAULT_FILTERS: RegistrationsFilterState = {
   status: '',
 }
 
-const formatDate = (value?: string | null) => {
-  if (!value) {
-    return 'Not available'
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Not available'
-  }
-
-  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(date)
-}
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) {
-    return 'Not available'
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Not available'
-  }
-
-  return new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
-}
-
-const formatValue = (value?: unknown, fallback = 'Not available') => {
-  if (typeof value !== 'string' || value.trim() === '') {
-    return fallback
-  }
-
-  return value.replace(/_/g, ' ')
-}
-
-const formatStatus = (value: string) => formatValue(value, 'Unknown status')
-
 const getEntryName = (entry: RegistryEntry) =>
-  formatValue(
+  formatRegistryValue(
     entry.payload_json.fullName ?? entry.payload_json.full_name,
-    `Registration #${entry.id}`,
+    t(`Registration #${entry.id}`, `Registro #${entry.id}`),
   )
 
 const getEntryCountry = (entry: RegistryEntry) =>
-  formatValue(entry.payload_json.countryOfOrigin)
+  formatRegistryValue(entry.payload_json.countryOfOrigin)
 
 const getEntryPopulationGroup = (entry: RegistryEntry) =>
-  formatValue(entry.payload_json.populationGroup)
+  formatRegistryValue(entry.payload_json.populationGroup)
+
+const getEntryPopulationGroupCode = (entry: RegistryEntry) =>
+  typeof entry.payload_json.populationGroup === 'string'
+    ? entry.payload_json.populationGroup
+    : ''
 
 const normalizeSearchText = (value: string | number) => String(value)
   .normalize('NFD')
@@ -158,7 +127,7 @@ const storeFilters = (filters: RegistrationsFilterState) => {
 }
 
 const getUniqueValues = (entries: RegistryEntry[], getValue: (entry: RegistryEntry) => string) =>
-  [...new Set(entries.map(getValue).filter((value) => value !== 'Not available'))]
+  [...new Set(entries.map(getValue).filter((value) => value.trim() !== '' && value !== t('Not available', 'No disponible')))]
     .sort((first, second) => first.localeCompare(second))
 
 export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }: MigrantRegistrationsPageProps) {
@@ -175,6 +144,9 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
   const [debouncedSearch, setDebouncedSearch] = useState(initialFilters.search)
   const [reloadToken, setReloadToken] = useState(0)
   const [documentEntryIds, setDocumentEntryIds] = useState<Set<number>>(() => new Set())
+  const [pendingPdfEntryId, setPendingPdfEntryId] = useState<number | null>(null)
+  const [pdfErrors, setPdfErrors] = useState<Record<number, string>>({})
+  const [pdfFeedback, setPdfFeedback] = useState<Record<number, string>>({})
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -212,7 +184,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
         }
 
         setEntries([])
-        setError(loadError instanceof Error ? loadError.message : 'Unable to load migrant registrations.')
+        setError(loadError instanceof Error ? loadError.message : t('Unable to load migrant registrations.', 'No se pudieron cargar los registros de migrantes.'))
         setIsLoading(false)
       })
 
@@ -234,7 +206,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
 
   const countries = useMemo(() => getUniqueValues(entries, getEntryCountry), [entries])
   const populationGroups = useMemo(
-    () => getUniqueValues(entries, getEntryPopulationGroup),
+    () => getUniqueValues(entries, getEntryPopulationGroupCode),
     [entries],
   )
   const statuses = useMemo(
@@ -247,7 +219,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
     return entries.filter((entry) =>
       (statusFilter === '' || entry.current_status === statusFilter) &&
       (countryFilter === '' || getEntryCountry(entry) === countryFilter) &&
-      (populationGroupFilter === '' || getEntryPopulationGroup(entry) === populationGroupFilter) &&
+      (populationGroupFilter === '' || getEntryPopulationGroupCode(entry) === populationGroupFilter) &&
       (searchTerm === '' || getSearchableValue(entry).includes(searchTerm)),
     )
   }, [countryFilter, debouncedSearch, entries, populationGroupFilter, statusFilter])
@@ -284,6 +256,56 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
 
       return new Set(current).add(entryId)
     })
+  }
+
+  const downloadRegistryPdf = async (entry: RegistryEntry) => {
+    setPendingPdfEntryId(entry.id)
+    setPdfErrors((current) => ({ ...current, [entry.id]: '' }))
+    setPdfFeedback((current) => ({ ...current, [entry.id]: '' }))
+    let challengeIntentId: string | null = null
+
+    try {
+      const options = await startRegistryPdfDownload(entry.id)
+      challengeIntentId = options.challengeIntent.id
+      const assertion = await getWebauthnAssertion(options.options)
+      const blob = await verifyRegistryPdfDownload(entry.id, assertion)
+      const url = URL.createObjectURL(blob)
+      const link = window.document.createElement('a')
+      link.href = url
+      link.download = `registro-migrante-${entry.id}.pdf`
+      link.click()
+      URL.revokeObjectURL(url)
+      setPdfFeedback((current) => ({
+        ...current,
+        [entry.id]: t('Registration PDF downloaded.', 'Se descargó el PDF del registro.'),
+      }))
+    } catch (caught: unknown) {
+      const passkeyCancelled = caught instanceof DOMException && caught.name === 'NotAllowedError'
+
+      if (challengeIntentId && passkeyCancelled) {
+        await cancelSecurityChallenge(challengeIntentId).catch(() => undefined)
+      }
+
+      if (caught instanceof ApiRequestError && caught.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      setPdfErrors((current) => ({
+        ...current,
+        [entry.id]: passkeyCancelled
+          ? t('Passkey download was cancelled.', 'Se canceló la descarga con llave de acceso.')
+          : caught instanceof ApiRequestError && caught.status === 409
+            ? t('The registration changed. Reload and try again.', 'El registro cambió. Actualiza la página e inténtalo de nuevo.')
+            : caught instanceof ApiRequestError && caught.status === 422
+              ? t(caught.message, 'No se pudo iniciar la descarga. Verifica que tu llave de acceso esté registrada.')
+              : caught instanceof Error
+                ? caught.message
+                : t('Unable to download the registration PDF.', 'No se pudo descargar el PDF del registro.'),
+      }))
+    } finally {
+      setPendingPdfEntryId(null)
+    }
   }
 
   return (
@@ -324,7 +346,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
             >
               <option value="">{t("All statuses", "Todos los estados")}</option>
               {statuses.map((status) => (
-                <option key={status} value={status}>{formatStatus(status)}</option>
+                <option key={status} value={status}>{formatRegistryValue(status, t('Unknown status', 'Estado desconocido'))}</option>
               ))}
             </select>
           </label>
@@ -375,7 +397,7 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
             value={populationGroupFilter}
           >
             <option value="">{t("All population groups", "Todos los grupos poblacionales")}</option>
-            {populationGroups.map((group) => <option key={group} value={group}>{group}</option>)}
+            {populationGroups.map((group) => <option key={group} value={group}>{formatRegistryValue(group)}</option>)}
           </select>
         </label>
 
@@ -411,11 +433,11 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
               <div className="registry-browser__header">
                 <div>
                   <h3 className="workspace-panel__title">{getEntryName(entry)}</h3>
-                  <p>{t("Registration #", "Registro #")}{entry.id} {t("· received ", "· recibido ")}{formatDateTime(entry.created_at)}</p>
+                  <p>{t("Registration #", "Registro #")}{entry.id} {t("· received ", "· recibido ")}{formatRegistryDate(entry.created_at, true)}</p>
                 </div>
                 <div className="audit-card__badges">
                   <span className="registry-browser__badge">{getEntryPopulationGroup(entry)}</span>
-                  <span className="registry-browser__status">{formatStatus(entry.current_status)}</span>
+                  <span className="registry-browser__status">{formatRegistryValue(entry.current_status, t('Unknown status', 'Estado desconocido'))}</span>
                 </div>
               </div>
 
@@ -433,9 +455,9 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
 
               <div className="registry-browser__context">
                 <span><small>{t("Origin", "Origen")}</small><strong>{getEntryCountry(entry)}</strong></span>
-                <span><small>{t("State", "Estado")}</small><strong>{formatValue(entry.payload_json.departmentState)}</strong></span>
-                <span><small>{t("Attention date", "Fecha de atención")}</small><strong>{formatDate(entry.payload_json.attentionDate)}</strong></span>
-                <span><small>{t("Submitted by", "Enviado por")}</small><strong>{entry.creator?.email ?? formatValue(entry.created_by_role)}</strong></span>
+                <span><small>{t("State", "Estado")}</small><strong>{formatRegistryValue(entry.payload_json.departmentState)}</strong></span>
+                <span><small>{t("Attention date", "Fecha de atención")}</small><strong>{formatRegistryDate(entry.payload_json.attentionDate)}</strong></span>
+                <span><small>{t("Submitted by", "Enviado por")}</small><strong>{entry.creator?.email ?? formatRegistryValue(entry.created_by_role)}</strong></span>
               </div>
 
               <details
@@ -449,18 +471,35 @@ export function MigrantRegistrationsPage({ onNavigate, onSessionExpired, user }:
                 <summary>{t("View registration details", "Ver detalles del registro")}</summary>
                 <MigrantQuestionnaireViewer payload={entry.payload_json} />
                 <dl>
-                  <div><dt>{t("First name", "Nombre")}</dt><dd>{formatValue(entry.payload_json.firstName)}</dd></div>
-                  <div><dt>{t("First last name", "Primer apellido")}</dt><dd>{formatValue(entry.payload_json.firstLastName)}</dd></div>
-                  <div><dt>{t("Second last name", "Segundo apellido")}</dt><dd>{formatValue(entry.payload_json.secondLastName)}</dd></div>
-                  <div><dt>{t("Birth date", "Fecha de nacimiento")}</dt><dd>{formatDate(entry.payload_json.birthDate)}</dd></div>
-                  <div><dt>{t("Gender", "Género")}</dt><dd>{formatValue(entry.payload_json.gender)}</dd></div>
-                  <div><dt>{t("Civil status", "Estado civil")}</dt><dd>{formatValue(entry.payload_json.civilStatus)}</dd></div>
-                  <div><dt>{t("Phone", "Teléfono")}</dt><dd>{formatValue(entry.payload_json.phone)}</dd></div>
-                  <div><dt>{t("Last updated", "Última actualización")}</dt><dd>{formatDateTime(entry.updated_at)}</dd></div>
+                  <div><dt>{t("First name", "Nombre")}</dt><dd>{formatRegistryValue(entry.payload_json.firstName)}</dd></div>
+                  <div><dt>{t("First last name", "Primer apellido")}</dt><dd>{formatRegistryValue(entry.payload_json.firstLastName)}</dd></div>
+                  <div><dt>{t("Second last name", "Segundo apellido")}</dt><dd>{formatRegistryValue(entry.payload_json.secondLastName)}</dd></div>
+                  <div><dt>{t("Birth date", "Fecha de nacimiento")}</dt><dd>{formatRegistryDate(entry.payload_json.birthDate)}</dd></div>
+                  <div><dt>{t("Gender", "Género")}</dt><dd>{formatRegistryValue(entry.payload_json.gender)}</dd></div>
+                  <div><dt>{t("Civil status", "Estado civil")}</dt><dd>{formatRegistryValue(entry.payload_json.civilStatus)}</dd></div>
+                  <div><dt>{t("Phone", "Teléfono")}</dt><dd>{formatRegistryValue(entry.payload_json.phone)}</dd></div>
+                  <div><dt>{t("Last updated", "Última actualización")}</dt><dd>{formatRegistryDate(entry.updated_at, true)}</dd></div>
                 </dl>
                 {typeof entry.payload_json.notes === 'string' && entry.payload_json.notes.trim() ? (
                   <p className="registry-browser__notes"><small>{t("Notes", "Notas")}</small>{entry.payload_json.notes}</p>
                 ) : null}
+                {user.role === 'admin' ? (
+                  <div className="registry-browser__actions">
+                    <button
+                      className="session-action session-action--quiet session-action--inline"
+                      disabled={pendingPdfEntryId === entry.id}
+                      onClick={() => void downloadRegistryPdf(entry)}
+                      type="button"
+                    >
+                      <AppIcon name="download" />
+                      {pendingPdfEntryId === entry.id
+                        ? t('Authenticating...', 'Autenticando...')
+                        : t('Download registration PDF', 'Descargar PDF del registro')}
+                    </button>
+                  </div>
+                ) : null}
+                {pdfErrors[entry.id] ? <div className="login-feedback login-feedback--error">{pdfErrors[entry.id]}</div> : null}
+                {pdfFeedback[entry.id] ? <div className="login-feedback login-feedback--success">{pdfFeedback[entry.id]}</div> : null}
                 {migrantDocumentsEnabled && user.role !== 'volunteer' && documentEntryIds.has(entry.id) ? (
                   <section className="registry-browser__documents">
                     <h4>{t("Supporting documents", "Documentos de soporte")}</h4>

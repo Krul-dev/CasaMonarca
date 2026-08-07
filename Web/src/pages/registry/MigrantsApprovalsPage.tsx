@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppIcon } from '../../components/ui/AppIcon'
 import { MigrantQuestionnaireViewer } from '../../components/registry/MigrantQuestionnaireViewer'
 import type { AuthenticatedUser } from '../../lib/auth'
+import { formatRegistryValue } from '../../lib/registryDisplay'
 import {
   ApiRequestError,
   getPendingRegistryApprovals,
@@ -44,13 +45,13 @@ const getApprovalPayload = (entry: RegistryEntry) =>
 const formatEntryName = (entry: RegistryEntry) => {
   const payload = getApprovalPayload(entry)
 
-  return String(payload.fullName || payload.full_name || `Registration #${entry.id}`)
+  return String(payload.fullName || payload.full_name || t(`Registration #${entry.id}`, `Registro #${entry.id}`))
 }
 
 const formatEntrySubtitle = (entry: RegistryEntry) => {
   const payload = getApprovalPayload(entry)
-  const country = payload.countryOfOrigin ? String(payload.countryOfOrigin) : 'Country unavailable'
-  const group = payload.populationGroup ? String(payload.populationGroup) : 'Population group unavailable'
+  const country = formatRegistryValue(payload.countryOfOrigin, t('Country unavailable', 'País no disponible'))
+  const group = formatRegistryValue(payload.populationGroup, t('Population group unavailable', 'Grupo poblacional no disponible'))
 
   return `${country} · ${group}`
 }
@@ -69,11 +70,11 @@ const getLocalDateValue = (dateValue: string) => {
 
 const ensurePasskeySupport = () => {
   if (!window.isSecureContext || !('PublicKeyCredential' in window)) {
-    return 'A passkey action requires a secure context and supported browser.'
+    return t('A passkey action requires a secure context and supported browser.', 'Esta acción con llave de acceso requiere un contexto seguro y un navegador compatible.')
   }
 
   if (isIpHostname(window.location.hostname)) {
-    return 'Passkey actions require localhost or a domain name, not an IP address.'
+    return t('Passkey actions require localhost or a domain name, not an IP address.', 'Las acciones con llave de acceso requieren localhost o un nombre de dominio, no una dirección IP.')
   }
 
   return null
@@ -108,7 +109,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
         return
       }
 
-      setReviewError(error instanceof Error ? error.message : 'Unable to load pending migrant reviews.')
+      setReviewError(error instanceof Error ? error.message : t('Unable to load pending migrant reviews.', 'No se pudieron cargar las revisiones pendientes.'))
     } finally {
       setIsReviewsLoading(false)
     }
@@ -133,7 +134,7 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
         return
       }
 
-      setApprovalError(error instanceof Error ? error.message : 'Unable to load pending migrant approvals.')
+      setApprovalError(error instanceof Error ? error.message : t('Unable to load pending migrant approvals.', 'No se pudieron cargar las aprobaciones pendientes.'))
     } finally {
       setIsApprovalsLoading(false)
     }
@@ -231,9 +232,8 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
       const optionsResponse = await startRegistryReview(entry.id, { reason })
       challengeIntentId = optionsResponse.challengeIntent.id
       const assertion = await getWebauthnAssertion(optionsResponse.options)
-      const response = await verifyRegistryReview(entry.id, assertion)
-
-      setMessage(response.message)
+      await verifyRegistryReview(entry.id, assertion)
+      setMessage(t('Registration reviewed and forwarded for approval.', 'Registro revisado y enviado a aprobación.'))
       await refreshQueues()
     } catch (error) {
       if (challengeIntentId && error instanceof DOMException && error.name === 'NotAllowedError') {
@@ -269,8 +269,8 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
     setMessage(null)
 
     try {
-      const response = await returnRegistryForCorrections(entry.id, reason)
-      setMessage(response.message)
+      await returnRegistryForCorrections(entry.id, reason)
+      setMessage(t('Registration returned for corrections.', 'Registro devuelto para correcciones.'))
       await refreshQueues()
     } catch (error) {
       if (error instanceof ApiRequestError && error.status === 401) {
@@ -307,9 +307,10 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
       const optionsResponse = await startRegistryApproval(entry.id, { decision, reason })
       challengeIntentId = optionsResponse.challengeIntent.id
       const assertion = await getWebauthnAssertion(optionsResponse.options)
-      const response = await verifyRegistryApproval(entry.id, assertion)
-
-      setMessage(response.message)
+      await verifyRegistryApproval(entry.id, assertion)
+      setMessage(decision === 'approve'
+        ? t('Registration approved.', 'Registro aprobado.')
+        : t('Registration rejected.', 'Registro rechazado.'))
       await refreshQueues()
     } catch (error) {
       if (challengeIntentId && error instanceof DOMException && error.name === 'NotAllowedError') {
@@ -356,9 +357,8 @@ export function MigrantsApprovalsPage({ onSessionExpired, user }: MigrantsApprov
       const optionsResponse = await startRegistryBulkApproval(entryIds)
       challengeIntentId = optionsResponse.challengeIntent.id
       const assertion = await getWebauthnAssertion(optionsResponse.options)
-      const response = await verifyRegistryBulkApproval(assertion)
-
-      setMessage(response.message)
+      await verifyRegistryBulkApproval(assertion)
+      setMessage(t(`${entryIds.length} registrations approved.`, `Se aprobaron ${entryIds.length} registros.`))
       setSelectedApprovalIds(new Set())
       await refreshQueues()
     } catch (error) {

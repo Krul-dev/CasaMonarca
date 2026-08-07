@@ -1,4 +1,4 @@
-import { translate as t } from './i18n'
+import { getAppLocale, translate as t } from './i18n'
 import { getCsrfToken } from './csrf'
 import { apiFetch, ApiRequestError, buildApiUrl } from './api'
 import type {
@@ -9,6 +9,7 @@ import type {
 import type { SecurityChallengeSummary } from './securityChallenges'
 
 export type DocumentActor = {
+  curp?: string | null
   id: number | null
   name: string | null
   email?: string | null
@@ -180,6 +181,7 @@ export type DocumentVerificationBundleSignature =
       revisionSha256?: string | null
       rpId?: string | null
       signaturePolicyVersion?: number | null
+      signerCurp?: string | null
       userId?: number | null
       version?: number | null
     } | null
@@ -236,6 +238,7 @@ export type DocumentSensitiveActionOptionsResponse = {
     revisionId: number
     revisionNumber: number
     signaturePolicyVersion: number
+    signerCurp: string | null
   }
 }
 
@@ -478,7 +481,9 @@ export function getDocumentRevisionDownloadUrl(
 }
 
 export function getDocumentVerificationPackageUrl(documentId: number) {
-  return buildApiUrl(`/documents/${documentId}/verification-package`)
+  return buildApiUrl(
+    `/documents/${documentId}/verification-package?locale=${getAppLocale()}`,
+  )
 }
 
 export function getDocumentRevisionVerificationPackageUrl(
@@ -486,7 +491,86 @@ export function getDocumentRevisionVerificationPackageUrl(
   revisionId: number,
 ) {
   return buildApiUrl(
-    `/documents/${documentId}/revisions/${revisionId}/verification-package`,
+    `/documents/${documentId}/revisions/${revisionId}/verification-package?locale=${getAppLocale()}`,
+  )
+}
+
+export type DocumentSignaturePresentationDownload = {
+  blob: Blob
+  fileName: string
+  mode: 'merged' | 'summary-only'
+}
+
+const responseError = async (response: Response) => {
+  const contentType = response.headers.get('content-type') || ''
+  const payload: unknown = contentType.includes('application/json')
+    ? await response.json()
+    : await response.text()
+
+  return new ApiRequestError(
+    payload &&
+      typeof payload === 'object' &&
+      'message' in payload &&
+      typeof payload.message === 'string'
+      ? payload.message
+      : t(
+          `Request failed with status ${response.status}`,
+          `La solicitud falló con el estado ${response.status}`,
+        ),
+    response.status,
+  )
+}
+
+const dispositionFileName = (value: string | null) => {
+  if (!value) return null
+
+  const encoded = value.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded)
+    } catch {
+      return encoded
+    }
+  }
+
+  return value.match(/filename="?([^";]+)"?/i)?.[1] ?? null
+}
+
+const downloadSignaturePresentation = async (
+  path: string,
+): Promise<DocumentSignaturePresentationDownload> => {
+  const response = await fetch(
+    buildApiUrl(`${path}?locale=${getAppLocale()}`),
+    {
+      credentials: 'include',
+      headers: { Accept: 'application/pdf' },
+    },
+  )
+
+  if (!response.ok) throw await responseError(response)
+
+  return {
+    blob: await response.blob(),
+    fileName:
+      dispositionFileName(response.headers.get('content-disposition')) ??
+      'document-signatures.pdf',
+    mode:
+      response.headers.get('x-casamonarca-presentation-mode') === 'summary-only'
+        ? 'summary-only'
+        : 'merged',
+  }
+}
+
+export function downloadDocumentSignaturePresentation(documentId: number) {
+  return downloadSignaturePresentation(`/documents/${documentId}/signed-pdf`)
+}
+
+export function downloadDocumentRevisionSignaturePresentation(
+  documentId: number,
+  revisionId: number,
+) {
+  return downloadSignaturePresentation(
+    `/documents/${documentId}/revisions/${revisionId}/signed-pdf`,
   )
 }
 
@@ -499,20 +583,7 @@ const downloadBinary = async (path: string): Promise<ArrayBuffer> => {
   })
 
   if (!response.ok) {
-    const contentType = response.headers.get('content-type') || ''
-    const payload: unknown = contentType.includes('application/json')
-      ? await response.json()
-      : await response.text()
-
-    const message =
-      payload &&
-      typeof payload === 'object' &&
-      'message' in payload &&
-      typeof payload.message === 'string'
-        ? payload.message
-        : t(`Request failed with status ${response.status}`, `La solicitud falló con el estado ${response.status}`)
-
-    throw new ApiRequestError(message, response.status)
+    throw await responseError(response)
   }
 
   return response.arrayBuffer()

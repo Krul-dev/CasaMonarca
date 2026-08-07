@@ -11,10 +11,12 @@ import {
   getSigningLedger,
   getVerificationPackageSigningKey,
   startAdminUserRecovery,
+  startAdminUserCurpUpdate,
   startAdminUserRoleUpdate,
   startAdminUserStatusUpdate,
   startVerificationPackageSigningKeyRotation,
   verifyAdminUserRecovery,
+  verifyAdminUserCurpUpdate,
   verifyAdminUserRoleUpdate,
   verifyAdminUserStatusUpdate,
   verifyVerificationPackageSigningKeyRotation,
@@ -33,6 +35,7 @@ import {
 } from '../lib/adminUsers'
 import { getRoleLabel } from '../config/appRoutes'
 import { cancelSecurityChallenge } from '../lib/securityChallenges'
+import { isValidCurp, normalizeCurp } from '../lib/curp'
 import { getWebauthnAssertion } from '../lib/webauthn'
 
 type AdminPageProps = {
@@ -87,6 +90,11 @@ const ASSIGNABLE_ROLES: AssignableUserRole[] = [
 ]
 
 type AdminTabId = 'accounts' | 'security' | 'signing' | 'migrant-signing' | 'system' | 'audit'
+
+type CurpUpdateFeedback = {
+  kind: 'error' | 'status' | 'success'
+  message: string
+}
 
 const ADMIN_TABS: Array<{
   copy: string
@@ -403,6 +411,11 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
   const [highlightToken, setHighlightToken] = useState(0)
   const [directory, setDirectory] = useState<AdminUserSummary[]>([])
   const [directoryError, setDirectoryError] = useState<string | null>(null)
+  const [curpDraftByUserId, setCurpDraftByUserId] = useState<Record<number, string>>({})
+  const [curpUpdateFeedbackByUserId, setCurpUpdateFeedbackByUserId] = useState<
+    Record<number, CurpUpdateFeedback>
+  >({})
+  const [updatingCurpUserId, setUpdatingCurpUserId] = useState<number | null>(null)
   const [isDirectoryLoading, setIsDirectoryLoading] = useState(true)
   const [roleDraftByUserId, setRoleDraftByUserId] = useState<Record<number, AssignableUserRole>>({})
   const [roleUpdateError, setRoleUpdateError] = useState<string | null>(null)
@@ -558,6 +571,10 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
     try {
       const response: AdminUserListResponse = await getAdminUsers()
       setDirectory(response.users)
+      setCurpDraftByUserId(
+        Object.fromEntries(response.users.map((account) => [account.id, account.curp ?? ''])),
+      )
+      setCurpUpdateFeedbackByUserId({})
       setRoleDraftByUserId(
         Object.fromEntries(
           response.users
@@ -578,6 +595,106 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
       setIsDirectoryLoading(false)
     }
   }, [onSessionExpired])
+
+  const handleCurpUpdate = async (account: AdminUserSummary) => {
+    const normalizedCurp = normalizeCurp(curpDraftByUserId[account.id] ?? '')
+    const nextCurp = normalizedCurp || null
+
+    if (nextCurp === (account.curp ?? null)) {
+      return
+    }
+
+    if (nextCurp !== null && !isValidCurp(nextCurp)) {
+      setCurpUpdateFeedbackByUserId((currentFeedback) => ({
+        ...currentFeedback,
+        [account.id]: {
+          kind: 'error',
+          message: t(
+            'The CURP format, birth date, or check digit is invalid.',
+            'El formato, la fecha de nacimiento o el dígito verificador de la CURP no es válido.',
+          ),
+        },
+      }))
+      return
+    }
+
+    const confirmed = window.confirm(
+      nextCurp
+        ? t(`Authenticate to update the CURP for ${account.email}?`, `¿Autenticar para actualizar la CURP de ${account.email}?`)
+        : t(`Authenticate to clear the CURP for ${account.email}?`, `¿Autenticar para borrar la CURP de ${account.email}?`),
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setUpdatingCurpUserId(account.id)
+    setCurpUpdateFeedbackByUserId((currentFeedback) => ({
+      ...currentFeedback,
+      [account.id]: {
+        kind: 'status',
+        message: t(
+          'Confirm the CURP change with your admin security key.',
+          'Confirma el cambio de CURP con tu llave de seguridad administrativa.',
+        ),
+      },
+    }))
+
+    try {
+      const optionsResponse = await startAdminUserCurpUpdate(account.id, { curp: nextCurp })
+      const assertion = await getWebauthnAssertion(optionsResponse.options)
+      const response = await verifyAdminUserCurpUpdate(account.id, assertion)
+
+      setDirectory((currentDirectory) =>
+        currentDirectory.map((currentAccount) =>
+          currentAccount.id === response.user.id ? response.user : currentAccount,
+        ),
+      )
+      setCurpDraftByUserId((currentDrafts) => ({
+        ...currentDrafts,
+        [response.user.id]: response.user.curp ?? '',
+      }))
+      setCurpUpdateFeedbackByUserId((currentFeedback) => ({
+        ...currentFeedback,
+        [account.id]: {
+          kind: 'success',
+          message: t('CURP updated successfully.', 'La CURP se actualizó correctamente.'),
+        },
+      }))
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        onSessionExpired?.()
+        return
+      }
+
+      const fieldError = error instanceof ApiRequestError
+        ? error.errors?.curp?.[0]
+        : null
+      const message = fieldError?.includes('already assigned')
+        ? t(
+            'This CURP is already assigned to another account.',
+            'Esta CURP ya está asignada a otra cuenta.',
+          )
+        : error instanceof DOMException && error.name === 'NotAllowedError'
+          ? t(
+              'Security key authentication was cancelled.',
+              'Se canceló la autenticación con la llave de seguridad.',
+            )
+          : error instanceof Error
+            ? error.message
+            : t(
+                'Unable to update the account CURP.',
+                'No se pudo actualizar la CURP de la cuenta.',
+              )
+
+      setCurpUpdateFeedbackByUserId((currentFeedback) => ({
+        ...currentFeedback,
+        [account.id]: { kind: 'error', message },
+      }))
+    } finally {
+      setUpdatingCurpUserId(null)
+    }
+  }
 
   const loadSigningKey = useCallback(async () => {
     setIsSigningKeyLoading(true)
@@ -1994,6 +2111,55 @@ export function AdminPage({ locationSearch, onNavigate, onSessionExpired, user }
               </div>
 
               <div className="admin-user-actions">
+                <div className="admin-role-assignment">
+                  <div>
+                    <label htmlFor={`curp-${account.id}`}>CURP</label>
+                    <input
+                      autoCapitalize="characters"
+                      disabled={updatingCurpUserId === account.id}
+                      id={`curp-${account.id}`}
+                      inputMode="text"
+                      maxLength={18}
+                      onChange={(event) => {
+                        const value = event.target.value.toUpperCase().replace(/\s/g, '')
+                        setCurpDraftByUserId((currentDrafts) => ({
+                          ...currentDrafts,
+                          [account.id]: value,
+                        }))
+                        setCurpUpdateFeedbackByUserId((currentFeedback) => {
+                          const nextFeedback = { ...currentFeedback }
+                          delete nextFeedback[account.id]
+                          return nextFeedback
+                        })
+                      }}
+                      placeholder={t('Not assigned', 'Sin asignar')}
+                      spellCheck={false}
+                      value={curpDraftByUserId[account.id] ?? account.curp ?? ''}
+                    />
+                  </div>
+                  <button
+                    className="admin-role-assignment__button"
+                    disabled={
+                      updatingCurpUserId === account.id ||
+                      (curpDraftByUserId[account.id] ?? account.curp ?? '').trim().toUpperCase() === (account.curp ?? '')
+                    }
+                    onClick={() => void handleCurpUpdate(account)}
+                    type="button"
+                  >
+                    <AppIcon name="verify" size={17} />
+                    {updatingCurpUserId === account.id
+                      ? t('Authenticating...', 'Autenticando...')
+                      : t('Save CURP', 'Guardar CURP')}
+                  </button>
+                </div>
+                {curpUpdateFeedbackByUserId[account.id] ? (
+                  <p
+                    className={`admin-field-feedback admin-field-feedback--${curpUpdateFeedbackByUserId[account.id].kind}`}
+                    role={curpUpdateFeedbackByUserId[account.id].kind === 'error' ? 'alert' : 'status'}
+                  >
+                    {curpUpdateFeedbackByUserId[account.id].message}
+                  </p>
+                ) : null}
                 <div className="admin-role-assignment">
                   <div>
                     <label htmlFor={`role-${account.id}`}>{t("Assign role", "Asignar rol")}</label>

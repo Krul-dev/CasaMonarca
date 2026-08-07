@@ -28,6 +28,7 @@ export type AdminUserDevice = {
 
 export type AdminUserSummary = {
   createdAt?: string | null
+  curp?: string | null
   devices: {
     count: number
     recent: AdminUserDevice[]
@@ -43,6 +44,26 @@ export type AdminUserSummary = {
   suspendedAt?: string | null
   suspensionReason?: string | null
   updatedAt?: string | null
+}
+
+export type AdminUserCurpUpdatePayload = {
+  curp: string | null
+}
+
+export type AdminUserCurpUpdateOptionsResponse = {
+  curpUpdate: {
+    expiresAt?: string | null
+    previousCurp?: string | null
+    targetCurp?: string | null
+    targetUserId: number
+  }
+  message: string
+  options: WebauthnLoginOptions
+}
+
+export type AdminUserCurpUpdateResponse = {
+  message: string
+  user: AdminUserSummary
 }
 
 export type AdminUserListResponse = {
@@ -273,6 +294,38 @@ export async function startAdminUserRecovery(
   const { csrfToken } = await getCsrfToken()
 
   return apiFetch<AdminUserRecoveryOptionsResponse>(`/admin/users/${userId}/recovery/options`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function startAdminUserCurpUpdate(
+  userId: number,
+  payload: AdminUserCurpUpdatePayload,
+): Promise<AdminUserCurpUpdateOptionsResponse> {
+  const { csrfToken } = await getCsrfToken()
+
+  return apiFetch<AdminUserCurpUpdateOptionsResponse>(`/admin/users/${userId}/curp/options`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function verifyAdminUserCurpUpdate(
+  userId: number,
+  payload: WebauthnLoginAssertionPayload,
+): Promise<AdminUserCurpUpdateResponse> {
+  const { csrfToken } = await getCsrfToken()
+
+  return apiFetch<AdminUserCurpUpdateResponse>(`/admin/users/${userId}/curp/verify`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthenticatedUser } from '../../lib/auth'
 import * as migrantDocuments from '../../lib/migrantDocuments'
 import * as registry from '../../lib/registry'
+import * as securityChallenges from '../../lib/securityChallenges'
 import * as webauthn from '../../lib/webauthn'
 import { MigrantRegistrationsPage } from './MigrantRegistrationsPage'
 
@@ -26,16 +27,25 @@ vi.mock('../../lib/registry', async () => {
     '../../lib/registry',
   )
 
-  return { ...actual, getRegistryEntries: vi.fn() }
+  return {
+    ...actual,
+    getRegistryEntries: vi.fn(),
+    startRegistryPdfDownload: vi.fn(),
+    verifyRegistryPdfDownload: vi.fn(),
+  }
 })
 
 vi.mock('../../lib/webauthn', () => ({ getWebauthnAssertion: vi.fn() }))
+vi.mock('../../lib/securityChallenges', () => ({ cancelSecurityChallenge: vi.fn() }))
 
 const getRegistryEntriesMock = vi.mocked(registry.getRegistryEntries)
 const listMigrantDocumentsMock = vi.mocked(migrantDocuments.listMigrantDocuments)
 const startMigrantDocumentDownloadMock = vi.mocked(migrantDocuments.startMigrantDocumentDownload)
 const verifyMigrantDocumentDownloadMock = vi.mocked(migrantDocuments.verifyMigrantDocumentDownload)
+const startRegistryPdfDownloadMock = vi.mocked(registry.startRegistryPdfDownload)
+const verifyRegistryPdfDownloadMock = vi.mocked(registry.verifyRegistryPdfDownload)
 const getWebauthnAssertionMock = vi.mocked(webauthn.getWebauthnAssertion)
+const cancelSecurityChallengeMock = vi.mocked(securityChallenges.cancelSecurityChallenge)
 
 const user: AuthenticatedUser = {
   capabilities: {
@@ -64,12 +74,16 @@ const user: AuthenticatedUser = {
 
 describe('MigrantRegistrationsPage', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     window.sessionStorage.clear()
     getRegistryEntriesMock.mockReset()
     listMigrantDocumentsMock.mockReset()
     startMigrantDocumentDownloadMock.mockReset()
     verifyMigrantDocumentDownloadMock.mockReset()
+    startRegistryPdfDownloadMock.mockReset()
+    verifyRegistryPdfDownloadMock.mockReset()
     getWebauthnAssertionMock.mockReset()
+    cancelSecurityChallengeMock.mockReset()
     getRegistryEntriesMock.mockResolvedValue({
       data: [{
         created_at: '2026-07-17T12:00:00Z',
@@ -109,6 +123,9 @@ describe('MigrantRegistrationsPage', () => {
     render(<MigrantRegistrationsPage user={user} />)
 
     expect(await screen.findByText('Maria Doe')).toBeInTheDocument()
+    expect(screen.getAllByText('Persona adulta (18-59 años)')).toHaveLength(2)
+    expect(screen.getAllByText('Aprobado')).toHaveLength(2)
+    expect(screen.queryByText('adult')).not.toBeInTheDocument()
     expect(listMigrantDocumentsMock).not.toHaveBeenCalled()
 
     await browserUser.click(screen.getByText('Ver detalles del registro'))
@@ -116,6 +133,7 @@ describe('MigrantRegistrationsPage', () => {
     await waitFor(() => expect(listMigrantDocumentsMock).toHaveBeenCalledWith(42))
     expect(await screen.findByText('Identification — passport.pdf')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Descargar' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Descargar PDF del registro' })).not.toBeInTheDocument()
   })
 
   it('searches registration text without requiring accents', async () => {
@@ -183,5 +201,74 @@ describe('MigrantRegistrationsPage', () => {
     expect(anchorClick).toHaveBeenCalledTimes(1)
     expect(createObjectUrl).toHaveBeenCalledTimes(1)
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:download')
+  })
+
+  it('shows admin-only registry PDF download and completes its passkey flow', async () => {
+    const browserUser = userEvent.setup()
+    const admin = { ...user, role: 'admin' as const }
+    const assertion = {
+      id: 'credential-admin',
+      rawId: 'credential-admin',
+      type: 'public-key' as const,
+      response: {
+        authenticatorData: 'authenticator-data',
+        clientDataJSON: 'client-data',
+        signature: 'signature',
+      },
+    }
+    startRegistryPdfDownloadMock.mockResolvedValue({
+      challengeIntent: {
+        expiresAt: '2026-07-17T13:01:00Z',
+        id: 'registry-pdf-challenge',
+        purpose: 'migrant.registry.pdf.download',
+        status: 'pending',
+      },
+      message: 'Challenge created.',
+      options: { challenge: 'challenge', rpId: 'localhost' },
+    })
+    getWebauthnAssertionMock.mockResolvedValue(assertion)
+    verifyRegistryPdfDownloadMock.mockResolvedValue(new Blob(['%PDF registry']))
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:registry-pdf')
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+
+    render(<MigrantRegistrationsPage user={admin} />)
+    await browserUser.click(await screen.findByText('Ver detalles del registro'))
+    await browserUser.click(screen.getByRole('button', { name: 'Descargar PDF del registro' }))
+
+    await waitFor(() => expect(verifyRegistryPdfDownloadMock).toHaveBeenCalledWith(42, assertion))
+    expect(startRegistryPdfDownloadMock).toHaveBeenCalledWith(42)
+    expect(getWebauthnAssertionMock).toHaveBeenCalledTimes(1)
+    expect(anchorClick).toHaveBeenCalledTimes(1)
+    expect(createObjectUrl).toHaveBeenCalledTimes(1)
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:registry-pdf')
+    expect(screen.getByText('Se descargó el PDF del registro.')).toBeInTheDocument()
+  })
+
+  it('cancels the registry PDF challenge when the passkey prompt is dismissed', async () => {
+    const browserUser = userEvent.setup()
+    const admin = { ...user, role: 'admin' as const }
+    startRegistryPdfDownloadMock.mockResolvedValue({
+      challengeIntent: {
+        id: 'cancelled-registry-pdf-challenge',
+        purpose: 'migrant.registry.pdf.download',
+        status: 'pending',
+      },
+      message: 'Challenge created.',
+      options: { challenge: 'challenge', rpId: 'localhost' },
+    })
+    getWebauthnAssertionMock.mockRejectedValue(new DOMException('Dismissed', 'NotAllowedError'))
+    cancelSecurityChallengeMock.mockResolvedValue({
+      challengeIntent: { id: 'cancelled-registry-pdf-challenge', status: 'cancelled' },
+      message: 'Challenge cancelled.',
+    })
+
+    render(<MigrantRegistrationsPage user={admin} />)
+    await browserUser.click(await screen.findByText('Ver detalles del registro'))
+    await browserUser.click(screen.getByRole('button', { name: 'Descargar PDF del registro' }))
+
+    await waitFor(() => expect(cancelSecurityChallengeMock).toHaveBeenCalledWith('cancelled-registry-pdf-challenge'))
+    expect(verifyRegistryPdfDownloadMock).not.toHaveBeenCalled()
+    expect(screen.getByText('Se canceló la descarga con llave de acceso.')).toBeInTheDocument()
   })
 })
