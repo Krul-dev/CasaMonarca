@@ -11,6 +11,8 @@ on:
       - main
       - staging
 
+  workflow_dispatch:
+
 permissions:
   contents: read
 
