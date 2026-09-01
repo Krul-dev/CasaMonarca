@@ -40,6 +40,18 @@ if [[ "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
+# ---------------------------------------------------------------------------
+# DISABLED
+# This legacy deployment script has not yet been validated against the
+# current repository structure and staging environment.
+# ---------------------------------------------------------------------------
+
+echo "ERROR: This deployment script is currently disabled." >&2
+echo "See the GitHub issue tracking staging deployment automation." >&2
+exit 1
+
+# Everything below here is currently unreachable.
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
